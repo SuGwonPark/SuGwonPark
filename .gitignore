@@ -1,0 +1,7 @@
+# Visual Studio Temporary Files
+.vs/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.aps
+*.sublime-workspace
