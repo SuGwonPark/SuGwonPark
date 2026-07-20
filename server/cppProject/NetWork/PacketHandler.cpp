@@ -4,6 +4,7 @@
 #include "Session.h"
 #include "Manager/PlayerManager.h"
 #include "Manager/RoomManager.h"
+#include "ENUM/VarEnum.h"
 
 
 

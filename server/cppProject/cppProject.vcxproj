@@ -31,7 +31,6 @@
     <ClCompile Include="pch.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CommonTypes.h" />
     <ClInclude Include="Enum\VarEnum.h" />
     <ClInclude Include="Game\Monster.h" />
     <ClInclude Include="Game\Player.h" />
@@ -39,6 +38,7 @@
     <ClInclude Include="Manager\PlayerManager.h" />
     <ClInclude Include="Manager\RoomManager.h" />
     <ClInclude Include="NetWork\PacketHandler.h" />
+    <ClInclude Include="NetWork\Protocol.h" />
     <ClInclude Include="NetWork\Server.h" />
     <ClInclude Include="NetWork\Session.h" />
     <ClInclude Include="pch.h" />

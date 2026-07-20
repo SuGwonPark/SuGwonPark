@@ -1,7 +1,6 @@
 // PacketHandler.h
 #pragma once
-#include "ENUM/VarEnum.h"
-
+#include "Protocol.h"
 
 class Session;
 

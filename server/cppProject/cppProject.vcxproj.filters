@@ -90,8 +90,8 @@
     <ClInclude Include="pch.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="CommonTypes.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="NetWork\Protocol.h">
+      <Filter>헤더 파일\Network</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
