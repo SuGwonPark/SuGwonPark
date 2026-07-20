@@ -1,8 +1,6 @@
 #pragma once
-#include "Player.h"
-#include <map>
-#include <memory>
-#include <mutex>
+#include "Game/Player.h"
+
 
 class PlayerManager {
 public:

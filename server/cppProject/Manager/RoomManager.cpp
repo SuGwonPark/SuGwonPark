@@ -1,6 +1,6 @@
-// RoomManager.cpp
+#include "pch.h"
 #include "RoomManager.h"
-#include <iostream>
+
 
 RoomManager& RoomManager::GetInstance() {
 	static RoomManager instance;

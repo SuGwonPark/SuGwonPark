@@ -1,7 +1,8 @@
-#include "Server.h"
-#include "RoomManager.h"
-#include "PlayerManager.h"
-#include <iostream>
+#include "pch.h"
+#include "Network/Server.h"
+#include "Manager/RoomManager.h"
+#include "Manager/PlayerManager.h"
+
 
 int main() {
 	// 서버 시작 시 기본 방 생성

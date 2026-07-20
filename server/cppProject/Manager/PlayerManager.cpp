@@ -1,5 +1,6 @@
+#include "pch.h"
 #include "PlayerManager.h"
-#include <iostream>
+
 
 PlayerManager& PlayerManager::GetInstance() {
 	static PlayerManager instance;  // 최초 호출 시 한 번만 생성됨

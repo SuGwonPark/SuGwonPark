@@ -1,8 +1,7 @@
-#include "Server.h"
-#include "Session.h"
-#include <iostream>
+#include "pch.h"
+#include "Network/Server.h"
+#include "Network/Session.h"
 
-using boost::asio::ip::tcp;
 
 Server::Server(boost::asio::io_context& io, short port) : acceptor_(io, tcp::endpoint(tcp::v4(), port)) { Accept(); }
 

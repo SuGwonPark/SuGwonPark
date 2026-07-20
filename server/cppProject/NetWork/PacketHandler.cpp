@@ -1,10 +1,11 @@
 // PacketHandler.cpp
+#include "pch.h"
 #include "PacketHandler.h"
 #include "Session.h"
-#include "PlayerManager.h"
-#include "RoomManager.h"
-#include <iostream>
-#include <cstring>
+#include "Manager/PlayerManager.h"
+#include "Manager/RoomManager.h"
+
+
 
 void PacketHandler::Handle(std::shared_ptr<Session> session,
 	const char* data, std::size_t length) {
@@ -48,7 +49,8 @@ void PacketHandler::HandleLogin(std::shared_ptr<Session> session,
 	if (success) {
 		static int nextId = 1;
 		res.playerId = nextId++;
-		std::strcpy(res.message, "로그인 성공");
+		strcpy_s(res.message, sizeof(res.message), "로그인 성공");
+		res.message[sizeof(res.message) - 1] = '\0';
 
 		// 세션 상태 업데이트
 		session->playerId_ = res.playerId;
@@ -59,7 +61,7 @@ void PacketHandler::HandleLogin(std::shared_ptr<Session> session,
 	}
 	else {
 		res.playerId = -1;
-		std::strcpy(res.message, "비밀번호 오류");
+		strcpy_s(res.message, sizeof(res.message), "비밀번호 오류");
 	}
 
 	session->Send(reinterpret_cast<const char*>(&res), sizeof(res));
@@ -76,12 +78,12 @@ void PacketHandler::HandleRoomJoin(std::shared_ptr<Session> session,
 	if (!room) {
 		res.success = false;
 		res.roomId = -1;
-		std::strcpy(res.message, "방이 존재하지 않습니다");
+		strcpy_s(res.message, sizeof(res.message), "방이 존재하지 않습니다");
 	}
 	else if (room->IsFull()) {
 		res.success = false;
 		res.roomId = -1;
-		std::strcpy(res.message, "방이 가득 찼습니다");
+		strcpy_s(res.message, sizeof(res.message), "방이 가득 찼습니다");
 	}
 	else {
 		room->Join(session);
@@ -90,7 +92,7 @@ void PacketHandler::HandleRoomJoin(std::shared_ptr<Session> session,
 
 		res.success = true;
 		res.roomId = pkt->roomId;
-		std::strcpy(res.message, "입장 성공");
+		strcpy_s(res.message, sizeof(res.message), "입장 성공");
 	}
 
 	session->Send(reinterpret_cast<const char*>(&res), sizeof(res));

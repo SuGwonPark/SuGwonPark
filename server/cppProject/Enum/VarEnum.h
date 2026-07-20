@@ -1,5 +1,5 @@
 #pragma once
-#include <cstdint>
+
 
 enum PacketType : uint16_t {
 	// ·Î±×ÀÎ

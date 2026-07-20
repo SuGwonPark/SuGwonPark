@@ -1,5 +1,5 @@
+#include "pch.h"
 #include "Player.h"
-#include <iostream>
 
 Player::Player(int id, std::string name)
 	: id_(id), name_(name), x_(0), y_(0), hp_(100) {

@@ -1,9 +1,4 @@
 #pragma once
-#include <boost/asio.hpp>
-#include <memory>
-#include <string>
-
-using boost::asio::ip::tcp;
 
 // 세션 상태 (어느 단계에 있는지)
 enum class SessionState {
