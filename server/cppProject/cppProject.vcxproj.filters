@@ -28,6 +28,12 @@
     <Filter Include="소스 파일\Manager">
       <UniqueIdentifier>{d6f613ec-dcf3-49b2-9c55-3859789c1c19}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\DB">
+      <UniqueIdentifier>{f4a0b13a-55a7-4f5c-b89b-5c0c39f8ff18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\DB">
+      <UniqueIdentifier>{61cd23b6-5f9f-49fa-b573-e77cee0ae192}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Game\Monster.cpp">
@@ -59,6 +65,15 @@
     </ClCompile>
     <ClCompile Include="Main.cpp">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="DB\GameDB.cpp">
+      <Filter>소스 파일\DB</Filter>
+    </ClCompile>
+    <ClCompile Include="DB\RedisDB.cpp">
+      <Filter>소스 파일\DB</Filter>
+    </ClCompile>
+    <ClCompile Include="DB\DBConnection.cpp">
+      <Filter>소스 파일\DB</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -94,6 +109,15 @@
     </ClInclude>
     <ClInclude Include="NetWork\Protocol.h">
       <Filter>헤더 파일\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="DB\GameDB.h">
+      <Filter>헤더 파일\DB</Filter>
+    </ClInclude>
+    <ClInclude Include="DB\RedisDB.h">
+      <Filter>헤더 파일\DB</Filter>
+    </ClInclude>
+    <ClInclude Include="DB\DBConnection.h">
+      <Filter>헤더 파일\DB</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
