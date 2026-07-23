@@ -11,7 +11,4 @@
 
 using boost::asio::ip::tcp;
 
-// mysql
 #include <mysqlx/xdevapi.h>
-
-
