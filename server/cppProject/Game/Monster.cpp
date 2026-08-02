@@ -12,4 +12,3 @@ void Monster::PrintStatus() {
 	std::cout << name_ << "ÀÇ ÇöÀç HP: " << hp_ << std::endl;
 
 }
-

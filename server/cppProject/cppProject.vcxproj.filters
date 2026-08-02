@@ -4,21 +4,6 @@
     <Filter Include="소스 파일">
       <UniqueIdentifier>{5d7755b0-d362-4387-99b5-7901d41cdb74}</UniqueIdentifier>
     </Filter>
-    <Filter Include="헤더 파일">
-      <UniqueIdentifier>{21fb6d9f-7a20-43f9-85b1-a7092b98c2b1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="헤더 파일\Game">
-      <UniqueIdentifier>{64255ff3-4450-4ad3-95f9-7741ddbc849d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="헤더 파일\Network">
-      <UniqueIdentifier>{77cca108-22fc-457f-be0f-463cebbb6e47}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="헤더 파일\Manager">
-      <UniqueIdentifier>{4eab5fb3-81d8-44d6-b301-72d352a4c661}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="헤더 파일\ENUM">
-      <UniqueIdentifier>{9f357a27-7d6e-476e-941c-7fa1810020a9}</UniqueIdentifier>
-    </Filter>
     <Filter Include="소스 파일\Game">
       <UniqueIdentifier>{4914e135-89f1-4b46-8df8-0c46d57d7ea6}</UniqueIdentifier>
     </Filter>
@@ -31,8 +16,8 @@
     <Filter Include="소스 파일\DB">
       <UniqueIdentifier>{f4a0b13a-55a7-4f5c-b89b-5c0c39f8ff18}</UniqueIdentifier>
     </Filter>
-    <Filter Include="헤더 파일\DB">
-      <UniqueIdentifier>{61cd23b6-5f9f-49fa-b573-e77cee0ae192}</UniqueIdentifier>
+    <Filter Include="소스 파일\ENUM">
+      <UniqueIdentifier>{9f357a27-7d6e-476e-941c-7fa1810020a9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -75,49 +60,64 @@
     <ClCompile Include="DB\DBConnection.cpp">
       <Filter>소스 파일\DB</Filter>
     </ClCompile>
+    <ClCompile Include="DB\DBThreadPool.cpp">
+      <Filter>소스 파일\DB</Filter>
+    </ClCompile>
+    <ClCompile Include="Manager\DBManager.cpp">
+      <Filter>소스 파일\Manager</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Game\Monster.h">
-      <Filter>헤더 파일\Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\Player.h">
-      <Filter>헤더 파일\Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\Room.h">
-      <Filter>헤더 파일\Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Manager\PlayerManager.h">
-      <Filter>헤더 파일\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="Manager\RoomManager.h">
-      <Filter>헤더 파일\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="NetWork\PacketHandler.h">
-      <Filter>헤더 파일\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="NetWork\Server.h">
-      <Filter>헤더 파일\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="NetWork\Session.h">
-      <Filter>헤더 파일\Network</Filter>
-    </ClInclude>
     <ClInclude Include="Enum\VarEnum.h">
-      <Filter>헤더 파일\ENUM</Filter>
-    </ClInclude>
-    <ClInclude Include="pch.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="NetWork\Protocol.h">
-      <Filter>헤더 파일\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="DB\GameDB.h">
-      <Filter>헤더 파일\DB</Filter>
-    </ClInclude>
-    <ClInclude Include="DB\RedisDB.h">
-      <Filter>헤더 파일\DB</Filter>
+      <Filter>소스 파일\ENUM</Filter>
     </ClInclude>
     <ClInclude Include="DB\DBConnection.h">
-      <Filter>헤더 파일\DB</Filter>
+      <Filter>소스 파일\DB</Filter>
+    </ClInclude>
+    <ClInclude Include="DB\GameDB.h">
+      <Filter>소스 파일\DB</Filter>
+    </ClInclude>
+    <ClInclude Include="DB\RedisDB.h">
+      <Filter>소스 파일\DB</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Monster.h">
+      <Filter>소스 파일\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Player.h">
+      <Filter>소스 파일\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Room.h">
+      <Filter>소스 파일\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Manager\PlayerManager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="Manager\RoomManager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="NetWork\PacketHandler.h">
+      <Filter>소스 파일\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="NetWork\Protocol.h">
+      <Filter>소스 파일\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="NetWork\Server.h">
+      <Filter>소스 파일\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="NetWork\Session.h">
+      <Filter>소스 파일\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Manager\DBManager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="DB\DBTypes.h">
+      <Filter>소스 파일\DB</Filter>
+    </ClInclude>
+    <ClInclude Include="DB\DBThreadPool.h">
+      <Filter>소스 파일\DB</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

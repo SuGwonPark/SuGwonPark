@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "DBConnection.h"
+#include "DB/DBConnection.h"
 
 DBConnection::DBConnection() {}
 
@@ -26,13 +26,6 @@ bool DBConnection::Connect(const std::string& host,
 			session_->getSchema(database)
 		);
 
-		if (!session_) {
-			return false;
-		}
-
-		// DB 지정 추후 변경 필요
-		session_->sql("USE gamedb").execute();
-
 		connected_ = true;
 		std::cout << "[DB] 연결 성공 : " << database << std::endl;
 		return true;
@@ -44,43 +37,31 @@ bool DBConnection::Connect(const std::string& host,
 	}
 }
 
-// 연결 종료
 void DBConnection::Disconnect() {
-	// 커넥트가 연결 되어있는지 체크
 	if (connected_ && session_) {
-		// SQL 세션 종료
 		session_->close();
 		connected_ = false;
 		std::cout << "[DB] 연결 종료" << std::endl;
 	}
 }
 
-// sql 실행
+mysqlx::SqlResult DBConnection::Query(const std::string& sql) {
+	try {
+		return session_->sql(sql).execute();
+	}
+	catch (const mysqlx::Error& e) {
+		std::cout << "[DB] 쿼리 실패 : " << e.what() << std::endl;
+		throw;
+	}
+}
+
 bool DBConnection::Execute(const std::string& sql) {
 	try {
-		if (!connected_ || !session_) {
-			Disconnect();
-			return false;
-		}
 		session_->sql(sql).execute();
 		return true;
 	}
 	catch (const mysqlx::Error& e) {
 		std::cout << "[DB] 실행 실패 : " << e.what() << std::endl;
 		return false;
-	}
-}
-
-mysqlx::SqlResult DBConnection::Query(const std::string& sql) {
-	try {
-		if (!connected_ || !session_) {
-			Disconnect();
-			throw std::runtime_error("[DB] 쿼리 실패 : 연결되지 않은 상태입니다.");
-		}
-		return session_->sql(sql).execute();
-	}
-	catch (const mysqlx::Error& e) {
-		std::cout << "[DB] 쿼리 실패 : " << e.what() << std::endl;
-		throw;
 	}
 }

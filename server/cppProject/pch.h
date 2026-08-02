@@ -6,6 +6,8 @@
 #include <mutex>
 #include <string>
 #include <cstdint>
+#include <queue>
+
 
 #include <boost/asio.hpp>
 

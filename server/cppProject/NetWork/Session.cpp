@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Network/Session.h"
 #include "Network/PacketHandler.h"
+#include "Manager/DBManager.h"
 
 
 Session::Session(tcp::socket socket)
@@ -36,5 +37,21 @@ void Session::Send(const char* data, std::size_t length) {
 			if (ec) {
 				std::cout << "전송 실패" << std::endl;
 			}
+		});
+}
+
+// 비동기 플레이어 저장
+void Session::SavePlayerAsnyc() {
+	if (playerId_ != -1 || player_ == nullptr) return;
+
+	uint64_t pid = playerId_;
+	int exp = player_->GetExp();
+	int level = player_->GetLevel();
+
+	// MANAGER 필터의 DBManager를 통해 비동기 DBTask 등록
+	DBManager::Instance().PushTask([pid, exp, level](mysqlx::Session& dbSession) {
+		dbSession.sql("UPDATE characters SET exp = ?, level = ? WHERE id = ?")
+			.bind(exp, level, pid)
+			.execute();
 		});
 }
