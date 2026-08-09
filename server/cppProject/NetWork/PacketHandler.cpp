@@ -54,7 +54,7 @@ void PacketHandler::HandleLogin(std::shared_ptr<Session> session,
 		res.message[sizeof(res.message) - 1] = '\0';
 
 		// 세션 상태 업데이트
-		session->playerId_ = res.playerId;
+		session->setPlayerID(res.playerId);
 		session->state_ = SessionState::INLOBBY;
 
 		// PlayerManager에 등록
@@ -88,7 +88,7 @@ void PacketHandler::HandleRoomJoin(std::shared_ptr<Session> session,
 	}
 	else {
 		room->Join(session);
-		session->roomId_ = pkt->roomId;
+		session->setRoomID(pkt->roomId);
 		session->state_ = SessionState::INROOM;
 
 		res.success = true;
@@ -108,7 +108,7 @@ void PacketHandler::HandleMove(std::shared_ptr<Session> session,
 	}
 
 	// 같은 방 플레이어들에게 이동 브로드캐스트
-	auto room = RoomManager::GetInstance().GetRoom(session->roomId_);
+	auto room = RoomManager::GetInstance().GetRoom(session->getRoomID());
 	if (room) {
 		room->Broadcast(
 			reinterpret_cast<const char*>(pkt),

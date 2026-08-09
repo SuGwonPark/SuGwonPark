@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Network/Session.h"
 #include "Network/PacketHandler.h"
-#include "Manager/DBManager.h"
+#include "DB/GameDBShard.h"
 
 
 Session::Session(tcp::socket socket)
@@ -45,10 +45,10 @@ void Session::SavePlayerAsnyc() {
 	if (playerId_ != -1 || player_ == nullptr) return;
 
 	uint64_t pid = playerId_;
-	int exp = player_->GetExp();
+	uint64_t exp = player_->GetExp();
 	int level = player_->GetLevel();
 
-	// MANAGER 필터의 DBManager를 통해 비동기 DBTask 등록
-	DBManager::Instance().SaveCharacterProgressAsync(pid, exp, level);
+	// GameDBShard를 통해 비동기 DBTask 등록
+	GameDBShard::Instance().SaveCharacterProgressAsync(pid, exp, level);
 
 }

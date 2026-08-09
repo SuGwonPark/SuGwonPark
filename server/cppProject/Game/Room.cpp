@@ -10,8 +10,8 @@ bool Room::Join(std::shared_ptr<Session> session) {
 	std::lock_guard<std::mutex> lock(mtx_);
 	if (sessions_.size() >= maxPlayers_) return false;
 
-	sessions_[session->playerId_] = session;
-	std::cout << "플레이어(" << session->playerId_ << ") → 방[" << name_ << "] 입장" << std::endl;
+	sessions_[session->getPlayerID()] = session;
+	std::cout << "플레이어(" << session->getPlayerID() << ") → 방[" << name_ << "] 입장" << std::endl;
 	return true;
 }
 
