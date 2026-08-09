@@ -40,7 +40,6 @@ namespace DB {
 	void DBThreadPool::WorkerLoop() {
 		// 스레드별 독립 DB 세션 생성 (Thread Safety 보장)
 		mysqlx::Session session(connUrl_);
-		session.sql("USE gamedb").execute();
 
 		while (true) {
 			DBTask task;

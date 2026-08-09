@@ -22,12 +22,12 @@
     <ClCompile Include="DB\DBConnection.cpp" />
     <ClCompile Include="DB\DBThreadPool.cpp" />
     <ClCompile Include="DB\GameDB.cpp" />
+    <ClCompile Include="DB\GameDBShard.cpp" />
     <ClCompile Include="DB\RedisDB.cpp" />
     <ClCompile Include="Game\Monster.cpp" />
     <ClCompile Include="Game\Player.cpp" />
     <ClCompile Include="Game\Room.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="Manager\DBManager.cpp" />
     <ClCompile Include="Manager\PlayerManager.cpp" />
     <ClCompile Include="Manager\RoomManager.cpp" />
     <ClCompile Include="NetWork\PacketHandler.cpp" />
@@ -40,12 +40,12 @@
     <ClInclude Include="DB\DBThreadPool.h" />
     <ClInclude Include="DB\DBTypes.h" />
     <ClInclude Include="DB\GameDB.h" />
+    <ClInclude Include="DB\GameDBShard.h" />
     <ClInclude Include="DB\RedisDB.h" />
     <ClInclude Include="Enum\VarEnum.h" />
     <ClInclude Include="Game\Monster.h" />
     <ClInclude Include="Game\Player.h" />
     <ClInclude Include="Game\Room.h" />
-    <ClInclude Include="Manager\DBManager.h" />
     <ClInclude Include="Manager\PlayerManager.h" />
     <ClInclude Include="Manager\RoomManager.h" />
     <ClInclude Include="NetWork\PacketHandler.h" />

@@ -20,6 +20,5 @@ namespace DB {
 		std::condition_variable cv_;
 		bool stop_ = false;
 		std::string connUrl_;
-
 	};
 }

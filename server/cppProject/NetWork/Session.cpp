@@ -49,9 +49,6 @@ void Session::SavePlayerAsnyc() {
 	int level = player_->GetLevel();
 
 	// MANAGER 필터의 DBManager를 통해 비동기 DBTask 등록
-	DBManager::Instance().PushTask([pid, exp, level](mysqlx::Session& dbSession) {
-		dbSession.sql("UPDATE characters SET exp = ?, level = ? WHERE id = ?")
-			.bind(exp, level, pid)
-			.execute();
-		});
+	DBManager::Instance().SaveCharacterProgressAsync(pid, exp, level);
+
 }
