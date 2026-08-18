@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "ZoneManager.h"
-#include "SendBufferManager.h"
+#include "Manager/ZoneManager.h"
+#include "Manager/SendBufferManager.h"
 #include "ZoneServerSession.h"
 
 void ZoneManager::RegisterZone(uint32_t zoneId, ZoneServerSessionRef session) {

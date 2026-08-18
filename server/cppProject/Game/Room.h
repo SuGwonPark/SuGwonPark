@@ -1,7 +1,7 @@
 #pragma once
 
 
-class Session;
+class Player;
 
 class Room {
 public:
@@ -17,7 +17,7 @@ public:
 	std::string name_;
 
 private:
-	std::map<int, std::shared_ptr<Session>> sessions_;
+	std::map<int, std::shared_ptr<Player>> players_;
 	mutable std::mutex mtx_;
 	const int maxPlayers_ = 10;
 };

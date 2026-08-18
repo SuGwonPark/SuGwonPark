@@ -41,6 +41,7 @@
     <ClCompile Include="Network\SendBuffer.cpp" />
     <ClCompile Include="NetWork\Server.cpp" />
     <ClCompile Include="NetWork\Session.cpp" />
+    <ClCompile Include="Network\ZoneServerSession.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DB\DBConnection.h" />

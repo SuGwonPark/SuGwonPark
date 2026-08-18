@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "ClientProxySession.h"
+#include "Network/ClientProxySession.h"
 #include "Manager/ZoneManager.h"   // Zone 서버 통신 매니저 (SendToZone)
-//#include "ChatManager.h"   // Chat 서버 통신 매니저 (SendToChatServer)
+#include "Manager/SendBufferManager.h"
 
 
 ClientProxySession::ClientProxySession(uint64_t sessionId, net::io_context& ioc)

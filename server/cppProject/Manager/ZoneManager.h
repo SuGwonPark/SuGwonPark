@@ -1,6 +1,6 @@
 #pragma once
 #include "pch.h"
-#include "SendBuffer.h"
+#include "Network/SendBuffer.h"
 
 // 게이트웨이 <-> 내부 Zone 서버 간 패킷 래퍼 헤더
 #pragma pack(push, 1)
