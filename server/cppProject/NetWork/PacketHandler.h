@@ -11,9 +11,9 @@ public:
 
 private:
 	static void HandleLogin(std::shared_ptr<Session> session,
-		const LoginReqPacket* pkt);
+		const REQ_LoginPacket* pkt);
 	static void HandleRoomJoin(std::shared_ptr<Session> session,
-		const RoomJoinReqPacket* pkt);
+		const REQ_RoomJoinPacket* pkt);
 	static void HandleMove(std::shared_ptr<Session> session,
 		const MovePacket* pkt);
 };

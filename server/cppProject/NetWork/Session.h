@@ -1,42 +1,54 @@
 #pragma once
-#include "Game/Player.h"
+#include "RecvBuffer.h"
+#include "SendBuffer.h"
 
-// 세션 상태 (어느 단계에 있는지)
-enum class SessionState {
-	CONNECTED,   // 접속만 된 상태
-	LOGGEDIN,    // 로그인 완료
-	INLOBBY,     // 로비 대기 중
-	INROOM,      // 게임방 안
-};
+
+using boost::asio::ip::tcp;
 
 class Session : public std::enable_shared_from_this<Session> {
 public:
-	Session(tcp::socket socket);
+	explicit Session(tcp::socket socket);
+	virtual ~Session();
 
+	// 네트워크 I/O 시작
 	void Start();
-	void Send(const char* data, std::size_t length);  // 클라이언트로 데이터 전송
 
-	SessionState state_ = SessionState::CONNECTED;
+	// 외부(게임/로직 스레드)에서 호출하는 패킷 전송 (Lock-Free)
+	void Send(SendBufferRef sendBuffer);
 
-	uint64_t getPlayerID() const { return playerId_; }
-	void setPlayerID(uint64_t id) { playerId_ = id; }
+	// 세션 강제 종료
+	void Disconnect(const std::string& reason = "");
 
-	int getRoomID() const { return roomId_; }
-	void setRoomID(int id) { roomId_ = id; }
+	bool IsConnected() const { return isConnected_.load(); }
+	tcp::socket& GetSocket() { return socket_; }
 
-	std::shared_ptr<Player> GetPlayer() const { return player_; }
+protected:
+	void DoRead();
+	void RegisterSend(SendBufferRef sendBuffer);
+	void DoWrite();
 
-	void SavePlayerAsnyc();  // 비동기적으로 플레이어 정보 저장
+	// TCP 스트림 파싱
+	int32_t ProcessPacketStream(bool& outError);
+
+	// [상속용 인터페이스]
+	virtual void OnConnected() {}
+	virtual void OnRecvPacket(uint8_t* packetBuffer, int32_t size) = 0;
+	virtual void OnDisconnected() {}
 
 private:
-	void ReadData();
-
 	tcp::socket socket_;
-	enum { max_length = 1024 };
-	char data_[max_length];
+	// ★ Fix 1: 멀티스레드 경합을 완벽히 제거하는 Strand
+	boost::asio::strand<boost::asio::any_io_executor> strand_;
 
-	uint64_t playerId_ = -1;
-	int roomId_ = -1;
+	RecvBuffer recvBuffer_;
 
-	std::shared_ptr<Player> player_;
+	// Strand 내부에서만 접근하므로 별도의 Mutex가 필요 없음 (성능 최적화)
+	std::queue<SendBufferRef> sendQueue_;
+	std::vector<SendBufferRef> pendingSendVector_;
+	bool isWriting_ = false;
+
+	// ★ Fix 2: Disconnect 중복 호출을 막는 원자적 플래그
+	std::atomic<bool> isConnected_{ false };
 };
+
+using SessionRef = std::shared_ptr<Session>;

@@ -16,8 +16,11 @@
     <Filter Include="소스 파일\DB">
       <UniqueIdentifier>{f4a0b13a-55a7-4f5c-b89b-5c0c39f8ff18}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\ENUM">
+    <Filter Include="소스 파일\Enum">
       <UniqueIdentifier>{9f357a27-7d6e-476e-941c-7fa1810020a9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\JobSystem">
+      <UniqueIdentifier>{63d853af-fdb1-44fd-a6d5-3ecfec730fdb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -45,9 +48,6 @@
     <ClCompile Include="Manager\RoomManager.cpp">
       <Filter>소스 파일\Manager</Filter>
     </ClCompile>
-    <ClCompile Include="pch.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="Main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -66,10 +66,34 @@
     <ClCompile Include="DB\GameDBShard.cpp">
       <Filter>소스 파일\DB</Filter>
     </ClCompile>
+    <ClCompile Include="Network\GameSession.h">
+      <Filter>소스 파일\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="JobSystem\WorkStealingThreadPool.h">
+      <Filter>소스 파일\JobSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="Network\ClientProxySession.cpp">
+      <Filter>소스 파일\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="Manager\ZoneManager.cpp">
+      <Filter>소스 파일\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Zone.cpp">
+      <Filter>소스 파일\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Network\SendBuffer.cpp">
+      <Filter>소스 파일\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="Manager\SendBufferManager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="Manager\SendBufferManager.cpp">
+      <Filter>소스 파일\Manager</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Enum\VarEnum.h">
-      <Filter>소스 파일\ENUM</Filter>
+      <Filter>소스 파일\Enum</Filter>
     </ClInclude>
     <ClInclude Include="DB\DBConnection.h">
       <Filter>소스 파일\DB</Filter>
@@ -118,6 +142,27 @@
     </ClInclude>
     <ClInclude Include="DB\GameDBShard.h">
       <Filter>소스 파일\DB</Filter>
+    </ClInclude>
+    <ClInclude Include="Network\RecvBuffer.h">
+      <Filter>소스 파일\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="Network\SendBuffer.h">
+      <Filter>소스 파일\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="JobSystem\JobQueue.h">
+      <Filter>소스 파일\JobSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="JobSystem\WorkStealingQueue.h">
+      <Filter>소스 파일\JobSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="Manager\ZoneManager.h">
+      <Filter>소스 파일\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Zone.h">
+      <Filter>소스 파일\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Network\ClientProxySession.h">
+      <Filter>소스 파일\Network</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

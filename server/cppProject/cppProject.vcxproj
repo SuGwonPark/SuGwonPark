@@ -27,13 +27,20 @@
     <ClCompile Include="Game\Monster.cpp" />
     <ClCompile Include="Game\Player.cpp" />
     <ClCompile Include="Game\Room.cpp" />
+    <ClCompile Include="Game\Zone.cpp" />
+    <ClCompile Include="JobSystem\WorkStealingThreadPool.h" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Manager\PlayerManager.cpp" />
     <ClCompile Include="Manager\RoomManager.cpp" />
+    <ClCompile Include="Manager\SendBufferManager.cpp" />
+    <ClCompile Include="Manager\SendBufferManager.h" />
+    <ClCompile Include="Manager\ZoneManager.cpp" />
+    <ClCompile Include="Network\ClientProxySession.cpp" />
+    <ClCompile Include="Network\GameSession.h" />
     <ClCompile Include="NetWork\PacketHandler.cpp" />
+    <ClCompile Include="Network\SendBuffer.cpp" />
     <ClCompile Include="NetWork\Server.cpp" />
     <ClCompile Include="NetWork\Session.cpp" />
-    <ClCompile Include="pch.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DB\DBConnection.h" />
@@ -46,10 +53,17 @@
     <ClInclude Include="Game\Monster.h" />
     <ClInclude Include="Game\Player.h" />
     <ClInclude Include="Game\Room.h" />
+    <ClInclude Include="Game\Zone.h" />
+    <ClInclude Include="JobSystem\JobQueue.h" />
+    <ClInclude Include="JobSystem\WorkStealingQueue.h" />
     <ClInclude Include="Manager\PlayerManager.h" />
     <ClInclude Include="Manager\RoomManager.h" />
+    <ClInclude Include="Manager\ZoneManager.h" />
+    <ClInclude Include="Network\ClientProxySession.h" />
     <ClInclude Include="NetWork\PacketHandler.h" />
     <ClInclude Include="NetWork\Protocol.h" />
+    <ClInclude Include="Network\RecvBuffer.h" />
+    <ClInclude Include="Network\SendBuffer.h" />
     <ClInclude Include="NetWork\Server.h" />
     <ClInclude Include="NetWork\Session.h" />
     <ClInclude Include="pch.h" />
