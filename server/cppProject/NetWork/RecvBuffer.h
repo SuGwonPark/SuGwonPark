@@ -7,7 +7,7 @@ public:
 		: capacity_(bufferSize* bufferCount), buffer_(bufferSize* bufferCount) {
 	}
 
-	// Ã³¸® ¿Ï·á ÈÄ ³²Àº µ¥ÀÌÅÍ¸¦ ¹öÆÛ ¸Ç ¾ÕÀ¸·Î ÀÌµ¿ (½½¶óÀÌµù)
+	// ì²˜ë¦¬ ì™„ë£Œ í›„ ë‚¨ì€ ë°ì´í„°ë¥¼ ë²„í¼ ë§¨ ì•ìœ¼ë¡œ ì´ë™ (ìŠ¬ë¼ì´ë”©)
 	void Clean() {
 		int32_t dataSize = DataSize();
 		if (dataSize == 0) {

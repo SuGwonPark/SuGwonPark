@@ -5,7 +5,7 @@ struct PacketHeader {
 	uint16_t id;
 };
 
-// ·Î±×ÀÎ
+// ë¡œê·¸ì¸
 struct REQ_LoginPacket {
 	PacketHeader header;
 	char userId[32];
@@ -16,32 +16,20 @@ struct RES_LoginPacket {
 	PacketHeader header;
 	bool success;
 	int32_t playerId;
-	char message[64];   // "·Î±×ÀÎ ¼º°ø" or "ºñ¹Ğ¹øÈ£ ¿À·ù" µî
+	char message[64];   // "ë¡œê·¸ì¸ ì„±ê³µ" or "ë¹„ë°€ë²ˆí˜¸ ì˜¤ë¥˜" ë“±
 };
 
-// ¹æ ÀÔÀå ¿äÃ»
-struct REQ_RoomJoinPacket {
-	PacketHeader header;
-	int32_t playerId;
-	int32_t roomId;
-};
 
-struct RES_RoomJoinPacket {
-	PacketHeader header;
-	bool success;
-	int32_t roomId;
-	char message[64];
-};
-
-// ÀÌµ¿ ÆĞÅ¶
+// ì´ë™ íŒ¨í‚·
 struct MovePacket {
 	PacketHeader header;
 	int32_t playerId;
 	float x;
 	float y;
+	float z;
 };
 
-// °ø°İ ÆĞÅ¶
+// ê³µê²© íŒ¨í‚·
 struct AttackPacket {
 	PacketHeader header;
 	int32_t playerId;
@@ -52,21 +40,36 @@ struct AttackPacket {
 
 
 
-// ÆĞÅ¶ ID Á¤ÀÇ ¿¹½Ã
+// íŒ¨í‚· ID ì •ì˜ ëª¨ìŒ
 enum PacketID : uint16_t {
-	// ÀÌµ¿ ¹× ÀüÅõ (ÇÚµå¿À¹ö Áß Æó±â ´ë»ó)
+	// ì´ë™ ë° ì „íˆ¬
 	PKT_C_MOVE = 1001,
 	PKT_C_ATTACK = 1002,
 	PKT_C_SKILL_CAST = 1003,
 
-	PKT_S_ZONE_LEAVE_COMPLETED = 2001, // Á¸ ÀÌµ¿ ¿Ï·á Ã³¸®
+	PKT_S_ZONE_LEAVE_COMPLETED = 2001, // ì¡´ ì´ë™ ì™„ë£Œ ì²˜ë¦¬
 
 
-	// Ã¤ÆÃ ¹× ¼Ò¼È (ÇÚµå¿À¹ö Áß Áï½Ã ChatServer·Î ¿ìÈ¸)
+	// ì±„íŒ… ë° ì†Œì…œ
 	PKT_C_CHAT = 3001,
 	PKT_C_WHISPER = 3002,
 
-	// ½Ã½ºÅÛ ¹× ÇÚµå¿À¹ö ¶óÀÌÇÁ»çÀÌÅ¬ (ÇÚµå¿À¹ö Áß º¸·ù ÈÄ Zone 2·Î ¹æÃâ)
+	// ì‹œìŠ¤í…œ
 	PKT_C_READY_TO_SPAWN = 4001,
-	PKT_C_USE_ITEM = 4002
+	PKT_C_USE_ITEM = 4002,
+
+	// ë¡œê·¸ì¸ ë° ë¡œë¹„ (ì¸ì¦)
+	PKT_C_LOGIN = 5001,
+	PKT_S_LOGIN = 5002,
+	PKT_C_ROOM_JOIN = 5003,
+	PKT_S_ROOM_JOIN = 5004
+};
+
+
+// Zone1 ì´íƒˆ ì‹œ ì €ì¥ ì™„ë£Œ í†µë³´ íŒ¨í‚· (Handover ACK, Zone -> Gateway)
+// ì£¼ì˜: enum ê°’ PKT_S_ZONE_LEAVE_COMPLETEDì™€ ì´ë¦„ì´ ê²¹ì¹˜ë©´ ì•ˆ ë˜ë¯€ë¡œ êµ¬ì¡°ì²´ëŠ” ë³„ë„ ì´ë¦„ ì‚¬ìš©
+struct RES_ZoneLeaveCompletedPacket {
+	PacketHeader header;
+	uint64_t playerId;
+	uint32_t nextZoneId;
 };

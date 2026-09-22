@@ -1,15 +1,23 @@
 #include "pch.h"
 #include "SendBufferManager.h"
 
-// °¢ ¿öÄ¿ ½º·¹µå¸¶´Ù µ¶¸³ÀûÀ¸·Î ÇÒ´ç/À¯ÁöµÇ´Â ·ÎÄÃ Ã»Å© Æ÷ÀÎÅÍ
+// ê° ì›Œì»¤ ìŠ¤ë ˆë“œë§ˆë‹¤ ë…ë¦½ì ìœ¼ë¡œ í• ë‹¹/ìœ ì§€ë˜ëŠ” ë¡œì»¬ ì²­í¬ í¬ì¸í„°
 thread_local SendBufferChunkRef LSendBufferChunk = nullptr;
+
+SendBufferRef SendBufferManager::Make(const void* data, uint32_t size)
+{
+	SendBufferRef buf = Open(size);
+	buf->Write(data, size);
+	Close(size);
+	return buf;
+}
 
 SendBufferRef SendBufferManager::Open(uint32_t size) {
 	if (LSendBufferChunk == nullptr) {
 		LSendBufferChunk = SendBufferManager::GetInstance()->Pop();
 	}
 
-	// ÇöÀç µé°í ÀÖ´Â TLS Ã»Å©ÀÇ ÀÜ¿© °ø°£ÀÌ ºÎÁ·ÇÏ¸é »õ Ã»Å©·Î ±³Ã¼
+	// í˜„ì¬ ë“¤ê³  ìˆëŠ” TLS ì²­í¬ì˜ ì”ì—¬ ê³µê°„ì´ ë¶€ì¡±í•˜ë©´ ìƒˆ ì²­í¬ë¡œ êµì²´
 	if (LSendBufferChunk->FreeSize() < size) {
 		LSendBufferChunk = SendBufferManager::GetInstance()->Pop();
 	}
@@ -38,15 +46,16 @@ void SendBufferManager::Push(SendBufferChunk* chunk) {
 	std::lock_guard<std::mutex> lock(lock_);
 	chunk->Reset();
 
-	// ½º¸¶Æ® Æ÷ÀÎÅÍ Ä¿½ºÅÒ Deleter¸¦ ºÙ¿© ´Ù½Ã Ç®¿¡ ÀûÀç
+	// ìŠ¤ë§ˆíŠ¸ í¬ì¸í„° ì»¤ìŠ¤í…€ Deleterë¥¼ ë¶™ì—¬ ë‹¤ì‹œ í’€ì— ì ì¬
 	pool_.push_back(SendBufferChunkRef(chunk, [this](SendBufferChunk* ptr) {
 		Push(ptr);
 		}));
 }
 
 SendBufferChunkRef SendBufferManager::CreateChunk() {
-	// Ç®¿¡ ¹İ³³µÉ ¶§ Push()°¡ ÀÚµ¿ È£ÃâµÇµµ·Ï ¶÷´Ù Deleter ¿¬°á
+	// í’€ì— ë°˜ë‚©ë  ë•Œ Push()ê°€ ìë™ í˜¸ì¶œë˜ë„ë¡ ëŒë‹¤ Deleter ì—°ê²°
 	return SendBufferChunkRef(new SendBufferChunk(), [this](SendBufferChunk* ptr) {
 		Push(ptr);
 		});
 }
+

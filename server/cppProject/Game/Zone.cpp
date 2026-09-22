@@ -3,21 +3,39 @@
 #include "Player.h"
 #include "DB/GameDB.h"
 #include "Network/Protocol.h"
-#include "GatewaySession.h" // ZoneServer°¡ Gateway¿Í Åë½ÅÇÏ´Â ¼¼¼Ç
+// TODO: GatewaySession í´ë˜ìŠ¤ê°€ ì•„ì§ êµ¬í˜„ë˜ì§€ ì•ŠìŒ (ZoneServer <-> Gateway í†µì‹  ì„¸ì…˜)
+// #include "GatewaySession.h"
+
+static WorkStealingThreadPool& GetZoneWorkerPool() {
+	static WorkStealingThreadPool pool;   // ê¸°ë³¸ê°’: std::thread::hardware_concurrency()ê°œ ì›Œì»¤ ìƒì„±
+	return pool;
+}
 
 Zone::Zone(uint32_t zoneId)
 	: zoneId_(zoneId)
 	, jobQueue_(std::make_shared<JobQueue>()) {
 }
 
+void Zone::schedule(Job job)
+{
+	jobQueue_->Push(std::move(job));
+
+	// ì´ Zoneì˜ íë¥¼ ì›Œì»¤ í•˜ë‚˜ê°€ ë“œë ˆì¸í•˜ë„ë¡ ì˜ˆì•½.
+	// Execute()ëŠ” ì´ë¯¸ ëˆ„ê°€ ëŒê³  ìˆìœ¼ë©´ ë°”ë¡œ ë¦¬í„´í•˜ë‹ˆ ì¤‘ë³µ ì‹¤í–‰ ê±±ì •ì€ ì—†ìŒ.
+	auto self = shared_from_this();
+	GetZoneWorkerPool().Post([self]() {
+		self->jobQueue_->Execute();
+		});
+}
+
 void Zone::Enter(PlayerRef player) {
-	players_[player->GetPlayerId()] = player;
-	// ÁÖº¯ ½Ã¾ß(AOI) ³» À¯Àúµé¿¡°Ô ½ºÆù ¾Ë¸² ºê·ÎµåÄ³½ºÆ®
+	players_[player->GetPlayerID()] = player;
+	// ì£¼ë³€ ì‹œì•¼(AOI) ë‚´ ìœ ì €ë“¤ì—ê²Œ ì…ì¥ ì•Œë¦¼ ë¸Œë¡œë“œìºìŠ¤íŠ¸
 }
 
 void Zone::Leave(uint64_t playerId) {
 	players_.erase(playerId);
-	// ÁÖº¯ ½Ã¾ß ³» À¯Àúµé¿¡°Ô µğ½ºÆù ¾Ë¸² ºê·ÎµåÄ³½ºÆ®
+	// ì£¼ë³€ ì‹œì•¼ ë‚´ ìœ ì €ë“¤ì—ê²Œ í‡´ì¥ ì•Œë¦¼ ë¸Œë¡œë“œìºìŠ¤íŠ¸
 }
 
 void Zone::HandleMove(uint64_t playerId, float x, float y, float z) {
@@ -25,7 +43,21 @@ void Zone::HandleMove(uint64_t playerId, float x, float y, float z) {
 	if (it == players_.end()) return;
 
 	it->second->SetPosition(x, y, z);
-	// ÁÖº¯ ÇÃ·¹ÀÌ¾î¿¡°Ô ÀÌµ¿ ÆĞÅ¶ µ¿±âÈ­
+
+	MovePacket pkt{};
+	pkt.header.size = sizeof(MovePacket);
+	pkt.header.id = PKT_C_MOVE;
+	pkt.playerId = static_cast<int32_t>(playerId);
+	pkt.x = x;
+	pkt.y = y;
+	pkt.z = z;
+
+	// ì§€ê¸ˆì€ Zone ì „ì²´í•œí…Œ ë¿Œë¦¬ëŠ” ê°€ì¥ ë‹¨ìˆœí•œ ë²„ì „.
+	// ë‚˜ì¤‘ì— players_ë¥¼ ìˆœíšŒí•  ë•Œ ê±°ë¦¬ ì²´í¬(x_,y_,z_ ë¹„êµ)ë§Œ ì¶”ê°€í•˜ë©´ ì§„ì§œ AOIê°€ ë©ë‹ˆë‹¤.
+	for (auto& [otherId, other] : players_) {
+		if (otherId == playerId) continue;
+		other->Send(&pkt, sizeof(pkt));
+	}
 }
 
 void Zone::HandlePortal(uint64_t playerId, uint32_t nextZoneId) {
@@ -34,19 +66,23 @@ void Zone::HandlePortal(uint64_t playerId, uint32_t nextZoneId) {
 
 	PlayerRef player = it->second;
 
-	// 1. Zone ¿ùµå¿¡¼­ ¸ÕÀú Á¦¿Ü (Ãß°¡ ÇÇ°İ/»óÈ£ÀÛ¿ë Â÷´Ü)
+	// 1. Zone ì›”ë“œì—ì„œ ì„œë²„ ì œê±° (ì¶”ê°€ í”¼ê²©/ìƒí˜¸ì‘ìš© ë°©ì§€)
 	Leave(playerId);
 
-	// 2. Redis/DB¿¡ ÃÖ½Å »óÅÂ(HP, À§Ä¡, ÀÎº¥Åä¸®) ºñµ¿±â ÀúÀå
-	GameDB::GetInstance()->SavePlayerData(player, [playerId, nextZoneId]() {
-		// 3. DB ÀúÀåÀÌ ³¡³ª¸é Gateway¿¡ ¿Ï·á Åëº¸(ACK) Àü¼Û
-		// -> Gateway°¡ ÀÌ¸¦ ¹Ş°í Áï½Ã ¶ó¿ìÆÃ ´ë»óÀ» nextZoneId·Î ÀüÈ¯
-		PKT_S_ZONE_LEAVE_COMPLETED ackPkt;
-		ackPkt.header.size = sizeof(ackPkt);
-		ackPkt.header.id = PKT_S_ZONE_LEAVE_COMPLETED_ID;
-		ackPkt.playerId = playerId;
-		ackPkt.nextZoneId = nextZoneId;
-
-		GatewaySession::GetInstance()->Send(ackPkt);
-		});
+	// TODO: ì•„ë˜ ë¸”ë¡ì€ ì„¸ ê°€ì§€ê°€ ì•„ì§ êµ¬í˜„ë˜ì§€ ì•Šì•„ ì£¼ì„ ì²˜ë¦¬í•¨
+	//   - GameDB::SavePlayerData(...) í•¨ìˆ˜ ìì²´ê°€ GameDB í´ë˜ìŠ¤ì— ì—†ìŒ
+	//   - GatewaySession í´ë˜ìŠ¤ê°€ ì•„ì§ ì—†ìŒ
+	//   - PKT_S_ZONE_LEAVE_COMPLETED êµ¬ì¡°ì²´ê°€ Protocol.hì— ì£¼ì„ìœ¼ë¡œë§Œ ë‚¨ì•„ìˆìŒ (ë˜ì‚´ë ¤ì•¼ í•¨)
+	// 2. Redis/DBì— ìµœì‹  ìƒíƒœ(HP, ìœ„ì¹˜, ì¸ë²¤í† ë¦¬) ë¹„ë™ê¸° ì €ì¥
+	// GameDB::Instance().SavePlayerData(player, [playerId, nextZoneId]() {
+	// 	// 3. DB ì €ì¥ì´ ì™„ë£Œë˜ë©´ Gatewayì— ì™„ë£Œ í†µë³´(ACK) ì „ì†¡
+	// 	// -> Gatewayê°€ ì´ë¥¼ ë°›ê³  ëŒ€ê¸° ìƒíƒœì˜€ë˜ í´ë¼ì´ì–¸íŠ¸ë¥¼ nextZoneIdë¡œ ì „í™˜
+	// 	PKT_S_ZONE_LEAVE_COMPLETED ackPkt;
+	// 	ackPkt.header.size = sizeof(ackPkt);
+	// 	ackPkt.header.id = PKT_S_ZONE_LEAVE_COMPLETED;
+	// 	ackPkt.playerId = playerId;
+	// 	ackPkt.nextZoneId = nextZoneId;
+	//
+	// 	GatewaySession::GetInstance()->Send(ackPkt);
+	// 	});
 }

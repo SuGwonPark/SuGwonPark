@@ -1,46 +1,23 @@
 #include "pch.h"
 #include "Player.h"
-#include "Network/Session.h"
+#include "Manager/SendBufferManager.h"
 
+// ... ê¸°ì¡´ ìƒì„±ìì— z_(0) ì¶”ê°€
 Player::Player(int id, std::string name)
-	: id_(id), name_(name), x_(0), y_(0), hp_(100) {
+	: id_(id), name_(name), x_(0), y_(0), z_(0), hp_(100), exp_(0)
+	, playerId_(static_cast<uint64_t>(id)) {
 }
 
-void Player::Move(float x, float y) {
-	x_ = x;
-	y_ = y;
-	std::cout << name_ << " ÀÌµ¿ ¡æ x: " << x_ << ", y: " << y_ << std::endl;
+void Player::SetPosition(float x, float y, float z) {
+	x_ = x; y_ = y; z_ = z;
 }
 
-void Player::TakeDamage(int damage) {
-	hp_ -= damage;
-	if (hp_ < 0) hp_ = 0;
-	std::cout << name_ << " µ¥¹ÌÁö: " << damage << " ¡æ ³²Àº HP: " << hp_ << std::endl;
-}
+void Player::Send(const void* data, uint32_t length) {
+	if (!session_) return;   // ì•„ì§ ë¡œê·¸ì¸ ì„¸ì…˜ì´ ì—°ê²° ì•ˆ ëœ í”Œë ˆì´ì–´(ë´‡/DBì „ìš© ë“±)ëŠ” ì¡°ìš©íˆ ë¬´ì‹œ
 
-bool Player::IsAlive() const {
-	return hp_ > 0;
-}
+	SendBufferRef sendBuffer = SendBufferManager::Open(length);
+	sendBuffer->Write(data, length);
+	SendBufferManager::Close(length);
 
-void Player::PrintStatus() const {
-	std::cout << "[" << name_ << "] HP: " << hp_
-		<< " À§Ä¡: (" << x_ << ", " << y_ << ")" << std::endl;
-}
-
-std::string Player::GetPlayerName()  const {
-	return name_;
-}
-
-int Player::GetLevel() const {
-	// ·¹º§¾÷¿¡ ÇÊ¿äÇÑ ´©Àû °æÇèÄ¡ Å×ÀÌºí (¿¹½Ã)
-	std::vector<int> levelExpTable_ = std::vector<int>({ 0, 100, 500, 1500, 3000 });
-
-	// std::upper_bound = 0(log N) °í¼Ó Å½»ö
-	auto it = std::upper_bound(levelExpTable_.begin(), levelExpTable_.end(), exp_);
-	// ·¹º§Àº 1ºÎÅÍ ½ÃÀÛ
-	int level = static_cast<int>(std::distance(levelExpTable_.begin(), it)) + 1;
-
-	int maxLevel = static_cast<int>(levelExpTable_.size()) + 1;
-	return std::min(level, maxLevel); // ÃÖ´ë ·¹º§À» ÃÊ°úÇÏÁö ¾Êµµ·Ï Á¦ÇÑ
-
+	session_->Send(sendBuffer);
 }

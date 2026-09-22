@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Manager/ZoneManager.h"
 #include "Manager/SendBufferManager.h"
-#include "ZoneServerSession.h"
+#include "Network/ZoneServerSession.h"
 
 void ZoneManager::RegisterZone(uint32_t zoneId, ZoneServerSessionRef session) {
 	std::lock_guard<std::mutex> lock(lock_);
@@ -25,16 +25,16 @@ void ZoneManager::SendToZone(uint32_t zoneId, uint64_t sessionId, SendBufferRef 
 
 	if (!targetSession) return;
 
-	// [ÆĞÅ¶ ·¡ÇÎ] ±âÁ¸ ÆĞÅ¶ ¾Õ¿¡ 12¹ÙÀÌÆ® InternalPacketHeader¸¦ µ¡ºÙ¿© Àü¼Û
+	// [íŒ¨í‚· ë˜í•‘] ê¸°ì¡´ íŒ¨í‚· ì•ì— 12ë°”ì´íŠ¸ InternalPacketHeaderë¥¼ ë§ë¶™ì—¬ ì „ì†¡
 	uint16_t totalSize = sizeof(InternalPacketHeader) + clientPacketBuffer->AllocSize();
 	SendBufferRef wrappedBuffer = SendBufferManager::Open(totalSize);
 
 	InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(wrappedBuffer->Buffer());
 	header->size = totalSize;
-	header->id = 9999; // ³»ºÎ Æ÷¿öµù¿ë ÆĞÅ¶ ID
+	header->id = 9999; // ë‚´ë¶€ í¬ì›Œë”©ìš© íŒ¨í‚· ID
 	header->sessionId = sessionId;
 
-	// µÚÀÌ¾î ¿øº» Å¬¶óÀÌ¾ğÆ® ÆĞÅ¶ ¹ÙÀÌ³Ê¸® º¹»ç
+	// ë’¤ì´ì–´ ì›ë³¸ í´ë¼ì´ì–¸íŠ¸ íŒ¨í‚· ë°”ì´ë„ˆë¦¬ ë³µì‚¬
 	std::memcpy(wrappedBuffer->Buffer() + sizeof(InternalPacketHeader),
 		clientPacketBuffer->Buffer(),
 		clientPacketBuffer->AllocSize());
@@ -44,10 +44,10 @@ void ZoneManager::SendToZone(uint32_t zoneId, uint64_t sessionId, SendBufferRef 
 }
 
 void ZoneManager::SendDisconnectToZone(uint32_t zoneId, uint64_t sessionId) {
-	// ¼¼¼Ç Á¾·á ¾Ë¸² ÆĞÅ¶À» ÇØ´ç ZoneÀ¸·Î Àü¼ÛÇÏ¿© ¸Ş¸ğ¸® Á¤¸® À¯µµ
+	// ì„¸ì…˜ ì¢…ë£Œ ì•Œë¦¼ íŒ¨í‚·ì„ í•´ë‹¹ Zoneìœ¼ë¡œ ì „ì†¡í•˜ì—¬ ë©”ëª¨ë¦¬ ì •ë¦¬ ìœ ë„
 	InternalPacketHeader header;
 	header.size = sizeof(InternalPacketHeader);
-	header.id = 9998; // DISCONNECT ÆĞÅ¶ ID
+	header.id = 9998; // DISCONNECT íŒ¨í‚· ID
 	header.sessionId = sessionId;
 
 	SendBufferRef sendBuffer = SendBufferManager::Open(sizeof(header));

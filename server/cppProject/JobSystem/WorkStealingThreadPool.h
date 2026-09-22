@@ -21,7 +21,7 @@ public:
 		Stop();
 	}
 
-	// ÀÛ¾÷À» Æ¯Á¤ ½º·¹µå ·ÎÄÃ Å¥¿¡ µî·Ï (ÀÎµ¦½º ¹ÌÁöÁ¤ ½Ã ·£´ı ÇÒ´ç)
+	// ì‘ì—…ì„ íŠ¹ì • ìŠ¤ë ˆë“œ ë¡œì»¬ íì— ë“±ë¡ (ì¸ë±ìŠ¤ ë¯¸ì§€ì • ì‹œ ëœë¤ í• ë‹¹)
 	void Post(Job job, int32_t targetThreadIndex = -1) {
 		if (targetThreadIndex >= 0 && targetThreadIndex < static_cast<int32_t>(threadCount_)) {
 			queues_[targetThreadIndex]->Push(std::move(job));
@@ -45,13 +45,13 @@ private:
 		while (isRunning_.load()) {
 			std::optional<Job> job = queues_[threadId]->Pop();
 
-			// 1. ÀÚ½ÅÀÇ ·ÎÄÃ Å¥¿¡ ÀÛ¾÷ÀÌ ÀÖÀ¸¸é Áï½Ã ½ÇÇà
+			// 1. ìì‹ ì˜ ë¡œì»¬ íì— ì‘ì—…ì´ ìˆìœ¼ë©´ ì¦‰ì‹œ ì‹¤í–‰
 			if (job.has_value()) {
 				(*job)();
 				continue;
 			}
 
-			// 2. ³» Å¥°¡ ºñ¾úÀ¸¸é ´Ù¸¥ ½º·¹µåÀÇ Å¥¸¦ Å½»öÇÏ¿© Steal ½Ãµµ
+			// 2. ë‚´ íê°€ ë¹„ì—ˆìœ¼ë©´ ë‹¤ë¥¸ ìŠ¤ë ˆë“œì˜ íë¥¼ íƒìƒ‰í•˜ì—¬ Steal ì‹œë„
 			bool stoleJob = false;
 			for (uint32_t offset = 1; offset < threadCount_; ++offset) {
 				uint32_t victimId = (threadId + offset) % threadCount_;
@@ -64,7 +64,7 @@ private:
 				}
 			}
 
-			// 3. ÈÉÄ¥ ÀÏ°¨µµ ÀüÇô ¾øÀ¸¸é ¾çº¸(Yield)
+			// 3. í›”ì¹  ì¼ê°ë„ ì „í˜€ ì—†ìœ¼ë©´ ì–‘ë³´(Yield)
 			if (!stoleJob) {
 				std::this_thread::yield();
 			}

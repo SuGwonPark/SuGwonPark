@@ -8,7 +8,7 @@
 
 int main() {
 	try {
-		//	// GameDB ¿¬°á
+		//	// GameDB ì—°ê²°
 		GameDB& gameDB = GameDB::Instance();
 		gameDB.Init(4, "mysqlx://root:gpdlgh1234%21%40%23%24@localhost:33060/gamedb");
 
@@ -26,14 +26,14 @@ int main() {
 		std::cerr << "MySQL Error: " << err.what() << std::endl;
 	}
 	catch (const std::exception& err) {
-		// ±âÅ¸ Ç¥ÁØ ¿¹¿Ü °¨Áö
+		// ê¸°íƒ€ í‘œì¤€ ì˜ˆì™¸ ê°ì§€
 		std::cerr << "Standard Exception: " << err.what() << std::endl;
 	}
 
-	// ¼­¹ö ½ÃÀÛ
+	// ì„œë²„ ì‹œìž‘
 	boost::asio::io_context io;
 	Server server(io, 8080);
-	std::cout << "\n¼­¹ö ½ÃÀÛ - Æ÷Æ® 8080" << std::endl;
+	std::cout << "\nì„œë²„ ì‹œìž‘ - í¬íŠ¸ 8080" << std::endl;
 	io.run();
 
 	return 0;

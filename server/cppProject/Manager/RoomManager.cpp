@@ -10,7 +10,7 @@ RoomManager& RoomManager::GetInstance() {
 void RoomManager::CreateRoom(int id, std::string name) {
 	std::lock_guard<std::mutex> lock(mtx_);
 	rooms_[id] = std::make_shared<Room>(id, name);
-	std::cout << "¹æ »ı¼º: [" << name << "] (ID: " << id << ")" << std::endl;
+	std::cout << "ë°© ìƒì„±: [" << name << "] (ID: " << id << ")" << std::endl;
 }
 
 std::shared_ptr<Room> RoomManager::GetRoom(int id) {

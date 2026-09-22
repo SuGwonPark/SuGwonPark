@@ -1,18 +1,23 @@
 #include "pch.h"
 #include "Network/Server.h"
-#include "Network/Session.h"
+#include "Network/ClientProxySession.h"
 
+Server::Server(boost::asio::io_context& io, short port)
+	: io_(io), acceptor_(io, tcp::endpoint(tcp::v4(), port)) {
+	Accept();
+}
 
-Server::Server(boost::asio::io_context& io, short port) : acceptor_(io, tcp::endpoint(tcp::v4(), port)) { Accept(); }
-
-// À¯Àú Á¢¼Ó ´ë±â »óÅÂ
+// ê²Œì´íŠ¸ì›¨ì´ ì ‘ì† ëŒ€ê¸°: ClientProxySessionì„ ë¯¸ë¦¬ ë§Œë“¤ì–´ ê·¸ ì†Œì¼“ìœ¼ë¡œ acceptí•œë‹¤
 void Server::Accept() {
-	acceptor_.async_accept(
-		[this](boost::system::error_code ec, tcp::socket socket) {
+	auto session = std::make_shared<ClientProxySession>(nextSessionId_++, io_);
+
+	acceptor_.async_accept(session->Socket(),
+		[this, session](boost::system::error_code ec) {
 			if (!ec) {
-				std::cout << "Å¬¶óÀÌ¾ğÆ® ¿¬°áµÊ: " << socket.remote_endpoint() << std::endl;
-				std::make_shared<Session>(std::move(socket))->Start();
+				std::cout << "í´ë¼ì´ì–¸íŠ¸ ì ‘ì†: " << session->Socket().remote_endpoint()
+					<< " (sessionId=" << session->GetSessionId() << ")" << std::endl;
+				session->Start();
 			}
-			Accept(); // ´ÙÀ½ ¿¬°á ´ë±â
+			Accept(); // ë‹¤ìŒ ì ‘ì† ëŒ€ê¸°
 		});
 }

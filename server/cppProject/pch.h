@@ -12,6 +12,7 @@
 #include <atomic>
 #include <vector>
 
+#include <sodium.h>
 #include <boost/asio.hpp>
 
 namespace net = boost::asio;

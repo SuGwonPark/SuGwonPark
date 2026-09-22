@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Monster.h"
 
-// ÃÊ±âÈ­ ¸®½ºÆ® ¹æ½Ä
+// ì´ˆê¸°í™” ë¦¬ìŠ¤íŠ¸ ë°©ì‹
 Monster::Monster(std::string name, int hp) : name_(name), hp_(hp) {}
 
 void Monster::TakeDamage(int damage) {
@@ -9,6 +9,6 @@ void Monster::TakeDamage(int damage) {
 }
 
 void Monster::PrintStatus() {
-	std::cout << name_ << "ÀÇ ÇöÀç HP: " << hp_ << std::endl;
+	std::cout << name_ << "ì˜ í˜„ì¬ HP: " << hp_ << std::endl;
 
 }

@@ -8,7 +8,7 @@ public:
 		return instance;
 	}
 
-	// DB ¿¬°á
+	// DB ì—°ê²°
 	bool Init(size_t threadCount, const std::string& connUrl) {
 		pool_ = std::make_unique<DB::DBThreadPool>(threadCount, connUrl);
 		return true;

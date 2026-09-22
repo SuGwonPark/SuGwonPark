@@ -3,7 +3,7 @@
 
 void GameDBShard::SaveCharacterProgressAsync(uint64_t pid, int exp, int level)
 {
-	// ºñµ¿±â Ä³¸¯ÅÍ ÁøÇà »óÈ² ÀúÀå
+	// ë¹„ë™ê¸° ìºë¦­í„° ì§„í–‰ ìƒí™© ì €ì¥
 	GameDBShard::Instance().PushTask(pid, [pid, exp, level](mysqlx::Session& dbSession) {
 		dbSession.sql("UPDATE characters SET exp = ?, level = ? WHERE id = ?")
 			.bind(exp, level, pid)

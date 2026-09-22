@@ -2,16 +2,16 @@
 #include "pch.h"
 #include "Network/SendBuffer.h"
 
-// °ÔÀÌÆ®¿şÀÌ <-> ³»ºÎ Zone ¼­¹ö °£ ÆĞÅ¶ ·¡ÆÛ Çì´õ
+// ê²Œì´íŠ¸ì›¨ì´ <-> ë‚´ë¶€ Zone ì„œë²„ ê°„ íŒ¨í‚· ë˜í¼ í—¤ë”
 #pragma pack(push, 1)
 struct InternalPacketHeader {
-	uint16_t size;        // ³»ºÎ ÆĞÅ¶ ÀüÃ¼ Å©±â
-	uint16_t id;          // ³»ºÎ ÆĞÅ¶ ID
-	uint64_t sessionId;   // Å¬¶óÀÌ¾ğÆ® ¼¼¼Ç °íÀ¯ ID
+	uint16_t size;        // ë‚´ë¶€ íŒ¨í‚· ì „ì²´ í¬ê¸°
+	uint16_t id;          // ë‚´ë¶€ íŒ¨í‚· ID
+	uint64_t sessionId;   // í´ë¼ì´ì–¸íŠ¸ ì„¸ì…˜ ê³ ìœ  ID
 };
 #pragma pack(pop)
 
-class ZoneServerSession; // °ÔÀÌÆ®¿şÀÌ°¡ ³»ºÎ Zone ¼­¹ö¿Í ¸ÎÀº TCP Ä¿³Ø¼Ç ¼¼¼Ç
+class ZoneServerSession; // ê²Œì´íŠ¸ì›¨ì´ê°€ ë‚´ë¶€ Zone ì„œë²„ì™€ ë§ºì€ TCP ì»¤ë„¥ì…˜ ì„¸ì…˜
 using ZoneServerSessionRef = std::shared_ptr<ZoneServerSession>;
 
 class ZoneManager {
@@ -24,10 +24,10 @@ public:
 	void RegisterZone(uint32_t zoneId, ZoneServerSessionRef session);
 	void UnregisterZone(uint32_t zoneId);
 
-	// Å¬¶óÀÌ¾ğÆ® ÆĞÅ¶¿¡ sessionId Çì´õ¸¦ °¨½Î¼­ Å¸°Ù ZoneÀ¸·Î Æ÷¿öµù
+	// í´ë¼ì´ì–¸íŠ¸ íŒ¨í‚·ì— sessionId í—¤ë”ë¥¼ ê°ì‹¸ì„œ íƒ€ê²Ÿ Zoneìœ¼ë¡œ í¬ì›Œë”©
 	void SendToZone(uint32_t zoneId, uint64_t sessionId, SendBufferRef clientPacketBuffer);
 
-	// Å¬¶óÀÌ¾ğÆ® ¿¬°á Á¾·á¸¦ ´ã´ç Zone¿¡ Åëº¸
+	// í´ë¼ì´ì–¸íŠ¸ ì—°ê²° ì¢…ë£Œë¥¼ ë‹´ë‹¹ Zoneì— í†µë³´
 	void SendDisconnectToZone(uint32_t zoneId, uint64_t sessionId);
 
 private:

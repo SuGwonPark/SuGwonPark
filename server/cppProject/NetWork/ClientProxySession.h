@@ -13,10 +13,10 @@ public:
 	void Start();
 	void Close();
 
-	// Å¬¶óÀÌ¾ğÆ®·Î ÆĞÅ¶ ¼Û½Å (Zone/Chat ¼­¹ö¿¡¼­ ¿Â ÀÀ´äÀ» Å¬¶óÀÌ¾ğÆ®·Î º¸³¾ ¶§)
+	// í´ë¼ì´ì–¸íŠ¸ë¡œ íŒ¨í‚· ì†¡ì‹  (Zone/Chat ì„œë²„ì—ì„œ ì˜¨ ì‘ë‹µì„ í´ë¼ì´ì–¸íŠ¸ë¡œ ë³´ë‚¼ ë•Œ)
 	void Send(SendBufferRef sendBuffer);
 
-	// Zone 1 ¿Ï·á ½ÅÈ£ ¼ö½Å ½Ã È£Ãâ -> Å¸°Ù Zone ±³Ã¼
+	// Zone 1 ì™„ë£Œ ì‹ í˜¸ ìˆ˜ì‹  ì‹œ í˜¸ì¶œ -> íƒ€ê²Ÿ Zone êµì²´
 	void OnZone1LeaveCompleted(uint32_t nextZoneId);
 
 	// Getters & Setters
@@ -25,32 +25,34 @@ public:
 	uint32_t GetCurrentZoneId() const { return currentZoneId_.load(std::memory_order_relaxed); }
 	void SetCurrentZoneId(uint32_t zoneId) { currentZoneId_.store(zoneId, std::memory_order_relaxed); }
 
+
 private:
-	// ³×Æ®¿öÅ© I/O ·çÇÁ
+	// ë„¤íŠ¸ì›Œí¬ I/O ë£¨í”„
 	void DoRead();
 	void OnRead(const boost::system::error_code& ec, size_t bytesTransferred);
 	void DoWrite();
 	void OnWrite(const boost::system::error_code& ec, size_t bytesTransferred);
 
-	// ¼ö½Å ½ºÆ®¸² ÆĞÅ¶ ÆÄ½Ì ¹× ³»ºÎ ¶ó¿ìÆÃ
+	// ìˆ˜ì‹  ìŠ¤íŠ¸ë¦¼ íŒ¨í‚· íŒŒì‹± ë° ë‚´ë¶€ ë¼ìš°íŒ…
 	void ProcessPackets();
 	void RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint16_t packetSize);
+
 
 private:
 	const uint64_t sessionId_;
 	tcp::socket socket_;
 	net::strand<net::io_context::executor_type> strand_;
 
-	// ÇöÀç ÆĞÅ¶À» Àü´ŞÇÒ Zone ¼­¹ö ID (Drain ¿Ï·á ½Ã ¿øÀÚÀû ±³Ã¼)
+	// í˜„ì¬ íŒ¨í‚·ì„ ì „ë‹¬í•  Zone ì„œë²„ ID (Drain ì™„ë£Œ ì‹œ ì›ìì  êµì²´)
 	std::atomic<uint32_t> currentZoneId_{ 1 };
 	std::atomic<bool> isConnected_{ false };
 
-	// ¼ö½Å ¹öÆÛ
+	// ìˆ˜ì‹  ë²„í¼
 	std::array<uint8_t, RECV_BUFFER_SIZE> recvBuffer_;
 	size_t readPos_ = 0;
 	size_t writePos_ = 0;
 
-	// ¼Û½Å Å¥ (Strand·Î µ¿±âÈ­)
+	// ì†¡ì‹  í (Strandë¡œ ë™ê¸°í™”)
 	std::queue<SendBufferRef> sendQueue_;
 };
 

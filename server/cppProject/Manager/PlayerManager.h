@@ -4,7 +4,7 @@
 
 class PlayerManager {
 public:
-	static PlayerManager& GetInstance();  // ½Ì±ÛÅæ
+	static PlayerManager& GetInstance();  // ì‹±ê¸€í†¤
 
 	void AddPlayer(int id, std::string name);
 	void RemovePlayer(int id);
@@ -12,7 +12,7 @@ public:
 	void PrintAll() const;
 
 private:
-	PlayerManager() {}  // ½Ì±ÛÅæÀÌ¶ó ¿ÜºÎ¿¡¼­ »ı¼º ºÒ°¡
+	PlayerManager() {}  // ì‹±ê¸€í†¤ì´ë¼ ì™¸ë¶€ì—ì„œ ìƒì„± ë¶ˆê°€
 
 	std::map<int, std::shared_ptr<Player>> players_;
 	mutable std::mutex mtx_;

@@ -13,7 +13,7 @@ bool DBConnection::Connect(const std::string& host,
 	const std::string& database,
 	unsigned int port) {
 	try {
-		// ¼¼¼Ç »ı¼º (¿¬°á)
+		// ì„¸ì…˜ ìƒì„± (ì—°ê²°)
 		session_ = std::make_unique<mysqlx::Session>(
 			mysqlx::SessionOption::HOST, host,
 			mysqlx::SessionOption::PORT, port,
@@ -21,17 +21,17 @@ bool DBConnection::Connect(const std::string& host,
 			mysqlx::SessionOption::PWD, password
 		);
 
-		// DB ¼±ÅÃ
+		// DB ì„ íƒ
 		schema_ = std::make_unique<mysqlx::Schema>(
 			session_->getSchema(database)
 		);
 
 		connected_ = true;
-		std::cout << "[DB] ¿¬°á ¼º°ø : " << database << std::endl;
+		std::cout << "[DB] ì—°ê²° ì„±ê³µ : " << database << std::endl;
 		return true;
 	}
 	catch (const mysqlx::Error& e) {
-		std::cout << "[DB] ¿¬°á ½ÇÆĞ : " << e.what() << std::endl;
+		std::cout << "[DB] ì—°ê²° ì‹¤íŒ¨ : " << e.what() << std::endl;
 		connected_ = false;
 		return false;
 	}
@@ -41,7 +41,7 @@ void DBConnection::Disconnect() {
 	if (connected_ && session_) {
 		session_->close();
 		connected_ = false;
-		std::cout << "[DB] ¿¬°á Á¾·á" << std::endl;
+		std::cout << "[DB] ì—°ê²° ì¢…ë£Œ" << std::endl;
 	}
 }
 
@@ -50,7 +50,7 @@ mysqlx::SqlResult DBConnection::Query(const std::string& sql) {
 		return session_->sql(sql).execute();
 	}
 	catch (const mysqlx::Error& e) {
-		std::cout << "[DB] Äõ¸® ½ÇÆĞ : " << e.what() << std::endl;
+		std::cout << "[DB] ì¿¼ë¦¬ ì‹¤íŒ¨ : " << e.what() << std::endl;
 		throw;
 	}
 }
@@ -61,7 +61,7 @@ bool DBConnection::Execute(const std::string& sql) {
 		return true;
 	}
 	catch (const mysqlx::Error& e) {
-		std::cout << "[DB] ½ÇÇà ½ÇÆĞ : " << e.what() << std::endl;
+		std::cout << "[DB] ì‹¤í–‰ ì‹¤íŒ¨ : " << e.what() << std::endl;
 		return false;
 	}
 }

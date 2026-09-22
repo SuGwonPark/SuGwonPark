@@ -1,6 +1,7 @@
 #pragma once
 #include "pch.h"
 #include "JobSystem/JobQueue.h"
+#include "JobSystem/WorkStealingThreadPool.h" 
 
 class Player;
 using PlayerRef = std::shared_ptr<Player>;
@@ -13,12 +14,14 @@ public:
 	uint32_t GetZoneId() const { return zoneId_; }
 	JobQueueRef GetJobQueue() { return jobQueue_; }
 
-	// JobQueue ¾È¿¡¼­ ½ÇÇàµÇ´Â °ÔÀÓ ºñÁî´Ï½º ·ÎÁ÷
+	void schedule(Job job);
+
+	// JobQueue ì•ˆì—ì„œ ì‹¤í–‰ë˜ëŠ” ê²Œì„ ë¹„ì¦ˆë‹ˆìŠ¤ ë¡œì§
 	void Enter(PlayerRef player);
 	void Leave(uint64_t playerId);
 	void HandleMove(uint64_t playerId, float x, float y, float z);
 
-	// Æ÷Å» ÁøÀÔ -> ÀÜ¿© Å¥ ¼ÒÁø(Drain) & ÀúÀå & Gateway ÇÚµå¼ÎÀÌÅ© Æ®¸®°Å
+	// í¬íƒˆ ì§„ì… -> ì”ì—¬ í ì†Œì§„(Drain) & ì €ì¥ & Gateway í•¸ë“œì…°ì´í¬ íŠ¸ë¦¬ê±°
 	void HandlePortal(uint64_t playerId, uint32_t nextZoneId);
 
 private:

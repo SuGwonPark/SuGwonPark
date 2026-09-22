@@ -33,13 +33,7 @@
     <ClCompile Include="Game\Room.cpp">
       <Filter>소스 파일\Game</Filter>
     </ClCompile>
-    <ClCompile Include="NetWork\PacketHandler.cpp">
-      <Filter>소스 파일\Network</Filter>
-    </ClCompile>
     <ClCompile Include="NetWork\Server.cpp">
-      <Filter>소스 파일\Network</Filter>
-    </ClCompile>
-    <ClCompile Include="NetWork\Session.cpp">
       <Filter>소스 파일\Network</Filter>
     </ClCompile>
     <ClCompile Include="Manager\PlayerManager.cpp">
@@ -66,12 +60,6 @@
     <ClCompile Include="DB\GameDBShard.cpp">
       <Filter>소스 파일\DB</Filter>
     </ClCompile>
-    <ClCompile Include="Network\GameSession.h">
-      <Filter>소스 파일\Network</Filter>
-    </ClCompile>
-    <ClCompile Include="JobSystem\WorkStealingThreadPool.h">
-      <Filter>소스 파일\JobSystem</Filter>
-    </ClCompile>
     <ClCompile Include="Network\ClientProxySession.cpp">
       <Filter>소스 파일\Network</Filter>
     </ClCompile>
@@ -84,15 +72,19 @@
     <ClCompile Include="Network\SendBuffer.cpp">
       <Filter>소스 파일\Network</Filter>
     </ClCompile>
-    <ClCompile Include="Manager\SendBufferManager.h">
-      <Filter>소스 파일\Manager</Filter>
-    </ClCompile>
     <ClCompile Include="Manager\SendBufferManager.cpp">
       <Filter>소스 파일\Manager</Filter>
     </ClCompile>
-    <ClCompile Include="Network\ZoneServerSession.cpp">
+    <ClCompile Include="Network\ZoneServerSession.h">
       <Filter>소스 파일\Network</Filter>
     </ClCompile>
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="Network\GatewaySession.cpp">
+      <Filter>소스 파일\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Account.cpp" />
+    <ClCompile Include="Network\ZoneServerSession.cpp" />
+    <ClCompile Include="Manager\SessionManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Enum\VarEnum.h">
@@ -122,16 +114,10 @@
     <ClInclude Include="Manager\RoomManager.h">
       <Filter>소스 파일\Manager</Filter>
     </ClInclude>
-    <ClInclude Include="NetWork\PacketHandler.h">
-      <Filter>소스 파일\Network</Filter>
-    </ClInclude>
     <ClInclude Include="NetWork\Protocol.h">
       <Filter>소스 파일\Network</Filter>
     </ClInclude>
     <ClInclude Include="NetWork\Server.h">
-      <Filter>소스 파일\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="NetWork\Session.h">
       <Filter>소스 파일\Network</Filter>
     </ClInclude>
     <ClInclude Include="pch.h">
@@ -167,5 +153,12 @@
     <ClInclude Include="Network\ClientProxySession.h">
       <Filter>소스 파일\Network</Filter>
     </ClInclude>
+    <ClInclude Include="JobSystem\WorkStealingThreadPool.h" />
+    <ClInclude Include="Manager\SendBufferManager.h" />
+    <ClInclude Include="Network\GatewaySession.h">
+      <Filter>소스 파일\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Account.h" />
+    <ClInclude Include="Manager\SessionManager.h" />
   </ItemGroup>
 </Project>

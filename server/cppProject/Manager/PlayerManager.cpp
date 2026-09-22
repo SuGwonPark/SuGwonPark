@@ -3,21 +3,21 @@
 
 
 PlayerManager& PlayerManager::GetInstance() {
-	static PlayerManager instance;  // ÃÖÃÊ È£Ãâ ½Ã ÇÑ ¹ø¸¸ »ı¼ºµÊ
+	static PlayerManager instance;  // ìµœì´ˆ í˜¸ì¶œ ì‹œ í•œ ë²ˆë§Œ ìƒì„±ë¨
 	return instance;
 }
 
 void PlayerManager::AddPlayer(int id, std::string name) {
 	std::lock_guard<std::mutex> lock(mtx_);
 	players_[id] = std::make_shared<Player>(id, name);
-	std::cout << name << " Á¢¼Ó! (ID: " << id << ")" << std::endl;
+	std::cout << name << " ì ‘ì†! (ID: " << id << ")" << std::endl;
 }
 
 void PlayerManager::RemovePlayer(int id) {
 	std::lock_guard<std::mutex> lock(mtx_);
 	auto it = players_.find(id);
 	if (it != players_.end()) {
-		std::cout << it->second->GetPlayerName() << " ÅğÀå!" << std::endl;
+		std::cout << it->second->GetPlayerName() << " í‡´ì¥!" << std::endl;
 		players_.erase(it);
 	}
 }

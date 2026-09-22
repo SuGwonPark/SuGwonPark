@@ -1,7 +1,10 @@
 #include "pch.h"
 #include "Network/ClientProxySession.h"
-#include "Manager/ZoneManager.h"   // Zone ¼­¹ö Åë½Å ¸Å´ÏÀú (SendToZone)
+#include "Manager/ZoneManager.h"   // Zone ì„œë²„ í†µì‹  ë§¤ë‹ˆì € (SendToZone)
 #include "Manager/SendBufferManager.h"
+#include "DB/GameDB.h"
+
+#include "Game/Account.h"
 
 
 ClientProxySession::ClientProxySession(uint64_t sessionId, net::io_context& ioc)
@@ -27,19 +30,42 @@ void ClientProxySession::Close() {
 			self->socket_.shutdown(tcp::socket::shutdown_both, ec);
 			self->socket_.close(ec);
 
-			// ¿¬°á Á¾·á ½Ã ³»ºÎ Zone ¼­¹ö¿¡ ¿¬°á ²÷±è Åëº¸
+			// ì—°ê²° ì¢…ë£Œ ì‹œ ë‚´ë¶€ Zone ì„œë²„ì— ì—°ê²° ëŠê¹€ í†µë³´
 			ZoneManager::GetInstance()->SendDisconnectToZone(self->GetCurrentZoneId(), self->sessionId_);
 			});
 	}
 }
 
+void ClientProxySession::RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint16_t packetSize) {
+	// ë¡œê·¸ì¸/íšŒì›ê°€ì…ì€ ê²Œì„ ì›”ë“œ(Zone)ì™€ ë¬´ê´€í•œ Gateway ë ˆë²¨ ì²˜ë¦¬ì´ë¯€ë¡œ
+	// Zoneìœ¼ë¡œ ë³´ë‚´ì§€ ì•Šê³  ì—¬ê¸°ì„œ ë°”ë¡œ DB ì¡°íšŒ í›„ ì‘ë‹µí•œë‹¤.
+	switch (packetId) {
+	case PKT_C_LOGIN:
+		Account::GetInstance()->Login(
+			shared_from_this(), reinterpret_cast<REQ_LoginPacket*>(packetPtr));
+		return;
+
+	default:
+		break;
+	}
+
+	// Zone ì„œë²„ë¡œ ë¦¬í„´í•˜ê¸°ìœ„í•´ ì¡´ì¬
+	SendBufferRef sendBuffer = SendBufferManager::Open(packetSize);
+	sendBuffer->Write(packetPtr, packetSize);
+	SendBufferManager::Close(packetSize);
+
+	uint32_t zoneId = GetCurrentZoneId();
+	ZoneManager::GetInstance()->SendToZone(zoneId, sessionId_, sendBuffer);
+}
+
+
 void ClientProxySession::DoRead() {
 	auto self = shared_from_this();
 
-	// ¼ö½Å °¡´É ¹öÆÛ ¿µ¿ª °è»ê
+	// ìˆ˜ì‹  ê°€ëŠ¥ ë²„í¼ ì˜ì—­ ê³„ì‚°
 	size_t freeSize = recvBuffer_.size() - writePos_;
 	if (freeSize == 0) {
-		// ³²Àº °ø°£ÀÌ ¾øÀ¸¸é µ¥ÀÌÅÍ ¾ÕÀ¸·Î ¶¯±â±â
+		// ë‚¨ì€ ê³µê°„ì´ ì—†ìœ¼ë©´ ë°ì´í„° ì•ìœ¼ë¡œ ë•¡ê¸°ê¸°
 		size_t dataSize = writePos_ - readPos_;
 		if (dataSize > 0) {
 			std::memmove(&recvBuffer_[0], &recvBuffer_[readPos_], dataSize);
@@ -74,45 +100,29 @@ void ClientProxySession::ProcessPackets() {
 	while (true) {
 		size_t dataSize = writePos_ - readPos_;
 		if (dataSize < sizeof(PacketHeader)) {
-			break; // ÃÖ¼Ò Çì´õ Å©±â ¹Ì¸¸
+			break; // ìµœì†Œ í—¤ë” í¬ê¸° ë¯¸ë§Œ
 		}
 
 		PacketHeader* header = reinterpret_cast<PacketHeader*>(&recvBuffer_[readPos_]);
 		if (dataSize < header->size) {
-			break; // ¿ÂÀüÇÑ ÆĞÅ¶ 1°³°¡ ¾ÆÁ÷ ´ú µµÂøÇÔ
+			break; // ì˜¨ì „í•œ íŒ¨í‚· 1ê°œê°€ ì•„ì§ ëœ ë„ì°©í•¨
 		}
 
-		// ¿Ï¼ºµÈ ÆĞÅ¶ 1°³ ¶ó¿ìÆÃ Ã³¸®
+		// ì™„ì„±ëœ íŒ¨í‚· 1ê°œ ë¼ìš°íŒ… ì²˜ë¦¬
 		RoutePacket(header->id, &recvBuffer_[readPos_], header->size);
 		readPos_ += header->size;
 	}
 
-	// ¹öÆÛ°¡ ÀüºÎ ºñ¿öÁ³À¸¸é Æ÷ÀÎÅÍ ¸®¼Â
+	// ë²„í¼ê°€ ì „ë¶€ ë¹„ì›Œì¡Œìœ¼ë©´ í¬ì¸í„° ë¦¬ì…‹
 	if (readPos_ == writePos_) {
 		readPos_ = 0;
 		writePos_ = 0;
 	}
 }
 
-void ClientProxySession::RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint16_t packetSize) {
-	// 1. TLS SendBuffer Ç®¿¡¼­ °í¼Ó ÇÒ´ç
-	SendBufferRef sendBuffer = SendBufferManager::Open(packetSize);
-	sendBuffer->Write(packetPtr, packetSize);
-	SendBufferManager::Close(packetSize);
-
-	//// 2. Ã¤ÆÃ ÆĞÅ¶Àº ChatServer·Î Áï½Ã ¹ÙÀÌÆĞ½º
-	//if (packetId == PKT_C_CHAT || packetId == PKT_C_WHISPER) {
-	//	ChatManager::GetInstance()->SendToChatServer(sessionId_, sendBuffer);
-	//	return;
-	//}
-
-	// 3. °ÔÀÓ ÆĞÅ¶Àº ÇöÀç ´ã´ç Zone ¼­¹ö·Î Á÷Çà (Zone 1 µå·¹ÀÎÀÌ ³¡³¯ ¶§±îÁö´Â Zone 1À¸·Î Àü´Ş)
-	uint32_t zoneId = GetCurrentZoneId();
-	ZoneManager::GetInstance()->SendToZone(zoneId, sessionId_, sendBuffer);
-}
 
 void ClientProxySession::OnZone1LeaveCompleted(uint32_t nextZoneId) {
-	// Zone 1ÀÇ Drain ¹× ÀúÀåÀÌ ³¡³µÀ¸¹Ç·Î ´ÙÀ½ ÆĞÅ¶ºÎÅÍ´Â Áï½Ã Zone 2·Î ¶ó¿ìÆÃ
+	// Zone 1ì˜ Drain ë° ì €ì¥ì´ ëë‚¬ìœ¼ë¯€ë¡œ ë‹¤ìŒ íŒ¨í‚·ë¶€í„°ëŠ” ì¦‰ì‹œ Zone 2ë¡œ ë¼ìš°íŒ…
 	SetCurrentZoneId(nextZoneId);
 }
 

@@ -5,23 +5,24 @@ using Job = std::function<void()>;
 
 class JobQueue : public std::enable_shared_from_this<JobQueue> {
 public:
-	// ÀÛ¾÷À» Å¥¿¡ »ğÀÔ (FiFO)
+	// ì‘ì—…ì„ íì— ì‚½ì… (FiFO)
 	void Push(Job job) {
 		std::lock_guard<std::mutex> lock(lock_);
 		jobs_.push_back(std::move(job));
 	}
 
-	// ÅÛÇÃ¸´ ÇïÆÛ: Å¬·¡½º ¸â¹ö ÇÔ¼ö¸¦ Á÷°üÀûÀ¸·Î Push
+	// í…œí”Œë¦¿ í—¬í¼: í´ë˜ìŠ¤ ë©¤ë²„ í•¨ìˆ˜ë¥¼ ì§ê´€ì ìœ¼ë¡œ Push
 	template<typename T, typename Ret, typename... Args>
 	void Push(Ret(T::* memFunc)(Args...), std::shared_ptr<T> owner, Args... args) {
+		// ëŒë‹¤ í•¨ìˆ˜
 		Push([owner, memFunc, args...]() {
 			(owner.get()->*memFunc)(args...);
 			});
 	}
 
-	// °ÔÀÓ ·ÎÁ÷ ½º·¹µå¿¡¼­ ÁÖ±âÀûÀ¸·Î È£ÃâÇÏ¿© ½×ÀÎ Job ÀÏ°ı ½ÇÇà
+	// ê²Œì„ ë¡œì§ ìŠ¤ë ˆë“œì—ì„œ ì£¼ê¸°ì ìœ¼ë¡œ í˜¸ì¶œí•˜ì—¬ ìŒ“ì¸ Job ì¼ê´„ ì‹¤í–‰
 	void Execute() {
-		// µ¿ÀÏÇÑ JobQueue¸¦ ¿©·¯ ½º·¹µå°¡ µ¿½Ã¿¡ ½ÇÇàÇÏÁö ¸øÇÏµµ·Ï ¹æ¾î
+		// ë™ì¼í•œ JobQueueë¥¼ ì—¬ëŸ¬ ìŠ¤ë ˆë“œê°€ ë™ì‹œì— ì‹¤í–‰í•˜ì§€ ëª»í•˜ë„ë¡ ë°©ì–´
 		if (isExecuting_.exchange(true) == true) {
 			return;
 		}
@@ -31,14 +32,15 @@ public:
 			{
 				std::lock_guard<std::mutex> lock(lock_);
 				if (jobs_.empty()) {
+					// atomic ì‚¬ìš© ê°€ëŠ¥í•˜ë„ë¡ í•´ì œ
 					isExecuting_.store(false);
 					return;
 				}
-				// ¶ôÀ» Áå ½Ã°£À» ÃÖ¼ÒÈ­ÇÏ±â À§ÇØ ³»ºÎ ¹öÆÛ Æ÷ÀÎÅÍ¸¸ ºü¸£°Ô ½º¿Ò
+				// ë½ì„ ì¥” ì‹œê°„ì„ ìµœì†Œí™”í•˜ê¸° ìœ„í•´ ë‚´ë¶€ ë²„í¼ í¬ì¸í„°ë§Œ ë¹ ë¥´ê²Œ ìŠ¤ì™‘
 				executionList.swap(jobs_);
 			}
 
-			// ¶ôÀÌ ¿ÏÀüÈ÷ Ç®¸° »óÅÂ¿¡¼­ ¼ø¼­´ë·Î(FIFO) ½ÇÇà
+			// ë½ì´ ì™„ì „íˆ í’€ë¦° ìƒíƒœì—ì„œ ìˆœì„œëŒ€ë¡œ(FIFO) ì‹¤í–‰
 			for (auto& job : executionList) {
 				job();
 			}

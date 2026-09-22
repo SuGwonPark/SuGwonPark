@@ -8,7 +8,7 @@ private:
 	int hp_;
 
 public:
-	// ÃÊ±âÈ­ ¸®½ºÆ® ¹æ½Ä
+	// ì´ˆê¸°í™” ë¦¬ìŠ¤íŠ¸ ë°©ì‹
 	Monster(std::string name, int hp);
 
 	void TakeDamage(int damage);

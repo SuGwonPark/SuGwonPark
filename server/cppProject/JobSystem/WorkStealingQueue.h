@@ -5,13 +5,13 @@ using Job = std::function<void()>;
 
 class WorkStealingQueue {
 public:
-	// ¼ÒÀ¯ÀÚ(Owner)°¡ ÃÖ»ó´Ü¿¡ ÀÛ¾÷ »ğÀÔ (Push Top)
+	// ì†Œìœ ì(Owner)ê°€ ìµœìƒë‹¨ì— ì‘ì—… ì‚½ì… (Push Top)
 	void Push(Job job) {
 		std::lock_guard<std::mutex> lock(lock_);
 		deque_.push_back(std::move(job));
 	}
 
-	// ¼ÒÀ¯ÀÚ(Owner)°¡ ÃÖ»ó´Ü¿¡¼­ ÀÛ¾÷ ²¨³¿ (Pop Top - LIFO)
+	// ì†Œìœ ì(Owner)ê°€ ìµœìƒë‹¨ì—ì„œ ì‘ì—… êº¼ëƒ„ (Pop Top - LIFO)
 	std::optional<Job> Pop() {
 		std::lock_guard<std::mutex> lock(lock_);
 		if (deque_.empty()) return std::nullopt;
@@ -21,7 +21,7 @@ public:
 		return job;
 	}
 
-	// ´Ù¸¥ À¯ÈŞ ½º·¹µå(Thief)°¡ ÃÖÇÏ´Ü¿¡¼­ ÀÛ¾÷À» ÈÉÃÄ°¨ (Steal Bottom - FIFO)
+	// ë‹¤ë¥¸ ìœ íœ´ ìŠ¤ë ˆë“œ(Thief)ê°€ ìµœí•˜ë‹¨ì—ì„œ ì‘ì—…ì„ í›”ì³ê° (Steal Bottom - FIFO)
 	std::optional<Job> Steal() {
 		std::lock_guard<std::mutex> lock(lock_);
 		if (deque_.empty()) return std::nullopt;

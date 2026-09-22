@@ -8,7 +8,7 @@ public:
 		return instance;
 	}
 
-	// DB ¿¬°á
+	// DB ì—°ê²°
 	bool Init(size_t threadCount, const std::vector<std::string>& connUrls) {
 		for (const std::string& url : connUrls)
 		{

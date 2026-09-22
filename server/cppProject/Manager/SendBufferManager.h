@@ -9,11 +9,13 @@ public:
 		return &instance;
 	}
 
-	// TLS Ã»Å© ºĞÇÒ ÀÎÅÍÆäÀÌ½º
+	static SendBufferRef Make(const void* data, uint32_t size);
+
+	// TLS ì²­í¬ ë¶„í•  ì¸í„°í˜ì´ìŠ¤
 	static SendBufferRef Open(uint32_t size);
 	static void Close(uint32_t writeSize);
 
-	// ±Û·Î¹ú Ç® °ü¸®
+	// ê¸€ë¡œë²Œ í’€ ê´€ë¦¬
 	SendBufferChunkRef Pop();
 	void Push(SendBufferChunk* chunk);
 

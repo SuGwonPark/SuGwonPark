@@ -5,7 +5,7 @@ namespace DB {
 	DBThreadPool::DBThreadPool(size_t threadCount, const std::string& connUrl)
 		: connUrl_(connUrl) {
 		for (size_t i = 0; i < threadCount; i++) {
-			// workers_ vector¿¡ »õ·Î¿î ÀÛ¾÷ÀÚ ½º·¹µå¸¦ »ı¼ºÇÏ°í WorkerLoop ÇÔ¼ö¸¦ ½ÇÇàÇÏµµ·Ï ¼³Á¤
+			// workers_ vectorì— ìƒˆë¡œìš´ ì‘ì—…ìš© ìŠ¤ë ˆë“œë¥¼ ìƒì„±í•˜ê³  WorkerLoop í•¨ìˆ˜ë¥¼ ì‹¤í–‰í•˜ë„ë¡ ë“±ë¡
 			workers_.emplace_back(&DBThreadPool::WorkerLoop, this);
 		}
 	}
@@ -16,15 +16,15 @@ namespace DB {
 			stop_ = true;
 		}
 
-		// ¸ğµç ¾²·¹µå¸¦ ±ú¿ö¼­ Á¾·áÇÏµµ·Ï ¾Ë¸²
+		// ëª¨ë“  ìŠ¤ë ˆë“œë¥¼ ì¢…ë£Œí•˜ë„ë¡ ì•Œë¦¼
 		cv_.notify_all();
 
-		// ¼­¹ö Á¾·á ½Ã Å¥¿¡ ³²Àº DB ÀÛ¾÷ÀÌ 100% Ã³¸®µÉ ¶§±îÁö ±â´Ù¸²
-		for (std::thread& workers_ : workers_) {
-			// ¾²·¹µå°¡ ½ÇÇà °¡´ÉÇÑ »óÅÂ
-			if (workers_.joinable()) {
-				// ¾²·¹µå°¡ Á¾·áµÉ ¶§±îÁö ´ë±â
-				workers_.join();
+		// ì¢…ë£Œ ì „ì— íì— ë‚¨ì€ DB ì‘ì—…ì´ 100% ì²˜ë¦¬ë  ë•Œê¹Œì§€ ê¸°ë‹¤ë¦¼
+		for (std::thread& worker : workers_) {
+			// ìŠ¤ë ˆë“œê°€ ì•„ì§ ì‹¤í–‰ ì¤‘ì¸ì§€ í™•ì¸
+			if (worker.joinable()) {
+				// ìŠ¤ë ˆë“œê°€ ëë‚˜ê¸° ì „ê¹Œì§€ ëŒ€ê¸°
+				worker.join();
 			}
 		}
 	}
@@ -34,11 +34,11 @@ namespace DB {
 			std::unique_lock<std::mutex> lock(queueMutex_);
 			taskQueue_.push(std::move(task));
 		}
-		cv_.notify_one();  // ÀÛ¾÷ÀÚ ½º·¹µå Áß ÇÏ³ª¸¦ ±ú¿ö¼­ ÀÛ¾÷À» Ã³¸®ÇÏµµ·Ï ¾Ë¸²
+		cv_.notify_one();  // ì‘ì—…ì´ ìƒê²¼ì„ ë•Œ í•˜ë‚˜ì˜ ìŠ¤ë ˆë“œê°€ ì‘ì—…ì„ ì²˜ë¦¬í•˜ë„ë¡ ì•Œë¦¼
 	}
 
 	void DBThreadPool::WorkerLoop() {
-		// ½º·¹µåº° µ¶¸³ DB ¼¼¼Ç »ı¼º (Thread Safety º¸Àå)
+		// ìŠ¤ë ˆë“œë³„ ì „ìš© DB ì„¸ì…˜ ìƒì„± (Thread Safety ë³´ì¥)
 		mysqlx::Session session(connUrl_);
 
 		while (true) {
@@ -54,7 +54,7 @@ namespace DB {
 			taskQueue_.pop();
 
 			try {
-				task(session);  // DB ÀÛ¾÷ ¼öÇà
+				task(session);  // DB ì‘ì—… ì‹¤í–‰
 			}
 			catch (const mysqlx::Error& err) {
 				std::cerr << "DB ERROR: " << err.what() << std::endl;

@@ -15,10 +15,10 @@ public:
 	void Disconnect();
 	bool IsConnected() const { return connected_; }
 
-	// Á¶È¸ (SELECT)
+	// ì¡°íšŒ (SELECT)
 	mysqlx::SqlResult Query(const std::string& sql);
 
-	// ½ÇÇà (INSERT, UPDATE, DELETE)
+	// ì‹¤í–‰ (INSERT, UPDATE, DELETE)
 	bool Execute(const std::string& sql);
 
 private:

@@ -4,7 +4,7 @@
 
 class SendBufferChunk;
 
-// °³º° ÆĞÅ¶ÀÌ µé°í ´Ù´Ï´Â ½½¶óÀÌ½º ¹öÆÛ
+// ê°œë³„ íŒ¨í‚·ì´ ë“¤ê³  ë‹¤ë‹ˆëŠ” ìŠ¬ë¼ì´ìŠ¤ ë²„í¼
 class SendBuffer : public std::enable_shared_from_this<SendBuffer> {
 public:
 	SendBuffer(std::shared_ptr<SendBufferChunk> owner, uint8_t* buffer, uint32_t allocSize);
@@ -19,13 +19,13 @@ public:
 private:
 	uint8_t* buffer_;
 	uint32_t allocSize_;
-	// Ã»Å©°¡ ¸Ş¸ğ¸®¿¡¼­ ÇØÁ¦µÇÁö ¾Êµµ·Ï ÂüÁ¶ À¯Áö
+	// ì²­í¬ê°€ ë©”ëª¨ë¦¬ì—ì„œ í•´ì œë˜ì§€ ì•Šë„ë¡ ì°¸ì¡° ìœ ì§€
 	std::shared_ptr<SendBufferChunk> owner_;
 };
 
 using SendBufferRef = std::shared_ptr<SendBuffer>;
 
-// 64KB Å©±âÀÇ ´ëÇü ¸Ş¸ğ¸® ºí·Ï
+// 64KB í¬ê¸°ì˜ ëŒ€í˜• ë©”ëª¨ë¦¬ ë¸”ë¡
 class SendBufferChunk : public std::enable_shared_from_this<SendBufferChunk> {
 	enum { CHUNK_SIZE = 0x10000 }; // 64KB
 

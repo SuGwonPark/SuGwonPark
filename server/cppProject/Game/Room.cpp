@@ -11,21 +11,21 @@ bool Room::Join(std::shared_ptr<Player> player) {
 	if (players_.size() >= maxPlayers_) return false;
 
 	players_[player->GetPlayerID()] = player;
-	std::cout << "ÇÃ·¹ÀÌ¾î(" << player->GetPlayerID() << ") ¡æ ¹æ[" << name_ << "] ÀÔÀå" << std::endl;
+	std::cout << "í”Œë ˆì´ì–´(" << player->GetPlayerID() << ") â†’ ë°©[" << name_ << "] ì…ì¥" << std::endl;
 	return true;
 }
 
 void Room::Leave(int playerId) {
 	std::lock_guard<std::mutex> lock(mtx_);
 	players_.erase(playerId);
-	std::cout << "ÇÃ·¹ÀÌ¾î(" << playerId << ") ¡æ ¹æ[" << name_ << "] ÅğÀå" << std::endl;
+	std::cout << "í”Œë ˆì´ì–´(" << playerId << ") â†’ ë°©[" << name_ << "] í‡´ì¥" << std::endl;
 }
 
 void Room::Broadcast(const char* data, std::size_t length, int excludePlayerId) {
 	std::lock_guard<std::mutex> lock(mtx_);
 	for (auto& pair : players_) {
 		if (pair.first != excludePlayerId) {
-			pair.second->Send(data, length);  // ¹æ ¾È ¸ğµç ÇÃ·¹ÀÌ¾î¿¡°Ô Àü¼Û
+			pair.second->Send(data, length);  // ë°© ì•ˆ ëª¨ë“  í”Œë ˆì´ì–´ì—ê²Œ ì „ì†¡
 		}
 	}
 }
@@ -37,6 +37,6 @@ bool Room::IsFull() const {
 
 void Room::PrintStatus() const {
 	std::lock_guard<std::mutex> lock(mtx_);
-	std::cout << "¹æ[" << name_ << "] ÀÎ¿ø: "
+	std::cout << "ë°©[" << name_ << "] ì¸ì›: "
 		<< players_.size() << "/" << maxPlayers_ << std::endl;
 }
