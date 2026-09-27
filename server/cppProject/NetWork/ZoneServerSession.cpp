@@ -4,9 +4,8 @@
 #include "Manager/SendBufferManager.h"
 #include "Manager/SessionManager.h"   // sessionId -> ClientProxySession 찾기용 (신규)
 
-ZoneServerSession::ZoneServerSession(uint32_t zoneId, net::io_context& ioc)
-	: zoneId_(zoneId)
-	, socket_(ioc)
+ZoneServerSession::ZoneServerSession(net::io_context& ioc)
+	: socket_(ioc)
 	, strand_(net::make_strand(ioc)) {
 }
 
@@ -51,34 +50,43 @@ void ZoneServerSession::DoRead() {
 		net::buffer(&recvBuffer_[writePos_], freeSize),
 		net::bind_executor(strand_,
 			[this, self](const boost::system::error_code& ec, size_t bytesTransferred) {
-				OnRead(ec, bytesTransferred);
+				if (!ec) {
+					writePos_ += bytesTransferred;
+					ProcessPackets();
+					DoRead();
+				}
+				else {
+					Close();
+				}
 			}
 		)
 	);
 }
 
-void ZoneServerSession::OnRead(const boost::system::error_code& ec, size_t bytesTransferred) {
-	if (!ec) {
-		writePos_ += bytesTransferred;
-		ProcessPackets();
-		DoRead();
-	}
-	else {
-		Close();
-	}
-}
 
 void ZoneServerSession::ProcessPackets() {
 	while (true) {
 		size_t dataSize = writePos_ - readPos_;
-		if (dataSize < sizeof(InternalPacketHeader)) {
-			break; // 내부 백본 헤더(12바이트) 미만
+
+		if (!handshakeDone_) {
+			if (dataSize < sizeof(ZoneHandshakePacket)) break;
+
+			ZoneHandshakePacket* hs = reinterpret_cast<ZoneHandshakePacket*>(&recvBuffer_[readPos_]);
+			if (dataSize < hs->header.size) break;
+			 
+			zoneId_ = hs->zoneId;
+			handshakeDone_ = true;
+			ZoneManager::GetInstance()->RegisterZone(zoneId_, shared_from_this());
+			std::cout << "Zone 등록됨: zoneId=" << zoneId_ << std::endl;
+
+			readPos_ += hs->header.size;
+			continue;
 		}
 
+		if (dataSize < sizeof(InternalPacketHeader)) break;
+
 		InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(&recvBuffer_[readPos_]);
-		if (dataSize < header->size) {
-			break; // 아직 다 안 옴
-		}
+		if (dataSize < header->size) break;
 
 		HandleInternalPacket(&recvBuffer_[readPos_], header->size);
 		readPos_ += header->size;
@@ -113,4 +121,34 @@ void ZoneServerSession::Send(SendBufferRef sendBuffer) {
 
 	auto self = shared_from_this();
 	net::post(strand_, [this, self, sendBuffer]() {
-		bool isWriting =
+		bool isWriting = !sendQueue_.empty();
+		sendQueue_.push(sendBuffer);
+
+		if (!isWriting) {
+			DoWrite();
+		}
+		});
+}
+
+void ZoneServerSession::DoWrite() {
+	auto self = shared_from_this();
+	SendBufferRef sendBuffer = sendQueue_.front();
+
+	net::async_write(
+		socket_,
+		net::buffer(sendBuffer->Buffer(), sendBuffer->AllocSize()),
+		net::bind_executor(strand_,
+			[this, self](const boost::system::error_code& ec, size_t bytesTransferred) {
+				if (!ec) {
+					sendQueue_.pop();
+					if (!sendQueue_.empty()) {
+						DoWrite();
+					}
+				}
+				else {
+					Close();
+				}
+			}
+		)
+	);
+}

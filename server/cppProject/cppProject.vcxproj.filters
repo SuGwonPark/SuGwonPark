@@ -27,9 +27,6 @@
     <ClCompile Include="Game\Monster.cpp">
       <Filter>소스 파일\Game</Filter>
     </ClCompile>
-    <ClCompile Include="Game\Player.cpp">
-      <Filter>소스 파일\Game</Filter>
-    </ClCompile>
     <ClCompile Include="Game\Room.cpp">
       <Filter>소스 파일\Game</Filter>
     </ClCompile>
@@ -66,9 +63,6 @@
     <ClCompile Include="Manager\ZoneManager.cpp">
       <Filter>소스 파일\Manager</Filter>
     </ClCompile>
-    <ClCompile Include="Game\Zone.cpp">
-      <Filter>소스 파일\Game</Filter>
-    </ClCompile>
     <ClCompile Include="Network\SendBuffer.cpp">
       <Filter>소스 파일\Network</Filter>
     </ClCompile>
@@ -79,12 +73,10 @@
       <Filter>소스 파일\Network</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="Network\GatewaySession.cpp">
-      <Filter>소스 파일\Network</Filter>
-    </ClCompile>
     <ClCompile Include="Game\Account.cpp" />
     <ClCompile Include="Network\ZoneServerSession.cpp" />
     <ClCompile Include="Manager\SessionManager.cpp" />
+    <ClCompile Include="Network\InternalServer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Enum\VarEnum.h">
@@ -100,9 +92,6 @@
       <Filter>소스 파일\DB</Filter>
     </ClInclude>
     <ClInclude Include="Game\Monster.h">
-      <Filter>소스 파일\Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\Player.h">
       <Filter>소스 파일\Game</Filter>
     </ClInclude>
     <ClInclude Include="Game\Room.h">
@@ -147,18 +136,13 @@
     <ClInclude Include="Manager\ZoneManager.h">
       <Filter>소스 파일\Manager</Filter>
     </ClInclude>
-    <ClInclude Include="Game\Zone.h">
-      <Filter>소스 파일\Game</Filter>
-    </ClInclude>
     <ClInclude Include="Network\ClientProxySession.h">
       <Filter>소스 파일\Network</Filter>
     </ClInclude>
     <ClInclude Include="JobSystem\WorkStealingThreadPool.h" />
     <ClInclude Include="Manager\SendBufferManager.h" />
-    <ClInclude Include="Network\GatewaySession.h">
-      <Filter>소스 파일\Network</Filter>
-    </ClInclude>
     <ClInclude Include="Game\Account.h" />
     <ClInclude Include="Manager\SessionManager.h" />
+    <ClInclude Include="Network\InternalServer.h" />
   </ItemGroup>
 </Project>

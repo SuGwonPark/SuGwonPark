@@ -1,0 +1,106 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="리소스 파일">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="DB">
+      <UniqueIdentifier>{153f65d5-f986-4c31-85df-c7651c220a51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Network">
+      <UniqueIdentifier>{4397203f-fa82-4a4b-a2c1-3f1f8bd7dfce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JobSystem">
+      <UniqueIdentifier>{eb345a61-f252-4273-bf16-a3e7f075d994}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game">
+      <UniqueIdentifier>{9b9f1a82-6cf9-4142-a1a5-ed842bcb8b34}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Manager">
+      <UniqueIdentifier>{d3ecfc51-34ce-4b62-816a-436c5ab4eda6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\cppProject\DB\DBConnection.cpp">
+      <Filter>DB</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cppProject\DB\DBThreadPool.cpp">
+      <Filter>DB</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cppProject\DB\GameDB.cpp">
+      <Filter>DB</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cppProject\DB\GameDBShard.cpp">
+      <Filter>DB</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cppProject\DB\RedisDB.cpp">
+      <Filter>DB</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cppProject\Network\SendBuffer.cpp">
+      <Filter>Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cppProject\Manager\SendBufferManager.cpp">
+      <Filter>Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Player.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Zone.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Network\GatewaySession.cpp">
+      <Filter>Network</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="DB\Main_Zone.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\cppProject\DB\DBConnection.h">
+      <Filter>DB</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cppProject\DB\DBThreadPool.h">
+      <Filter>DB</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cppProject\DB\DBTypes.h">
+      <Filter>DB</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cppProject\DB\GameDB.h">
+      <Filter>DB</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cppProject\DB\GameDBShard.h">
+      <Filter>DB</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cppProject\DB\RedisDB.h">
+      <Filter>DB</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cppProject\Network\Protocol.h">
+      <Filter>Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cppProject\Network\SendBuffer.h">
+      <Filter>Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cppProject\Manager\SendBufferManager.h">
+      <Filter>Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cppProject\JobSystem\JobQueue.h">
+      <Filter>JobSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cppProject\JobSystem\WorkStealingQueue.h">
+      <Filter>JobSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cppProject\JobSystem\WorkStealingThreadPool.h">
+      <Filter>JobSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Player.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Zone.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Network\GatewaySession.h">
+      <Filter>Network</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h" />
+  </ItemGroup>
+</Project>

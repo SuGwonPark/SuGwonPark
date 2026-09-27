@@ -1,7 +1,5 @@
 #pragma once
 
-class ClientProxySession;
-
 // 게이트웨이 accept 루프. 접속이 들어오면 ClientProxySession을 만들어 Zone으로 릴레이한다.
 class Server {
 public:

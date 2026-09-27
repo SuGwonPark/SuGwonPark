@@ -2,7 +2,8 @@
 #include "GatewaySession.h"
 #include "Manager/SendBufferManager.h"
 
-void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint16_t port) {
+void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint16_t port, uint32_t zoneId) {
+	zoneId_ = zoneId;
 	socket_ = std::make_unique<tcp::socket>(ioc);
 	strand_ = std::make_unique<net::strand<net::io_context::executor_type>>(net::make_strand(ioc));
 
@@ -21,6 +22,13 @@ void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint
 					}
 					isConnected_.store(true);
 					std::cout << "[GatewaySession] Gateway 접속 성공" << std::endl;
+
+					ZoneHandshakePacket hs{};
+					hs.header.id = PKT_ZONE_HANDSHAKE;
+					hs.header.size = sizeof(hs);
+					hs.zoneId = zoneId_;
+
+					Send(SendBufferManager::Make(&hs, sizeof(hs)));
 					DoRead();
 				});
 		});
@@ -80,12 +88,8 @@ void GatewaySession::ProcessPackets() {
 	}
 }
 
-void GatewaySession::Send(const RES_ZoneLeaveCompletedPacket& pkt) {
+void GatewaySession::Send(SendBufferRef sendBuffer) {
 	if (!isConnected_.load()) return;
-
-	SendBufferRef sendBuffer = SendBufferManager::Open(sizeof(pkt));
-	sendBuffer->Write(&pkt, sizeof(pkt));
-	SendBufferManager::Close(sizeof(pkt));
 
 	net::post(*strand_, [this, sendBuffer]() {
 		bool isWriting = !sendQueue_.empty();

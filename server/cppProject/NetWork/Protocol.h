@@ -19,6 +19,14 @@ struct RES_LoginPacket {
 	char message[64];   // "로그인 성공" or "비밀번호 오류" 등
 };
 
+// Zone1 이탈 시 저장 완료 통보 패킷 (Handover ACK, Zone -> Gateway)
+// 주의: enum 값 PKT_S_ZONE_LEAVE_COMPLETED와 이름이 겹치면 안 되므로 구조체는 별도 이름 사용
+struct RES_ZoneLeaveCompletedPacket {
+	PacketHeader header;
+	uint64_t playerId;
+	uint32_t nextZoneId;
+};
+
 
 // 이동 패킷
 struct MovePacket {
@@ -36,6 +44,12 @@ struct AttackPacket {
 	int32_t targetId;
 	int32_t damage;
 };
+
+struct ZoneHandshakePacket {
+	PacketHeader header;
+	uint32_t zoneId;
+};
+
 
 
 
@@ -62,14 +76,11 @@ enum PacketID : uint16_t {
 	PKT_C_LOGIN = 5001,
 	PKT_S_LOGIN = 5002,
 	PKT_C_ROOM_JOIN = 5003,
-	PKT_S_ROOM_JOIN = 5004
+	PKT_S_ROOM_JOIN = 5004,
+
+	// PacketID enum에 추가
+	PKT_ZONE_HANDSHAKE = 9997,
 };
 
 
-// Zone1 이탈 시 저장 완료 통보 패킷 (Handover ACK, Zone -> Gateway)
-// 주의: enum 값 PKT_S_ZONE_LEAVE_COMPLETED와 이름이 겹치면 안 되므로 구조체는 별도 이름 사용
-struct RES_ZoneLeaveCompletedPacket {
-	PacketHeader header;
-	uint64_t playerId;
-	uint32_t nextZoneId;
-};
+

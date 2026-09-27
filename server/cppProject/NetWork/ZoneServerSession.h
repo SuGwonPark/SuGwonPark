@@ -7,7 +7,7 @@ class ZoneServerSession : public std::enable_shared_from_this<ZoneServerSession>
 	enum { RECV_BUFFER_SIZE = 65536 * 2 }; // 내부 백본용 대용량 버퍼 (128KB)
 
 public:
-	ZoneServerSession(uint32_t zoneId, net::io_context& ioc);
+	ZoneServerSession(net::io_context& ioc);
 	~ZoneServerSession();
 
 	void Start();
@@ -21,15 +21,15 @@ public:
 
 private:
 	void DoRead();
-	void OnRead(const boost::system::error_code& ec, size_t bytesTransferred);
 	void DoWrite();
-	void OnWrite(const boost::system::error_code& ec, size_t bytesTransferred);
 
 	void ProcessPackets();
 	void HandleInternalPacket(uint8_t* buffer, uint16_t size);
 
 private:
-	const uint32_t zoneId_;
+	uint32_t zoneId_;
+	bool handshakeDone_ = false;  // 추가
+
 	tcp::socket socket_;
 	net::strand<net::io_context::executor_type> strand_;
 

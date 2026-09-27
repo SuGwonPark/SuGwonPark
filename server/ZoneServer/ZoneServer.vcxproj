@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -19,62 +19,42 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DB\DBConnection.cpp" />
-    <ClCompile Include="DB\DBThreadPool.cpp" />
-    <ClCompile Include="DB\GameDB.cpp" />
-    <ClCompile Include="DB\GameDBShard.cpp" />
-    <ClCompile Include="DB\RedisDB.cpp" />
-    <ClCompile Include="Game\Account.cpp" />
-    <ClCompile Include="Game\Monster.cpp" />
-    <ClCompile Include="Game\Room.cpp" />
-    <ClCompile Include="Main.cpp" />
-    <ClCompile Include="Manager\SessionManager.cpp" />
-    <ClCompile Include="Network\InternalServer.cpp" />
-    <ClCompile Include="Network\ZoneServerSession.cpp" />
-    <ClCompile Include="pch.cpp">
-      <PrecompiledHeader>Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="Manager\PlayerManager.cpp" />
-    <ClCompile Include="Manager\RoomManager.cpp" />
-    <ClCompile Include="Manager\SendBufferManager.cpp" />
-    <ClCompile Include="Manager\ZoneManager.cpp" />
-    <ClCompile Include="Network\ClientProxySession.cpp" />
-    <ClCompile Include="Network\SendBuffer.cpp" />
-    <ClCompile Include="NetWork\Server.cpp" />
-    <ClCompile Include="Network\ZoneServerSession.h" />
+    <ClCompile Include="..\cppProject\DB\DBConnection.cpp" />
+    <ClCompile Include="..\cppProject\DB\DBThreadPool.cpp" />
+    <ClCompile Include="..\cppProject\DB\GameDB.cpp" />
+    <ClCompile Include="..\cppProject\DB\GameDBShard.cpp" />
+    <ClCompile Include="..\cppProject\DB\RedisDB.cpp" />
+    <ClCompile Include="..\cppProject\Manager\SendBufferManager.cpp" />
+    <ClCompile Include="..\cppProject\Network\SendBuffer.cpp" />
+    <ClCompile Include="DB\Main_Zone.cpp" />
+    <ClCompile Include="Game\Player.cpp" />
+    <ClCompile Include="Game\Zone.cpp" />
+    <ClCompile Include="Network\GatewaySession.cpp" />
+    <ClCompile Include="pch.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DB\DBConnection.h" />
-    <ClInclude Include="DB\DBThreadPool.h" />
-    <ClInclude Include="DB\DBTypes.h" />
-    <ClInclude Include="DB\GameDB.h" />
-    <ClInclude Include="DB\GameDBShard.h" />
-    <ClInclude Include="DB\RedisDB.h" />
-    <ClInclude Include="Enum\VarEnum.h" />
-    <ClInclude Include="Game\Account.h" />
-    <ClInclude Include="Game\Monster.h" />
-    <ClInclude Include="Game\Room.h" />
-    <ClInclude Include="JobSystem\JobQueue.h" />
-    <ClInclude Include="JobSystem\WorkStealingQueue.h" />
-    <ClInclude Include="JobSystem\WorkStealingThreadPool.h" />
-    <ClInclude Include="Manager\PlayerManager.h" />
-    <ClInclude Include="Manager\RoomManager.h" />
-    <ClInclude Include="Manager\SendBufferManager.h" />
-    <ClInclude Include="Manager\SessionManager.h" />
-    <ClInclude Include="Manager\ZoneManager.h" />
-    <ClInclude Include="Network\ClientProxySession.h" />
-    <ClInclude Include="Network\InternalServer.h" />
-    <ClInclude Include="NetWork\Protocol.h" />
-    <ClInclude Include="Network\RecvBuffer.h" />
-    <ClInclude Include="Network\SendBuffer.h" />
-    <ClInclude Include="NetWork\Server.h" />
+    <ClInclude Include="..\cppProject\DB\DBConnection.h" />
+    <ClInclude Include="..\cppProject\DB\DBThreadPool.h" />
+    <ClInclude Include="..\cppProject\DB\DBTypes.h" />
+    <ClInclude Include="..\cppProject\DB\GameDB.h" />
+    <ClInclude Include="..\cppProject\DB\GameDBShard.h" />
+    <ClInclude Include="..\cppProject\DB\RedisDB.h" />
+    <ClInclude Include="..\cppProject\JobSystem\JobQueue.h" />
+    <ClInclude Include="..\cppProject\JobSystem\WorkStealingQueue.h" />
+    <ClInclude Include="..\cppProject\JobSystem\WorkStealingThreadPool.h" />
+    <ClInclude Include="..\cppProject\Manager\SendBufferManager.h" />
+    <ClInclude Include="..\cppProject\Network\Protocol.h" />
+    <ClInclude Include="..\cppProject\Network\SendBuffer.h" />
+    <ClInclude Include="Game\Player.h" />
+    <ClInclude Include="Game\Zone.h" />
+    <ClInclude Include="Network\GatewaySession.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{a70722f9-1752-4c36-bdf3-e27495b09d4d}</ProjectGuid>
-    <RootNamespace>test</RootNamespace>
+    <ProjectGuid>{61e3724b-8196-48ea-93e5-26c5b237f63c}</ProjectGuid>
+    <RootNamespace>ZoneServer</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -122,17 +102,14 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(IncludePath)</IncludePath>
-    <LibraryPath>$(LibraryPath)</LibraryPath>
-  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_WIN32_WINNT=0x0A00;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\cppProject\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -145,9 +122,10 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_WIN32_WINNT=0x0A00;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\cppProject\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -158,17 +136,14 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_WIN32_WINNT=0x0A00;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\cppProject\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -177,11 +152,10 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_WIN32_WINNT=0x0A00;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\cppProject\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

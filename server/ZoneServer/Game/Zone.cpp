@@ -3,8 +3,8 @@
 #include "Player.h"
 #include "DB/GameDB.h"
 #include "Network/Protocol.h"
-// TODO: GatewaySession 클래스가 아직 구현되지 않음 (ZoneServer <-> Gateway 통신 세션)
-// #include "GatewaySession.h"
+#include "Network/GatewaySession.h"
+#include "Manager/SendBufferManager.h"
 
 static WorkStealingThreadPool& GetZoneWorkerPool() {
 	static WorkStealingThreadPool pool;   // 기본값: std::thread::hardware_concurrency()개 워커 생성
@@ -70,19 +70,21 @@ void Zone::HandlePortal(uint64_t playerId, uint32_t nextZoneId) {
 	Leave(playerId);
 
 	// TODO: 아래 블록은 세 가지가 아직 구현되지 않아 주석 처리함
-	//   - GameDB::SavePlayerData(...) 함수 자체가 GameDB 클래스에 없음
-	//   - GatewaySession 클래스가 아직 없음
-	//   - PKT_S_ZONE_LEAVE_COMPLETED 구조체가 Protocol.h에 주석으로만 남아있음 (되살려야 함)
-	// 2. Redis/DB에 최신 상태(HP, 위치, 인벤토리) 비동기 저장
-	// GameDB::Instance().SavePlayerData(player, [playerId, nextZoneId]() {
-	// 	// 3. DB 저장이 완료되면 Gateway에 완료 통보(ACK) 전송
-	// 	// -> Gateway가 이를 받고 대기 상태였던 클라이언트를 nextZoneId로 전환
-	// 	PKT_S_ZONE_LEAVE_COMPLETED ackPkt;
-	// 	ackPkt.header.size = sizeof(ackPkt);
-	// 	ackPkt.header.id = PKT_S_ZONE_LEAVE_COMPLETED;
-	// 	ackPkt.playerId = playerId;
-	// 	ackPkt.nextZoneId = nextZoneId;
-	//
-	// 	GatewaySession::GetInstance()->Send(ackPkt);
-	// 	});
+//   - GameDB::SavePlayerData(...) 함수 자체가 GameDB 클래스에 없음
+//   - GatewaySession 클래스가 아직 없음
+//   - PKT_S_ZONE_LEAVE_COMPLETED 구조체가 Protocol.h에 주석으로만 남아있음 (되살려야 함)
+// 2. Redis/DB에 최신 상태(HP, 위치, 인벤토리) 비동기 저장
+// GameDB::Instance().SavePlayerData(player, [playerId, nextZoneId]() {
+
+
+	RES_ZoneLeaveCompletedPacket ackPkt;
+	ackPkt.header.size = sizeof(ackPkt);
+	ackPkt.header.id = PKT_S_ZONE_LEAVE_COMPLETED;
+	ackPkt.playerId = playerId;
+	ackPkt.nextZoneId = nextZoneId;
+
+	GatewaySession::GetInstance()->Send(SendBufferManager::Make(&ackPkt, sizeof(ackPkt)));
+
+
+
 }

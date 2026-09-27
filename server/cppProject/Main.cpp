@@ -4,6 +4,7 @@
 #include "Manager/PlayerManager.h"
 #include "DB/GameDB.h"
 #include "DB/GameDBShard.h"
+#include "Network/InternalServer.h"
 
 
 int main() {
@@ -32,9 +33,15 @@ int main() {
 
 	// 서버 시작
 	boost::asio::io_context io;
-	Server server(io, 8080);
+	Server server(io, 8080); // 게임 서버 
 	std::cout << "\n서버 시작 - 포트 8080" << std::endl;
+
+	InternalServer internalServer(io, 9000); // zone서버
+	std::cout << "\n서버 시작 - 포트 9000" << std::endl;
 	io.run();
+
+
+
 
 	return 0;
 }
