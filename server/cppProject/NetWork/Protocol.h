@@ -50,7 +50,14 @@ struct ZoneHandshakePacket {
 	uint32_t zoneId;
 };
 
-
+// 게이트웨이 <-> 내부 Zone 서버 간 패킷 래퍼 헤더
+#pragma pack(push, 1)
+struct InternalPacketHeader {
+	uint16_t size;        // 내부 패킷 전체 크기
+	uint16_t id;          // 내부 패킷 ID
+	uint64_t sessionID;   // 클라이언트 세션 고유 ID
+};
+#pragma pack(pop)
 
 
 

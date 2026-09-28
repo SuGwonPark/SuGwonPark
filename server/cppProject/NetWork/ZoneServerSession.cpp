@@ -73,7 +73,7 @@ void ZoneServerSession::ProcessPackets() {
 
 			ZoneHandshakePacket* hs = reinterpret_cast<ZoneHandshakePacket*>(&recvBuffer_[readPos_]);
 			if (dataSize < hs->header.size) break;
-			 
+
 			zoneId_ = hs->zoneId;
 			handshakeDone_ = true;
 			ZoneManager::GetInstance()->RegisterZone(zoneId_, shared_from_this());
@@ -106,7 +106,7 @@ void ZoneServerSession::HandleInternalPacket(uint8_t* buffer, uint16_t size) {
 
 	// Zone이 이 응답을 누구한테 보내는 건지는 header->sessionId로만 알 수 있음
 	// → SessionManager에서 실제 ClientProxySession을 찾아서 그대로 전달
-	ClientProxySessionRef target = SessionManager::GetInstance()->FindSession(header->sessionId);
+	ClientProxySessionRef target = SessionManager::GetInstance()->FindSession(header->sessionID);
 	if (!target) return; // 이미 끊긴 클라이언트면 조용히 버림
 
 	SendBufferRef sendBuffer = SendBufferManager::Open(payloadSize);

@@ -32,7 +32,7 @@ void ZoneManager::SendToZone(uint32_t zoneId, uint64_t sessionId, SendBufferRef 
 	InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(wrappedBuffer->Buffer());
 	header->size = totalSize;
 	header->id = 9999; // 내부 포워딩용 패킷 ID
-	header->sessionId = sessionId;
+	header->sessionID = sessionId;
 
 	// 뒤이어 원본 클라이언트 패킷 바이너리 복사
 	std::memcpy(wrappedBuffer->Buffer() + sizeof(InternalPacketHeader),
@@ -48,7 +48,7 @@ void ZoneManager::SendDisconnectToZone(uint32_t zoneId, uint64_t sessionId) {
 	InternalPacketHeader header;
 	header.size = sizeof(InternalPacketHeader);
 	header.id = 9998; // DISCONNECT 패킷 ID
-	header.sessionId = sessionId;
+	header.sessionID = sessionId;
 
 	SendBufferRef sendBuffer = SendBufferManager::Open(sizeof(header));
 	sendBuffer->Write(&header, sizeof(header));

@@ -11,6 +11,11 @@
 #include <thread>
 #include <atomic>
 #include <vector>
+#include <array>
+#include <unordered_map>
+#include <optional>
+#include <deque>
+#include <functional>
 
 #include <sodium.h>
 #include <boost/asio.hpp>

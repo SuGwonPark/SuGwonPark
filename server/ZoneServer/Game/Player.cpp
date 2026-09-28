@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Player.h"
 #include "Manager/SendBufferManager.h"
+#include "Network/GatewaySession.h"
 
 // ... 기존 생성자에 z_(0) 추가
 Player::Player(int id, std::string name)
@@ -12,12 +13,21 @@ void Player::SetPosition(float x, float y, float z) {
 	x_ = x; y_ = y; z_ = z;
 }
 
+
 void Player::Send(const void* data, uint32_t length) {
-	if (!session_) return;   // 아직 로그인 세션이 연결 안 된 플레이어(봇/DB전용 등)는 조용히 무시
+	if (sessionID_ == 0) return;   // 아직 로그인 세션 안 붙은 플레이어는 무시
 
-	SendBufferRef sendBuffer = SendBufferManager::Open(length);
+	uint16_t totalSize = static_cast<uint16_t>(sizeof(InternalPacketHeader) + length);
+	SendBufferRef sendBuffer = SendBufferManager::Open(totalSize);
+
+	InternalPacketHeader header{};
+	header.size = totalSize;
+	header.id = reinterpret_cast<const PacketHeader*>(data)->id;  // 실제 게임 패킷의 id 유지
+	header.sessionID = sessionID_;
+
+	sendBuffer->Write(&header, sizeof(header));
 	sendBuffer->Write(data, length);
-	SendBufferManager::Close(length);
+	SendBufferManager::Close(totalSize);
 
-	session_->Send(sendBuffer);
+	GatewaySession::GetInstance()->Send(sendBuffer);   // Gateway로 전송 -> HandleInternalPacket이 relay
 }

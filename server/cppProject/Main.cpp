@@ -1,13 +1,14 @@
 #include "pch.h"
 #include "Network/Server.h"
-#include "Manager/RoomManager.h"
-#include "Manager/PlayerManager.h"
 #include "DB/GameDB.h"
 #include "DB/GameDBShard.h"
 #include "Network/InternalServer.h"
 
 
 int main() {
+	SetConsoleOutputCP(CP_UTF8);
+	SetConsoleCP(CP_UTF8);
+
 	try {
 		//	// GameDB 연결
 		GameDB& gameDB = GameDB::Instance();

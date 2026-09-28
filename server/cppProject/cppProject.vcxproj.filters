@@ -27,17 +27,8 @@
     <ClCompile Include="Game\Monster.cpp">
       <Filter>소스 파일\Game</Filter>
     </ClCompile>
-    <ClCompile Include="Game\Room.cpp">
-      <Filter>소스 파일\Game</Filter>
-    </ClCompile>
     <ClCompile Include="NetWork\Server.cpp">
       <Filter>소스 파일\Network</Filter>
-    </ClCompile>
-    <ClCompile Include="Manager\PlayerManager.cpp">
-      <Filter>소스 파일\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="Manager\RoomManager.cpp">
-      <Filter>소스 파일\Manager</Filter>
     </ClCompile>
     <ClCompile Include="Main.cpp">
       <Filter>소스 파일</Filter>
@@ -69,9 +60,6 @@
     <ClCompile Include="Manager\SendBufferManager.cpp">
       <Filter>소스 파일\Manager</Filter>
     </ClCompile>
-    <ClCompile Include="Network\ZoneServerSession.h">
-      <Filter>소스 파일\Network</Filter>
-    </ClCompile>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Game\Account.cpp" />
     <ClCompile Include="Network\ZoneServerSession.cpp" />
@@ -79,6 +67,9 @@
     <ClCompile Include="Network\InternalServer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Network\ZoneServerSession.h">
+      <Filter>소스 파일\Network</Filter>
+    </ClInclude>
     <ClInclude Include="Enum\VarEnum.h">
       <Filter>소스 파일\Enum</Filter>
     </ClInclude>
@@ -93,15 +84,6 @@
     </ClInclude>
     <ClInclude Include="Game\Monster.h">
       <Filter>소스 파일\Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Game\Room.h">
-      <Filter>소스 파일\Game</Filter>
-    </ClInclude>
-    <ClInclude Include="Manager\PlayerManager.h">
-      <Filter>소스 파일\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="Manager\RoomManager.h">
-      <Filter>소스 파일\Manager</Filter>
     </ClInclude>
     <ClInclude Include="NetWork\Protocol.h">
       <Filter>소스 파일\Network</Filter>
