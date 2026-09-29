@@ -52,33 +52,30 @@ void GatewaySession::DoRead() {
 		net::buffer(&recvBuffer_[writePos_], freeSize),
 		net::bind_executor(*strand_,
 			[this](const boost::system::error_code& ec, size_t bytesTransferred) {
-				OnRead(ec, bytesTransferred);
+				if (!ec) {
+					writePos_ += bytesTransferred;
+					ProcessPackets();
+					DoRead();
+				}
+				else {
+					isConnected_.store(false);
+					std::cerr << "[GatewaySession] Gateway 연결 끊김: " << ec.message() << std::endl;
+				}
 			}
 		)
 	);
 }
 
-void GatewaySession::OnRead(const boost::system::error_code& ec, size_t bytesTransferred) {
-	if (!ec) {
-		writePos_ += bytesTransferred;
-		ProcessPackets();
-		DoRead();
-	}
-	else {
-		isConnected_.store(false);
-		std::cerr << "[GatewaySession] Gateway 연결 끊김: " << ec.message() << std::endl;
-	}
-}
 
 void GatewaySession::ProcessPackets() {
 	while (true) {
 		size_t dataSize = writePos_ - readPos_;
-		if (dataSize < sizeof(PacketHeader)) break;
+		if (dataSize < sizeof(InternalPacketHeader)) break;
 
-		PacketHeader* header = reinterpret_cast<PacketHeader*>(&recvBuffer_[readPos_]);
+		InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(&recvBuffer_[readPos_]);
 		if (dataSize < header->size) break;
 
-		// TODO: Gateway -> Zone 방향 제어 패킷은 아직 정의된 게 없어서 우선 건너뜀
+		HandleInternalPacket(&recvBuffer_[readPos_], header->size);
 		readPos_ += header->size;
 	}
 
@@ -107,21 +104,28 @@ void GatewaySession::DoWrite() {
 		net::buffer(sendBuffer->Buffer(), sendBuffer->AllocSize()),
 		net::bind_executor(*strand_,
 			[this](boost::system::error_code ec, size_t bytesTransferred) {
-				OnWrite(ec, bytesTransferred);
+				if (!ec) {
+					sendQueue_.pop();
+					if (!sendQueue_.empty()) {
+						DoWrite();
+					}
+				}
+				else {
+					isConnected_.store(false);
+					std::cerr << "[GatewaySession] 송신 실패: " << ec.message() << std::endl;
+				}
 			}
 		)
 	);
 }
 
-void GatewaySession::OnWrite(const boost::system::error_code& ec, size_t /*bytesTransferred*/) {
-	if (!ec) {
-		sendQueue_.pop();
-		if (!sendQueue_.empty()) {
-			DoWrite();
-		}
-	}
-	else {
-		isConnected_.store(false);
-		std::cerr << "[GatewaySession] 송신 실패: " << ec.message() << std::endl;
-	}
+
+void GatewaySession::HandleInternalPacket(uint8_t* buffer, uint16_t size) {
+	InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(buffer);
+	uint16_t payloadSize = size - sizeof(InternalPacketHeader);
+	uint8_t* payload = buffer + sizeof(InternalPacketHeader);
+
+	if (!zone_) return; // 존이 세팅 안됬으면 무시
+
+	zone_->HandleClientPacket(header->sessionID, payload, payloadSize);
 }

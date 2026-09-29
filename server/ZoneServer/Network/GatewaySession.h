@@ -2,6 +2,7 @@
 #include "pch.h"
 #include "Network/Protocol.h"
 #include "Network/SendBuffer.h"
+#include "Game/Zone.h"
 
 // Zone 서버 -> Gateway로 향하는 연결 (ZoneServerSession의 반대편 끝).
 // Zone에서 Gateway로 보내야 하는 제어 패킷(예: Zone 이동 완료 ACK)을 여기로 보낸다.
@@ -20,6 +21,7 @@ public:
 
 	// Zone -> Gateway 제어 패킷 전송 (strand로 직렬화됨)
 	void Send(SendBufferRef sendBuffer);
+	void SetZone(ZoneRef zone) { zone_ = zone; }
 
 	bool IsConnected() const { return isConnected_.load(); }
 
@@ -29,11 +31,13 @@ private:
 	void DoRead();
 	void OnRead(const boost::system::error_code& ec, size_t bytesTransferred);
 	void ProcessPackets();
+	void HandleInternalPacket(uint8_t* buffer, uint16_t size);
 
 	void DoWrite();
 	void OnWrite(const boost::system::error_code& ec, size_t bytesTransferred);
 
 private:
+	ZoneRef zone_;
 	uint32_t zoneId_ = 0;
 	std::unique_ptr<tcp::socket> socket_;
 	std::unique_ptr<net::strand<net::io_context::executor_type>> strand_;

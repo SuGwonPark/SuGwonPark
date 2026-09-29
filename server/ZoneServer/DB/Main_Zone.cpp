@@ -12,6 +12,9 @@ int main(int argc, char* argv[]) {
 
 	boost::asio::io_context io;
 
+	ZoneRef zone = std::make_shared<Zone>(zoneID);
+	GatewaySession::GetInstance()->SetZone(zone);
+
 	// Gateway로 접속 (Gateway의 InternalServer가 듣고 있는 포트로)
 	GatewaySession::GetInstance()->Connect(io, "127.0.0.1", 9000, zoneID);
 

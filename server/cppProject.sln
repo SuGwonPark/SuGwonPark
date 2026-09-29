@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36401.2
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cppProject", "cppProject\cppProject.vcxproj", "{A70722F9-1752-4C36-BDF3-E27495B09D4D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GatewayServer", "GatewayServer\GatewayServer.vcxproj", "{A70722F9-1752-4C36-BDF3-E27495B09D4D}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ZoneServer", "ZoneServer\ZoneServer.vcxproj", "{61E3724B-8196-48EA-93E5-26C5B237F63C}"
 EndProject

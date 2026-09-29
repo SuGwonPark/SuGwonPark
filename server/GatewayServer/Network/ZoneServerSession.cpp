@@ -109,6 +109,16 @@ void ZoneServerSession::HandleInternalPacket(uint8_t* buffer, uint16_t size) {
 	ClientProxySessionRef target = SessionManager::GetInstance()->FindSession(header->sessionID);
 	if (!target) return; // 이미 끊긴 클라이언트면 조용히 버림
 
+	//  Zone 이동 완료 신호면 여기서 완료 처리
+	if (payloadSize >= sizeof(PacketHeader)) {
+		PacketHeader* inner = reinterpret_cast<PacketHeader*> (payload);
+		if (inner->id == PKT_S_ZONE_LEAVE_COMPLETED) {
+			auto* ack = reinterpret_cast<RES_ZoneLeaveCompletedPacket*>(payload);
+			target->OnZone1LeaveCompleted(ack->nextZoneId);
+			return;
+		}
+	}
+
 	SendBufferRef sendBuffer = SendBufferManager::Open(payloadSize);
 	sendBuffer->Write(payload, payloadSize);
 	SendBufferManager::Close(payloadSize);

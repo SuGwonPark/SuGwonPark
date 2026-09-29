@@ -19,13 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\cppProject\DB\DBConnection.cpp" />
-    <ClCompile Include="..\cppProject\DB\DBThreadPool.cpp" />
-    <ClCompile Include="..\cppProject\DB\GameDB.cpp" />
-    <ClCompile Include="..\cppProject\DB\GameDBShard.cpp" />
-    <ClCompile Include="..\cppProject\DB\RedisDB.cpp" />
-    <ClCompile Include="..\cppProject\Manager\SendBufferManager.cpp" />
-    <ClCompile Include="..\cppProject\Network\SendBuffer.cpp" />
+    <ClCompile Include="..\GatewayServer\DB\DBConnection.cpp" />
+    <ClCompile Include="..\GatewayServer\DB\DBThreadPool.cpp" />
+    <ClCompile Include="..\GatewayServer\DB\GameDB.cpp" />
+    <ClCompile Include="..\GatewayServer\DB\GameDBShard.cpp" />
+    <ClCompile Include="..\GatewayServer\DB\RedisDB.cpp" />
+    <ClCompile Include="..\GatewayServer\Manager\SendBufferManager.cpp" />
+    <ClCompile Include="..\GatewayServer\Network\SendBuffer.cpp" />
     <ClCompile Include="DB\Main_Zone.cpp" />
     <ClCompile Include="Game\Player.cpp" />
     <ClCompile Include="Game\Zone.cpp" />
@@ -33,18 +33,18 @@
     <ClCompile Include="pch.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\cppProject\DB\DBConnection.h" />
-    <ClInclude Include="..\cppProject\DB\DBThreadPool.h" />
-    <ClInclude Include="..\cppProject\DB\DBTypes.h" />
-    <ClInclude Include="..\cppProject\DB\GameDB.h" />
-    <ClInclude Include="..\cppProject\DB\GameDBShard.h" />
-    <ClInclude Include="..\cppProject\DB\RedisDB.h" />
-    <ClInclude Include="..\cppProject\JobSystem\JobQueue.h" />
-    <ClInclude Include="..\cppProject\JobSystem\WorkStealingQueue.h" />
-    <ClInclude Include="..\cppProject\JobSystem\WorkStealingThreadPool.h" />
-    <ClInclude Include="..\cppProject\Manager\SendBufferManager.h" />
-    <ClInclude Include="..\cppProject\Network\Protocol.h" />
-    <ClInclude Include="..\cppProject\Network\SendBuffer.h" />
+    <ClInclude Include="..\GatewayServer\DB\DBConnection.h" />
+    <ClInclude Include="..\GatewayServer\DB\DBThreadPool.h" />
+    <ClInclude Include="..\GatewayServer\DB\DBTypes.h" />
+    <ClInclude Include="..\GatewayServer\DB\GameDB.h" />
+    <ClInclude Include="..\GatewayServer\DB\GameDBShard.h" />
+    <ClInclude Include="..\GatewayServer\DB\RedisDB.h" />
+    <ClInclude Include="..\GatewayServer\JobSystem\JobQueue.h" />
+    <ClInclude Include="..\GatewayServer\JobSystem\WorkStealingQueue.h" />
+    <ClInclude Include="..\GatewayServer\JobSystem\WorkStealingThreadPool.h" />
+    <ClInclude Include="..\GatewayServer\Manager\SendBufferManager.h" />
+    <ClInclude Include="..\GatewayServer\Network\Protocol.h" />
+    <ClInclude Include="..\GatewayServer\Network\SendBuffer.h" />
     <ClInclude Include="Game\Player.h" />
     <ClInclude Include="Game\Zone.h" />
     <ClInclude Include="Network\GatewaySession.h" />
@@ -109,7 +109,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_WIN32_WINNT=0x0A00;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\cppProject\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\GatewayServer\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -125,7 +125,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_WIN32_WINNT=0x0A00;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\cppProject\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\GatewayServer\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -139,7 +139,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;_WIN32_WINNT=0x0A00;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\cppProject\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\GatewayServer\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -156,7 +156,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;_WIN32_WINNT=0x0A00;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\cppProject\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\GatewayServer\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

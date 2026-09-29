@@ -29,9 +29,7 @@ public:
 private:
 	// 네트워크 I/O 루프
 	void DoRead();
-	void OnRead(const boost::system::error_code& ec, size_t bytesTransferred);
 	void DoWrite();
-	void OnWrite(const boost::system::error_code& ec, size_t bytesTransferred);
 
 	// 수신 스트림 패킷 파싱 및 내부 라우팅
 	void ProcessPackets();

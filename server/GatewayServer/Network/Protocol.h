@@ -50,6 +50,11 @@ struct ZoneHandshakePacket {
 	uint32_t zoneId;
 };
 
+struct REQ_ReadyToSpawnPacket {
+	PacketHeader header;
+	uint32_t playerId;
+};
+
 // 게이트웨이 <-> 내부 Zone 서버 간 패킷 래퍼 헤더
 #pragma pack(push, 1)
 struct InternalPacketHeader {

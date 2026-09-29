@@ -22,25 +22,25 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\cppProject\DB\DBConnection.cpp">
+    <ClCompile Include="..\GatewayServer\DB\DBConnection.cpp">
       <Filter>DB</Filter>
     </ClCompile>
-    <ClCompile Include="..\cppProject\DB\DBThreadPool.cpp">
+    <ClCompile Include="..\GatewayServer\DB\DBThreadPool.cpp">
       <Filter>DB</Filter>
     </ClCompile>
-    <ClCompile Include="..\cppProject\DB\GameDB.cpp">
+    <ClCompile Include="..\GatewayServer\DB\GameDB.cpp">
       <Filter>DB</Filter>
     </ClCompile>
-    <ClCompile Include="..\cppProject\DB\GameDBShard.cpp">
+    <ClCompile Include="..\GatewayServer\DB\GameDBShard.cpp">
       <Filter>DB</Filter>
     </ClCompile>
-    <ClCompile Include="..\cppProject\DB\RedisDB.cpp">
+    <ClCompile Include="..\GatewayServer\DB\RedisDB.cpp">
       <Filter>DB</Filter>
     </ClCompile>
-    <ClCompile Include="..\cppProject\Network\SendBuffer.cpp">
+    <ClCompile Include="..\GatewayServer\Network\SendBuffer.cpp">
       <Filter>Network</Filter>
     </ClCompile>
-    <ClCompile Include="..\cppProject\Manager\SendBufferManager.cpp">
+    <ClCompile Include="..\GatewayServer\Manager\SendBufferManager.cpp">
       <Filter>Manager</Filter>
     </ClCompile>
     <ClCompile Include="Game\Player.cpp">
@@ -56,40 +56,40 @@
     <ClCompile Include="DB\Main_Zone.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\cppProject\DB\DBConnection.h">
+    <ClInclude Include="..\GatewayServer\DB\DBConnection.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="..\cppProject\DB\DBThreadPool.h">
+    <ClInclude Include="..\GatewayServer\DB\DBThreadPool.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="..\cppProject\DB\DBTypes.h">
+    <ClInclude Include="..\GatewayServer\DB\DBTypes.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="..\cppProject\DB\GameDB.h">
+    <ClInclude Include="..\GatewayServer\DB\GameDB.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="..\cppProject\DB\GameDBShard.h">
+    <ClInclude Include="..\GatewayServer\DB\GameDBShard.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="..\cppProject\DB\RedisDB.h">
+    <ClInclude Include="..\GatewayServer\DB\RedisDB.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="..\cppProject\Network\Protocol.h">
+    <ClInclude Include="..\GatewayServer\Network\Protocol.h">
       <Filter>Network</Filter>
     </ClInclude>
-    <ClInclude Include="..\cppProject\Network\SendBuffer.h">
+    <ClInclude Include="..\GatewayServer\Network\SendBuffer.h">
       <Filter>Network</Filter>
     </ClInclude>
-    <ClInclude Include="..\cppProject\Manager\SendBufferManager.h">
+    <ClInclude Include="..\GatewayServer\Manager\SendBufferManager.h">
       <Filter>Manager</Filter>
     </ClInclude>
-    <ClInclude Include="..\cppProject\JobSystem\JobQueue.h">
+    <ClInclude Include="..\GatewayServer\JobSystem\JobQueue.h">
       <Filter>JobSystem</Filter>
     </ClInclude>
-    <ClInclude Include="..\cppProject\JobSystem\WorkStealingQueue.h">
+    <ClInclude Include="..\GatewayServer\JobSystem\WorkStealingQueue.h">
       <Filter>JobSystem</Filter>
     </ClInclude>
-    <ClInclude Include="..\cppProject\JobSystem\WorkStealingThreadPool.h">
+    <ClInclude Include="..\GatewayServer\JobSystem\WorkStealingThreadPool.h">
       <Filter>JobSystem</Filter>
     </ClInclude>
     <ClInclude Include="Game\Player.h">

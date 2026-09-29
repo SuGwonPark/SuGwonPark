@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "Network/ClientProxySession.h"
-#include "Manager/ZoneManager.h"   // Zone 서버 통신 매니저 (SendToZone)
+#include "Manager/ZoneManager.h"   
 #include "Manager/SendBufferManager.h"
 #include "DB/GameDB.h"
 
@@ -36,28 +36,6 @@ void ClientProxySession::Close() {
 	}
 }
 
-void ClientProxySession::RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint16_t packetSize) {
-	// 로그인/회원가입은 게임 월드(Zone)와 무관한 Gateway 레벨 처리이므로
-	// Zone으로 보내지 않고 여기서 바로 DB 조회 후 응답한다.
-	switch (packetId) {
-	case PKT_C_LOGIN:
-		Account::GetInstance()->Login(
-			shared_from_this(), reinterpret_cast<REQ_LoginPacket*>(packetPtr));
-		return;
-
-	default:
-		break;
-	}
-
-	// Zone 서버로 리턴하기위해 존재
-	SendBufferRef sendBuffer = SendBufferManager::Open(packetSize);
-	sendBuffer->Write(packetPtr, packetSize);
-	SendBufferManager::Close(packetSize);
-
-	uint32_t zoneId = GetCurrentZoneId();
-	ZoneManager::GetInstance()->SendToZone(zoneId, sessionId_, sendBuffer);
-}
-
 
 void ClientProxySession::DoRead() {
 	auto self = shared_from_this();
@@ -79,21 +57,17 @@ void ClientProxySession::DoRead() {
 		net::buffer(&recvBuffer_[writePos_], freeSize),
 		net::bind_executor(strand_,
 			[this, self](const boost::system::error_code& ec, size_t bytesTransferred) {
-				OnRead(ec, bytesTransferred);
+				if (!ec) {
+					writePos_ += bytesTransferred;
+					ProcessPackets();
+					DoRead();
+				}
+				else {
+					Close();
+				}
 			}
 		)
 	);
-}
-
-void ClientProxySession::OnRead(const boost::system::error_code& ec, size_t bytesTransferred) {
-	if (!ec) {
-		writePos_ += bytesTransferred;
-		ProcessPackets();
-		DoRead();
-	}
-	else {
-		Close();
-	}
 }
 
 void ClientProxySession::ProcessPackets() {
@@ -120,6 +94,28 @@ void ClientProxySession::ProcessPackets() {
 	}
 }
 
+
+void ClientProxySession::RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint16_t packetSize) {
+	// 로그인/회원가입은 게임 월드(Zone)와 무관한 Gateway 레벨 처리이므로
+	// Zone으로 보내지 않고 여기서 바로 DB 조회 후 응답한다.
+	switch (packetId) {
+	case PKT_C_LOGIN:
+		Account::GetInstance()->Login(
+			shared_from_this(), reinterpret_cast<REQ_LoginPacket*>(packetPtr));
+		return;
+
+	default:
+		break;
+	}
+
+	// Zone 서버로 리턴하기위해 존재
+	SendBufferRef sendBuffer = SendBufferManager::Open(packetSize);
+	sendBuffer->Write(packetPtr, packetSize);
+	SendBufferManager::Close(packetSize);
+
+	uint32_t zoneId = GetCurrentZoneId();
+	ZoneManager::GetInstance()->SendToZone(zoneId, sessionId_, sendBuffer);
+}
 
 void ClientProxySession::OnZone1LeaveCompleted(uint32_t nextZoneId) {
 	// Zone 1의 Drain 및 저장이 끝났으므로 다음 패킷부터는 즉시 Zone 2로 라우팅
@@ -149,20 +145,16 @@ void ClientProxySession::DoWrite() {
 		net::buffer(sendBuffer->Buffer(), sendBuffer->AllocSize()),
 		net::bind_executor(strand_,
 			[this, self](const boost::system::error_code& ec, size_t bytesTransferred) {
-				OnWrite(ec, bytesTransferred);
+				if (!ec) {
+					sendQueue_.pop();
+					if (!sendQueue_.empty()) {
+						DoWrite();
+					}
+				}
+				else {
+					Close();
+				}
 			}
 		)
 	);
-}
-
-void ClientProxySession::OnWrite(const boost::system::error_code& ec, size_t bytesTransferred) {
-	if (!ec) {
-		sendQueue_.pop();
-		if (!sendQueue_.empty()) {
-			DoWrite();
-		}
-	}
-	else {
-		Close();
-	}
 }

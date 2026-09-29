@@ -38,6 +38,53 @@ void Zone::Leave(uint64_t playerId) {
 	// 주변 시야 내 유저들에게 퇴장 알림 브로드캐스트
 }
 
+void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t size) {
+	if (size < sizeof(PacketHeader))
+		return;
+
+	std::vector<uint8_t> copied(payload, payload + size);
+
+	auto self = shared_from_this();
+	schedule([self, sessionID, copied = std::move(copied)]() mutable {
+		PacketHeader* header = reinterpret_cast<PacketHeader*>(copied.data());
+
+		switch (header->id) {
+			// 스폰 준비
+		case PKT_C_READY_TO_SPAWN:
+			self->HandleReadyToSpawn(sessionID, copied.data(), static_cast<uint16_t>(copied.size()));
+			break;
+
+			// 캐릭터 이동
+		case PKT_C_MOVE: {
+			auto it = self->sessionToPlayer_.find(sessionID);
+
+			// 아직 Enter 안 한 세션이 이동 패킷 보냄 -> 무시
+			if (it == self->sessionToPlayer_.end()) return;
+
+			auto* move = reinterpret_cast<MovePacket*>(copied.data());
+
+			self->HandleMove(it->second->GetPlayerID(), move->x, move->y, move->z);
+			break;
+		}
+		default:
+			break;
+		}
+		});
+}
+
+void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t size) {
+	if (size < sizeof(REQ_ReadyToSpawnPacket)) return;
+	auto* req = reinterpret_cast<REQ_ReadyToSpawnPacket*>(payload);
+
+	// DB에서 마지막 캐릭터 정보 로드하여 저장
+	PlayerRef player = std::make_shared<Player>(req->playerId, "playerName");
+	player->SetPlayerID(req->playerId);
+	player->SetSessionID(sessionID);
+
+	Enter(player);
+	sessionToPlayer_[sessionID] = player;
+}
+
 void Zone::HandleMove(uint64_t playerId, float x, float y, float z) {
 	auto it = players_.find(playerId);
 	if (it == players_.end()) return;

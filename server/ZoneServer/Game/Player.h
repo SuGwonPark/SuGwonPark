@@ -23,8 +23,8 @@ public:
 	uint64_t GetExp() const { return exp_; }
 	void AddExp(uint64_t exp) { exp_ += exp; }
 
-	uint64_t GetPlayerID() const { return playerId_; }
-	void SetPlayerID(uint64_t playerId) { playerId_ = playerId; }
+	uint32_t GetPlayerID() const { return playerId_; }
+	void SetPlayerID(uint32_t playerId) { playerId_ = playerId; }
 
 	uint64_t GetSessionID() { return sessionID_; }
 	void SetSessionID(uint64_t sessionID) { sessionID_ = sessionID; }

@@ -28,7 +28,7 @@ void Account::Login(ClientProxySessionRef session, const REQ_LoginPacket* pkt)
 				std::string hash = row[1].get<std::string>();
 				if (crypto_pwhash_str_verify(hash.c_str(), password.c_str(), password.size()) == 0) {
 					res.success = true;
-					res.playerId = row[0].get<int32_t>();
+					res.playerId = row[0].get<uint32_t>();
 					strcpy_s(res.message, "로그인 성공");
 				}
 				else {
