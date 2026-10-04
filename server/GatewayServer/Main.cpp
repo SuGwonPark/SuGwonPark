@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Network/Server.h"
 #include "DB/GameDB.h"
-#include "DB/GameDBShard.h"
+#include "DB/AccountDB.h"
 #include "Network/InternalServer.h"
 
 
@@ -12,16 +12,10 @@ int main() {
 	try {
 		//	// GameDB 연결
 		GameDB& gameDB = GameDB::Instance();
-		gameDB.Init(4, "mysqlx://root:gpdlgh1234%21%40%23%24@localhost:33060/gamedb");
+		gameDB.Init(4, "mysqlx://root:gpdlgh1234%21%40%23%24@localhost:33060/game");
 
-		GameDBShard& gameShardDB = GameDBShard::Instance();
-		std::vector<std::string> dbUrls = {
-			"mysqlx://root:gpdlgh1234%21%40%23%24@localhost:33060/game_shard_01",
-			"mysqlx://root:gpdlgh1234%21%40%23%24@localhost:33060/game_shard_02",
-			"mysqlx://root:gpdlgh1234%21%40%23%24@localhost:33060/game_shard_03",
-			"mysqlx://root:gpdlgh1234%21%40%23%24@localhost:33060/game_shard_04"
-		};
-		gameShardDB.Init(4, dbUrls);
+		AccountDB& accountDB = AccountDB::Instance();
+		accountDB.Init(4, "mysqlx://root:gpdlgh1234%21%40%23%24@localhost:33060/account");
 	}
 	catch (const mysqlx::Error& err) {
 

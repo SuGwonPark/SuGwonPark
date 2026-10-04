@@ -1,14 +1,14 @@
 #pragma once
 #include "DB/DBThreadPool.h"
 
-class GameDB {
+class AccountDB
+{
 public:
-	static GameDB& Instance() {
-		static GameDB instance;
+	static AccountDB& Instance() {
+		static AccountDB instance;
 		return instance;
 	}
 
-	// DB 연결
 	bool Init(size_t threadCount, const std::string& connUrl) {
 		pool_ = std::make_unique<DB::DBThreadPool>(threadCount, connUrl);
 		return true;
@@ -20,9 +20,10 @@ public:
 		}
 	}
 
-	void SaveCharacterProgressAsync(uint64_t playerID, uint64_t exp, float x, float y, float z, int hp);
+	void SaveCharacterProgressAsync(uint64_t userUID, uint64_t exp, float x, float y, float z, int hp);
 
 private:
-	GameDB() = default;
+	AccountDB() = default;
 	std::unique_ptr<DB::DBThreadPool> pool_;
 };
+

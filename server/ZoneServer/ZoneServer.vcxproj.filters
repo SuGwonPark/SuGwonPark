@@ -31,9 +31,6 @@
     <ClCompile Include="..\GatewayServer\DB\GameDB.cpp">
       <Filter>DB</Filter>
     </ClCompile>
-    <ClCompile Include="..\GatewayServer\DB\GameDBShard.cpp">
-      <Filter>DB</Filter>
-    </ClCompile>
     <ClCompile Include="..\GatewayServer\DB\RedisDB.cpp">
       <Filter>DB</Filter>
     </ClCompile>
@@ -54,6 +51,9 @@
     </ClCompile>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="DB\Main_Zone.cpp" />
+    <ClCompile Include="..\GatewayServer\DB\AccountDB.cpp">
+      <Filter>DB</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\GatewayServer\DB\DBConnection.h">
@@ -66,9 +66,6 @@
       <Filter>DB</Filter>
     </ClInclude>
     <ClInclude Include="..\GatewayServer\DB\GameDB.h">
-      <Filter>DB</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GatewayServer\DB\GameDBShard.h">
       <Filter>DB</Filter>
     </ClInclude>
     <ClInclude Include="..\GatewayServer\DB\RedisDB.h">
@@ -102,5 +99,8 @@
       <Filter>Network</Filter>
     </ClInclude>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="..\GatewayServer\DB\AccountDB.h">
+      <Filter>DB</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

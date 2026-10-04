@@ -19,10 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\GatewayServer\DB\AccountDB.cpp" />
     <ClCompile Include="..\GatewayServer\DB\DBConnection.cpp" />
     <ClCompile Include="..\GatewayServer\DB\DBThreadPool.cpp" />
     <ClCompile Include="..\GatewayServer\DB\GameDB.cpp" />
-    <ClCompile Include="..\GatewayServer\DB\GameDBShard.cpp" />
     <ClCompile Include="..\GatewayServer\DB\RedisDB.cpp" />
     <ClCompile Include="..\GatewayServer\Manager\SendBufferManager.cpp" />
     <ClCompile Include="..\GatewayServer\Network\SendBuffer.cpp" />
@@ -33,11 +33,11 @@
     <ClCompile Include="pch.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\GatewayServer\DB\AccountDB.h" />
     <ClInclude Include="..\GatewayServer\DB\DBConnection.h" />
     <ClInclude Include="..\GatewayServer\DB\DBThreadPool.h" />
     <ClInclude Include="..\GatewayServer\DB\DBTypes.h" />
     <ClInclude Include="..\GatewayServer\DB\GameDB.h" />
-    <ClInclude Include="..\GatewayServer\DB\GameDBShard.h" />
     <ClInclude Include="..\GatewayServer\DB\RedisDB.h" />
     <ClInclude Include="..\GatewayServer\JobSystem\JobQueue.h" />
     <ClInclude Include="..\GatewayServer\JobSystem\WorkStealingQueue.h" />

@@ -4,9 +4,9 @@
 #include "Network/GatewaySession.h"
 
 // ... 기존 생성자에 z_(0) 추가
-Player::Player(int id, std::string name)
-	: id_(id), name_(name), x_(0), y_(0), z_(0), hp_(100), exp_(0)
-	, playerId_(static_cast<uint64_t>(id)) {
+Player::Player(uint64_t playerID, std::string name, int x, int y, int z, int hp, uint64_t exp)
+	: playerID_(playerID), name_(name), x_(x), y_(y), z_(z), hp_(hp), exp_(exp) {
+
 }
 
 void Player::SetPosition(float x, float y, float z) {

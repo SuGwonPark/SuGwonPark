@@ -19,10 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DB\AccountDB.cpp" />
     <ClCompile Include="DB\DBConnection.cpp" />
     <ClCompile Include="DB\DBThreadPool.cpp" />
     <ClCompile Include="DB\GameDB.cpp" />
-    <ClCompile Include="DB\GameDBShard.cpp" />
     <ClCompile Include="DB\RedisDB.cpp" />
     <ClCompile Include="Game\Account.cpp" />
     <ClCompile Include="Game\Monster.cpp" />
@@ -41,11 +41,11 @@
     <ClCompile Include="Network\ZoneServerSession.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DB\AccountDB.h" />
     <ClInclude Include="DB\DBConnection.h" />
     <ClInclude Include="DB\DBThreadPool.h" />
     <ClInclude Include="DB\DBTypes.h" />
     <ClInclude Include="DB\GameDB.h" />
-    <ClInclude Include="DB\GameDBShard.h" />
     <ClInclude Include="DB\RedisDB.h" />
     <ClInclude Include="Enum\VarEnum.h" />
     <ClInclude Include="Game\Account.h" />

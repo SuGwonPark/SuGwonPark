@@ -15,12 +15,12 @@ void Account::Login(ClientProxySessionRef session, const REQ_LoginPacket* pkt)
 			res.header.id = PKT_S_LOGIN;
 			res.header.size = sizeof(res);
 			res.success = false;
-			res.playerId = -1;
+			res.playerID = -1;
 
 			auto result = sess.getSchema("gamedb").getTable("accounts")
 				.select("id", "password_hash")
-				.where("user_id = :uid")
-				.bind("uid", userId)
+				.where("id = :id")
+				.bind("id", userId)
 				.execute();
 
 			auto row = result.fetchOne();
@@ -28,7 +28,7 @@ void Account::Login(ClientProxySessionRef session, const REQ_LoginPacket* pkt)
 				std::string hash = row[1].get<std::string>();
 				if (crypto_pwhash_str_verify(hash.c_str(), password.c_str(), password.size()) == 0) {
 					res.success = true;
-					res.playerId = row[0].get<uint32_t>();
+					res.playerID = row[0].get<uint64_t>();
 					strcpy_s(res.message, "로그인 성공");
 				}
 				else {

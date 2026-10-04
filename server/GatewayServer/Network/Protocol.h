@@ -15,7 +15,7 @@ struct REQ_LoginPacket {
 struct RES_LoginPacket {
 	PacketHeader header;
 	bool success;
-	int32_t playerId;
+	int64_t playerID;
 	char message[64];   // "로그인 성공" or "비밀번호 오류" 등
 };
 
@@ -23,7 +23,7 @@ struct RES_LoginPacket {
 // 주의: enum 값 PKT_S_ZONE_LEAVE_COMPLETED와 이름이 겹치면 안 되므로 구조체는 별도 이름 사용
 struct RES_ZoneLeaveCompletedPacket {
 	PacketHeader header;
-	uint64_t playerId;
+	uint64_t playerID;
 	uint32_t nextZoneId;
 };
 
@@ -31,7 +31,7 @@ struct RES_ZoneLeaveCompletedPacket {
 // 이동 패킷
 struct MovePacket {
 	PacketHeader header;
-	int32_t playerId;
+	uint64_t playerID;
 	float x;
 	float y;
 	float z;
@@ -40,7 +40,7 @@ struct MovePacket {
 // 공격 패킷
 struct AttackPacket {
 	PacketHeader header;
-	int32_t playerId;
+	uint64_t playerID;
 	int32_t targetId;
 	int32_t damage;
 };
@@ -52,7 +52,7 @@ struct ZoneHandshakePacket {
 
 struct REQ_ReadyToSpawnPacket {
 	PacketHeader header;
-	uint32_t playerId;
+	uint64_t playerID;
 };
 
 // 게이트웨이 <-> 내부 Zone 서버 간 패킷 래퍼 헤더
