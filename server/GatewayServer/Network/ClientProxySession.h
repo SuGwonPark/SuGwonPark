@@ -7,7 +7,7 @@ class ClientProxySession : public std::enable_shared_from_this<ClientProxySessio
 	enum { RECV_BUFFER_SIZE = 65536 };
 
 public:
-	ClientProxySession(uint64_t sessionId, net::io_context& ioc);
+	ClientProxySession(uint64_t sessionID, net::io_context& ioc);
 	~ClientProxySession();
 
 	void Start();
@@ -21,9 +21,12 @@ public:
 
 	// Getters & Setters
 	tcp::socket& Socket() { return socket_; }
-	uint64_t GetSessionId() const { return sessionId_; }
-	uint32_t GetCurrentZoneId() const { return currentZoneId_.load(std::memory_order_relaxed); }
-	void SetCurrentZoneId(uint32_t zoneId) { currentZoneId_.store(zoneId, std::memory_order_relaxed); }
+	uint64_t GetSessionId() const { return sessionID_; }
+	uint32_t GetCurrentZoneID() const { return currentZoneID_.load(std::memory_order_relaxed); }
+	void SetCurrentZoneID(uint32_t zoneId) { currentZoneID_.store(zoneId, std::memory_order_relaxed); }
+
+	uint32_t GetCurrentChannelID() const { return currentChannelID_.load(std::memory_order_relaxed); }
+	void SetCurrentChannelID(uint32_t channelID) { currentChannelID_.store(channelID, std::memory_order_relaxed); }
 
 
 private:
@@ -37,12 +40,13 @@ private:
 
 
 private:
-	const uint64_t sessionId_;
+	const uint64_t sessionID_;
 	tcp::socket socket_;
 	net::strand<net::io_context::executor_type> strand_;
 
 	// 현재 패킷을 전달할 Zone 서버 ID (Drain 완료 시 원자적 교체)
-	std::atomic<uint32_t> currentZoneId_{ 1 };
+	std::atomic<uint32_t> currentZoneID_{ 1 };
+	std::atomic<uint32_t> currentChannelID_{ 1 };
 	std::atomic<bool> isConnected_{ false };
 
 	// 수신 버퍼
@@ -52,6 +56,7 @@ private:
 
 	// 송신 큐 (Strand로 동기화)
 	std::queue<SendBufferRef> sendQueue_;
+
 };
 
 using ClientProxySessionRef = std::shared_ptr<ClientProxySession>;

@@ -7,8 +7,8 @@
 #include "Game/Account.h"
 
 
-ClientProxySession::ClientProxySession(uint64_t sessionId, net::io_context& ioc)
-	: sessionId_(sessionId)
+ClientProxySession::ClientProxySession(uint64_t sessionID, net::io_context& ioc)
+	: sessionID_(sessionID)
 	, socket_(ioc)
 	, strand_(net::make_strand(ioc)) {
 }
@@ -31,7 +31,7 @@ void ClientProxySession::Close() {
 			self->socket_.close(ec);
 
 			// 연결 종료 시 내부 Zone 서버에 연결 끊김 통보
-			ZoneManager::GetInstance()->SendDisconnectToZone(self->GetCurrentZoneId(), self->sessionId_);
+			ZoneManager::GetInstance()->SendDisconnectToZone(self->GetCurrentZoneID(), self->GetCurrentChannelID(), self->sessionID_);
 			});
 	}
 }
@@ -113,13 +113,14 @@ void ClientProxySession::RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint
 	sendBuffer->Write(packetPtr, packetSize);
 	SendBufferManager::Close(packetSize);
 
-	uint32_t zoneId = GetCurrentZoneId();
-	ZoneManager::GetInstance()->SendToZone(zoneId, sessionId_, sendBuffer);
+	uint32_t zoneID = GetCurrentZoneID();
+	uint32_t channelID = GetCurrentChannelID();
+	ZoneManager::GetInstance()->SendToZone(zoneID, channelID, sessionID_, sendBuffer);
 }
 
 void ClientProxySession::OnZone1LeaveCompleted(uint32_t nextZoneId) {
-	// Zone 1의 Drain 및 저장이 끝났으므로 다음 패킷부터는 즉시 Zone 2로 라우팅
-	SetCurrentZoneId(nextZoneId);
+	// 추후 채널까지 추가
+	SetCurrentZoneID(nextZoneId);
 }
 
 void ClientProxySession::Send(SendBufferRef sendBuffer) {

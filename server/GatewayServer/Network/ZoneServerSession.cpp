@@ -27,8 +27,11 @@ void ZoneServerSession::Close() {
 			self->socket_.close(ec);
 
 			// 내부 백본 연결이 끊기면 라우팅 테이블에서도 제거
-			ZoneManager::GetInstance()->UnregisterZone(self->zoneId_);
+			if (self->handshakeDone_) {
+				ZoneManager::GetInstance()->UnregisterZone(self->zoneID_, self->channelID_);
+			}
 			});
+
 	}
 }
 
@@ -74,10 +77,13 @@ void ZoneServerSession::ProcessPackets() {
 			ZoneHandshakePacket* hs = reinterpret_cast<ZoneHandshakePacket*>(&recvBuffer_[readPos_]);
 			if (dataSize < hs->header.size) break;
 
-			zoneId_ = hs->zoneId;
+			zoneID_ = hs->zoneID;
+			channelID_ = hs->channelID;
+
 			handshakeDone_ = true;
-			ZoneManager::GetInstance()->RegisterZone(zoneId_, shared_from_this());
-			std::cout << "Zone 등록됨: zoneId=" << zoneId_ << std::endl;
+			// 존, 채널 등록
+			ZoneManager::GetInstance()->RegisterZone(zoneID_, channelID_, shared_from_this());
+			std::cout << "Zone 등록됨: zoneId=" << zoneID_ << std::endl;
 
 			readPos_ += hs->header.size;
 			continue;

@@ -2,8 +2,10 @@
 #include "GatewaySession.h"
 #include "Manager/SendBufferManager.h"
 
-void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint16_t port, uint32_t zoneId) {
-	zoneId_ = zoneId;
+void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint16_t port, uint32_t zoneID, uint32_t channelID) {
+	zoneID_ = zoneID;
+	channelID_ = channelID;
+
 	socket_ = std::make_unique<tcp::socket>(ioc);
 	strand_ = std::make_unique<net::strand<net::io_context::executor_type>>(net::make_strand(ioc));
 
@@ -26,7 +28,8 @@ void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint
 					ZoneHandshakePacket hs{};
 					hs.header.id = PKT_ZONE_HANDSHAKE;
 					hs.header.size = sizeof(hs);
-					hs.zoneId = zoneId_;
+					hs.zoneID = zoneID_;
+					hs.channelID = channelID_;
 
 					Send(SendBufferManager::Make(&hs, sizeof(hs)));
 					DoRead();

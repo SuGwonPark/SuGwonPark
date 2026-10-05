@@ -17,7 +17,9 @@ public:
 	void Send(SendBufferRef sendBuffer);
 
 	tcp::socket& Socket() { return socket_; }
-	uint32_t GetZoneId() const { return zoneId_; }
+	uint32_t GetZoneID() const { return zoneID_; }
+
+	uint32_t GetChannelID() const { return channelID_; }
 
 private:
 	void DoRead();
@@ -27,7 +29,9 @@ private:
 	void HandleInternalPacket(uint8_t* buffer, uint16_t size);
 
 private:
-	uint32_t zoneId_;
+	uint32_t zoneID_ = 0;
+	uint32_t channelID_ = 0;
+
 	bool handshakeDone_ = false;  // 추가
 
 	tcp::socket socket_;

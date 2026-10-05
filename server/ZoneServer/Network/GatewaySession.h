@@ -17,7 +17,7 @@ public:
 	}
 
 	// Zone 프로세스 시작 시 한 번 호출해서 Gateway로 접속한다
-	void Connect(net::io_context& ioc, const std::string& host, uint16_t port, uint32_t zoneId);
+	void Connect(net::io_context& ioc, const std::string& host, uint16_t port, uint32_t zoneID, uint32_t channelID);
 
 	// Zone -> Gateway 제어 패킷 전송 (strand로 직렬화됨)
 	void Send(SendBufferRef sendBuffer);
@@ -29,16 +29,15 @@ private:
 	GatewaySession() = default;
 
 	void DoRead();
-	void OnRead(const boost::system::error_code& ec, size_t bytesTransferred);
 	void ProcessPackets();
 	void HandleInternalPacket(uint8_t* buffer, uint16_t size);
 
 	void DoWrite();
-	void OnWrite(const boost::system::error_code& ec, size_t bytesTransferred);
 
 private:
 	ZoneRef zone_;
-	uint32_t zoneId_ = 0;
+	uint32_t zoneID_ = 0;
+	uint32_t channelID_ = 0;
 	std::unique_ptr<tcp::socket> socket_;
 	std::unique_ptr<net::strand<net::io_context::executor_type>> strand_;
 

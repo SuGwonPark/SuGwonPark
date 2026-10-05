@@ -21,18 +21,6 @@ public:
 		}
 	}
 
-	bool OnRead(int32_t numOfBytes) {
-		if (numOfBytes > DataSize()) return false;
-		readPos_ += numOfBytes;
-		return true;
-	}
-
-	bool OnWrite(int32_t numOfBytes) {
-		if (numOfBytes > FreeSize()) return false;
-		writePos_ += numOfBytes;
-		return true;
-	}
-
 	uint8_t* WritePos() { return &buffer_[writePos_]; }
 	uint8_t* ReadPos() { return &buffer_[readPos_]; }
 

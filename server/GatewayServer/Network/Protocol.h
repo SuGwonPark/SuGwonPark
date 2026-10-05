@@ -24,7 +24,7 @@ struct RES_LoginPacket {
 struct RES_ZoneLeaveCompletedPacket {
 	PacketHeader header;
 	uint64_t playerID;
-	uint32_t nextZoneId;
+	uint32_t nextZoneID;
 };
 
 
@@ -45,9 +45,11 @@ struct AttackPacket {
 	int32_t damage;
 };
 
+// 존 이동
 struct ZoneHandshakePacket {
 	PacketHeader header;
-	uint32_t zoneId;
+	uint32_t zoneID;
+	uint32_t channelID;
 };
 
 struct REQ_ReadyToSpawnPacket {

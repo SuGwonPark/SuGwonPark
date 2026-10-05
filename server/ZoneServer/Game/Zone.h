@@ -11,7 +11,7 @@ public:
 	explicit Zone(uint32_t zoneId);
 	~Zone() = default;
 
-	uint32_t GetZoneId() const { return zoneId_; }
+	uint32_t GetZoneID() const { return zoneID_; }
 	JobQueueRef GetJobQueue() { return jobQueue_; }
 
 	void schedule(Job job);
@@ -30,7 +30,7 @@ private:
 	void HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t size);
 
 private:
-	uint32_t zoneId_;
+	uint32_t zoneID_;
 	JobQueueRef jobQueue_;
 	std::unordered_map<uint64_t, PlayerRef> players_;
 	std::unordered_map<uint64_t, PlayerRef> sessionToPlayer_; // sessionID -> Player (신규)

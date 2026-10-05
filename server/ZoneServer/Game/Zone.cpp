@@ -11,8 +11,8 @@ static WorkStealingThreadPool& GetZoneWorkerPool() {
 	return pool;
 }
 
-Zone::Zone(uint32_t zoneId)
-	: zoneId_(zoneId)
+Zone::Zone(uint32_t zoneID)
+	: zoneID_(zoneID)
 	, jobQueue_(std::make_shared<JobQueue>()) {
 }
 
@@ -106,7 +106,7 @@ void Zone::HandleMove(uint64_t playerID, float x, float y, float z) {
 	}
 }
 
-void Zone::HandlePortal(uint64_t playerID, uint32_t nextZoneId) {
+void Zone::HandlePortal(uint64_t playerID, uint32_t nextZoneID) {
 	auto it = players_.find(playerID);
 	if (it == players_.end()) return;
 
@@ -123,7 +123,7 @@ void Zone::HandlePortal(uint64_t playerID, uint32_t nextZoneId) {
 	ackPkt.header.size = sizeof(ackPkt);
 	ackPkt.header.id = PKT_S_ZONE_LEAVE_COMPLETED;
 	ackPkt.playerID = playerID;
-	ackPkt.nextZoneId = nextZoneId;
+	ackPkt.nextZoneID = nextZoneID;
 
 	GatewaySession::GetInstance()->Send(SendBufferManager::Make(&ackPkt, sizeof(ackPkt)));
 

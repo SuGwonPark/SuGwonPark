@@ -5,11 +5,12 @@
 
 
 int main(int argc, char* argv[]) {
-	if (argc < 2) {
+	if (argc < 3) {
 		std::cerr << "사용법: ZoneServer.exe <zoneID>" << std::endl;
 		return -1;
 	}
 	uint32_t zoneID = static_cast<uint32_t>(std::stoul(argv[1]));
+	uint32_t channelID = static_cast<uint32_t>(std::stoul(argv[2]));
 
 
 	try {
@@ -33,7 +34,7 @@ int main(int argc, char* argv[]) {
 	GatewaySession::GetInstance()->SetZone(zone);
 
 	// Gateway로 접속 (Gateway의 InternalServer가 듣고 있는 포트로)
-	GatewaySession::GetInstance()->Connect(io, "127.0.0.1", 9000, zoneID);
+	GatewaySession::GetInstance()->Connect(io, "127.0.0.1", 9000, zoneID, channelID);
 
 	std::cout << "Zone 서버 시작 - zoneID=" << zoneID << std::endl;
 	io.run();
