@@ -8,15 +8,16 @@ using PlayerRef = std::shared_ptr<Player>;
 
 class Zone : public std::enable_shared_from_this<Zone> {
 public:
-	explicit Zone(uint32_t zoneId);
+	explicit Zone(uint32_t zoneID, uint32_t channelID);
 	~Zone() = default;
 
 	uint32_t GetZoneID() const { return zoneID_; }
+	uint32_t GetChannelID() const { return channelID_; }
+
 	JobQueueRef GetJobQueue() { return jobQueue_; }
 
 	void schedule(Job job);
 
-	// JobQueue 안에서 실행되는 게임 비즈니스 로직
 	void Enter(PlayerRef player);
 	void Leave(uint64_t playerId);
 
@@ -31,6 +32,7 @@ private:
 
 private:
 	uint32_t zoneID_;
+	uint32_t channelID_;
 	JobQueueRef jobQueue_;
 	std::unordered_map<uint64_t, PlayerRef> players_;
 	std::unordered_map<uint64_t, PlayerRef> sessionToPlayer_; // sessionID -> Player (신규)

@@ -2,23 +2,29 @@
 #include "Manager/ZoneManager.h"
 #include "Manager/SendBufferManager.h"
 #include "Network/ZoneServerSession.h"
+#include "Network/protocol.h"
 
 // 존 생성
 void ZoneManager::RegisterZone(uint32_t zoneID, uint32_t channelID, ZoneServerSessionRef session) {
 	std::lock_guard<std::mutex> lock(lock_);
-	zoneServers_[MakeKey(zoneID, channelID)] = session;
+	zoneServers_[MakeZoneKey(zoneID, channelID)] = session;
 }
 
-void ZoneManager::UnregisterZone(uint32_t zoneID, uint32_t channelID) {
+void ZoneManager::UnregisterZone(uint32_t zoneID, uint32_t channelID, ZoneServerSessionRef session) {
 	std::lock_guard<std::mutex> lock(lock_);
-	zoneServers_.erase(MakeKey(zoneID, channelID));
+	auto it = zoneServers_.find(MakeZoneKey(zoneID, channelID));
+
+	// 존 서버가 있으면서 세션이 다르면 제거 
+	if (it != zoneServers_.end() && it->second == session) {
+		zoneServers_.erase(it);
+	}
 }
 
 void ZoneManager::SendToZone(uint32_t zoneID, uint32_t channelID, uint64_t sessionID, SendBufferRef clientPacketBuffer) {
 	ZoneServerSessionRef targetSession = nullptr;
 	{
 		std::lock_guard<std::mutex> lock(lock_);
-		auto it = zoneServers_.find(MakeKey(zoneID, channelID));
+		auto it = zoneServers_.find(MakeZoneKey(zoneID, channelID));
 		if (it != zoneServers_.end()) {
 			targetSession = it->second;
 		}
@@ -35,6 +41,8 @@ void ZoneManager::SendToZone(uint32_t zoneID, uint32_t channelID, uint64_t sessi
 	header->size = totalSize;
 	header->id = 9999; // 내부 포워딩용 패킷 ID
 	header->sessionID = sessionID;
+	header->zoneID = zoneID;
+	header->channelID = channelID;
 
 	// 뒤이어 원본 클라이언트 패킷 바이너리 복사
 	std::memcpy(wrappedBuffer->Buffer() + sizeof(InternalPacketHeader),
@@ -57,7 +65,7 @@ void ZoneManager::SendDisconnectToZone(uint32_t zoneID, uint32_t channelID, uint
 	SendBufferManager::Close(sizeof(header));
 
 	std::lock_guard<std::mutex> lock(lock_);
-	auto it = zoneServers_.find(MakeKey(zoneID, channelID));
+	auto it = zoneServers_.find(MakeZoneKey(zoneID, channelID));
 	if (it != zoneServers_.end()) {
 		it->second->Send(sendBuffer);
 	}

@@ -15,7 +15,7 @@ public:
 	// 존, 채널 생성
 	void RegisterZone(uint32_t zoneID, uint32_t channelID, ZoneServerSessionRef session);
 	// 존, 채널 해제
-	void UnregisterZone(uint32_t zoneID, uint32_t channelID);
+	void UnregisterZone(uint32_t zoneID, uint32_t channelID, ZoneServerSessionRef session);
 
 	// 클라이언트 패킷에 sessionId 헤더를 감싸서 타겟 Zone으로 포워딩
 	void SendToZone(uint32_t zoneID, uint32_t channelID, uint64_t sessionId, SendBufferRef clientPacketBuffer);
@@ -27,12 +27,7 @@ private:
 	ZoneManager() = default;
 	~ZoneManager() = default;
 
-	static uint64_t MakeKey(uint32_t zoneID, uint32_t channelId) {
-		// 64비트중 32비트는zoneID 뒤에 32비트는 ChannelID로 나뉘어 관리
-		return (static_cast<uint64_t>(zoneID) << 32) | channelId;
-	}
-
 private:
 	std::mutex lock_;
-	std::unordered_map<uint32_t, ZoneServerSessionRef> zoneServers_;
+	std::unordered_map<uint64_t, ZoneServerSessionRef> zoneServers_;
 };

@@ -11,8 +11,9 @@ static WorkStealingThreadPool& GetZoneWorkerPool() {
 	return pool;
 }
 
-Zone::Zone(uint32_t zoneID)
+Zone::Zone(uint32_t zoneID, uint32_t channelID)
 	: zoneID_(zoneID)
+	, channelID_(channelID)
 	, jobQueue_(std::make_shared<JobQueue>()) {
 }
 
@@ -73,15 +74,15 @@ void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t siz
 }
 
 void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t size) {
-	if (size < sizeof(REQ_ReadyToSpawnPacket)) return;
-	auto* req = reinterpret_cast<REQ_ReadyToSpawnPacket*>(payload);
+	//if (size < sizeof(REQ_ReadyToSpawnPacket)) return;
+	//auto* req = reinterpret_cast<REQ_ReadyToSpawnPacket*>(payload);
 
-	// DB에서 마지막 캐릭터 정보 로드하여 저장
-	PlayerRef player = std::make_shared<Player>(req->playerID, "playerName", 0, 0, 0, 100, 0);
-	player->SetSessionID(sessionID);
+	//// DB에서 마지막 캐릭터 정보 로드하여 저장
+	//PlayerRef player = std::make_shared<Player>(req->playerID, "playerName", 0, 0, 0, 100, 0);
+	//player->SetSessionID(sessionID);
 
-	Enter(player);
-	sessionToPlayer_[sessionID] = player;
+	//Enter(player);
+	//sessionToPlayer_[sessionID] = player;
 }
 
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z) {
@@ -125,8 +126,6 @@ void Zone::HandlePortal(uint64_t playerID, uint32_t nextZoneID) {
 	ackPkt.playerID = playerID;
 	ackPkt.nextZoneID = nextZoneID;
 
-	GatewaySession::GetInstance()->Send(SendBufferManager::Make(&ackPkt, sizeof(ackPkt)));
-
-
-
+	GatewaySession::GetInstance()->SendToClient(
+		player->GetSessionID(), zoneID_, channelID_, &ackPkt, sizeof(ackPkt));
 }

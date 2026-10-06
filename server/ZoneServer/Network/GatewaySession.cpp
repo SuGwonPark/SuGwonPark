@@ -2,10 +2,7 @@
 #include "GatewaySession.h"
 #include "Manager/SendBufferManager.h"
 
-void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint16_t port, uint32_t zoneID, uint32_t channelID) {
-	zoneID_ = zoneID;
-	channelID_ = channelID;
-
+void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint16_t port) {
 	socket_ = std::make_unique<tcp::socket>(ioc);
 	strand_ = std::make_unique<net::strand<net::io_context::executor_type>>(net::make_strand(ioc));
 
@@ -25,13 +22,26 @@ void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint
 					isConnected_.store(true);
 					std::cout << "[GatewaySession] Gateway 접속 성공" << std::endl;
 
-					ZoneHandshakePacket hs{};
-					hs.header.id = PKT_ZONE_HANDSHAKE;
-					hs.header.size = sizeof(hs);
-					hs.zoneID = zoneID_;
-					hs.channelID = channelID_;
+					// 세팅된 zone,Channel 총 개수
+					uint16_t count = static_cast<uint16_t> (zones_.size());
+					// Zone,ChannelID 갯수만큼 size를 잡는다
+					uint16_t total = static_cast<uint16_t>(sizeof(ZoneHandshakePacket) + count * sizeof(ZoneKeyEntry));
 
-					Send(SendBufferManager::Make(&hs, sizeof(hs)));
+					SendBufferRef buf = SendBufferManager::Open(total);
+					auto* hs = reinterpret_cast<ZoneHandshakePacket*> (buf->Buffer());
+					hs->header.id = PKT_ZONE_HANDSHAKE;
+					hs->header.size = total;
+					hs->count = count;
+
+					auto* list = reinterpret_cast<ZoneKeyEntry*> (buf->Buffer() + sizeof(ZoneHandshakePacket));
+					int i = 0;
+					for (auto& [key, zone] : zones_) {
+						list[i++] = { zone->GetZoneID(), zone->GetChannelID() };
+					}
+					SendBufferManager::Close(total);
+
+					Send(buf);
+
 					DoRead();
 				});
 		});
@@ -100,6 +110,7 @@ void GatewaySession::Send(SendBufferRef sendBuffer) {
 		});
 }
 
+
 void GatewaySession::DoWrite() {
 	SendBufferRef sendBuffer = sendQueue_.front();
 
@@ -128,7 +139,31 @@ void GatewaySession::HandleInternalPacket(uint8_t* buffer, uint16_t size) {
 	uint16_t payloadSize = size - sizeof(InternalPacketHeader);
 	uint8_t* payload = buffer + sizeof(InternalPacketHeader);
 
-	if (!zone_) return; // 존이 세팅 안됬으면 무시
+	auto it = zones_.find(MakeZoneKey(header->zoneID, header->channelID));
 
-	zone_->HandleClientPacket(header->sessionID, payload, payloadSize);
+	if (it == zones_.end()) return; // 존이 세팅 안됬으면 무시
+
+	it->second->HandleClientPacket(header->sessionID, payload, payloadSize);
+}
+
+void GatewaySession::AddZone(ZoneRef zone)
+{
+	zones_[MakeZoneKey(zone->GetZoneID(), zone->GetChannelID())] = zone;
+}
+
+void GatewaySession::SendToClient(uint64_t sessionID, uint32_t zoneID, uint32_t channelID, const void* data, uint16_t size) {
+	uint16_t total = static_cast<uint16_t>(sizeof(InternalPacketHeader) + size);
+	SendBufferRef buf = SendBufferManager::Open(total);
+
+	auto* h = reinterpret_cast<InternalPacketHeader*>(buf->Buffer());
+	h->size = total;
+	h->id = 9999;
+	h->sessionID = sessionID;
+	h->zoneID = zoneID;
+	h->channelID = channelID;
+
+	std::memcpy(buf->Buffer() + sizeof(InternalPacketHeader), data, size);
+
+	SendBufferManager::Close(total);
+	Send(buf);
 }

@@ -27,8 +27,8 @@ void ZoneServerSession::Close() {
 			self->socket_.close(ec);
 
 			// 내부 백본 연결이 끊기면 라우팅 테이블에서도 제거
-			if (self->handshakeDone_) {
-				ZoneManager::GetInstance()->UnregisterZone(self->zoneID_, self->channelID_);
+			for (const auto& e : self->zoneKeys_) {
+				ZoneManager::GetInstance()->UnregisterZone(e.zoneID, e.channelID, self);
 			}
 			});
 
@@ -77,14 +77,24 @@ void ZoneServerSession::ProcessPackets() {
 			ZoneHandshakePacket* hs = reinterpret_cast<ZoneHandshakePacket*>(&recvBuffer_[readPos_]);
 			if (dataSize < hs->header.size) break;
 
-			zoneID_ = hs->zoneID;
-			channelID_ = hs->channelID;
+
+			// 크기 검증 : 헤더에 적힌 count와 크기가 맞는지 확인
+			size_t expected = sizeof(ZoneHandshakePacket) + hs->count * sizeof(ZoneKeyEntry);
+			if (hs->header.id != PKT_ZONE_HANDSHAKE || hs->header.size != expected) {
+				Close();
+				return;
+			}
+
+			auto* list = reinterpret_cast<ZoneKeyEntry*>(
+				&recvBuffer_[readPos_] + sizeof(ZoneHandshakePacket));
+			zoneKeys_.assign(list, list + hs->count);
+
+			for (const auto& e : zoneKeys_) {
+				ZoneManager::GetInstance()->RegisterZone(e.zoneID, e.channelID, shared_from_this());
+			}
+			std::cout << "Zone 서버 등록: 인스턴스 " << zoneKeys_.size() << "개" << std::endl;
 
 			handshakeDone_ = true;
-			// 존, 채널 등록
-			ZoneManager::GetInstance()->RegisterZone(zoneID_, channelID_, shared_from_this());
-			std::cout << "Zone 등록됨: zoneId=" << zoneID_ << std::endl;
-
 			readPos_ += hs->header.size;
 			continue;
 		}
@@ -110,7 +120,7 @@ void ZoneServerSession::HandleInternalPacket(uint8_t* buffer, uint16_t size) {
 	uint16_t payloadSize = size - sizeof(InternalPacketHeader);
 	uint8_t* payload = buffer + sizeof(InternalPacketHeader);
 
-	// Zone이 이 응답을 누구한테 보내는 건지는 header->sessionId로만 알 수 있음
+	// Zone이 이 응답을 누구한테 보내는 건지는 header->sessionID로만 알 수 있음
 	// → SessionManager에서 실제 ClientProxySession을 찾아서 그대로 전달
 	ClientProxySessionRef target = SessionManager::GetInstance()->FindSession(header->sessionID);
 	if (!target) return; // 이미 끊긴 클라이언트면 조용히 버림
@@ -120,7 +130,7 @@ void ZoneServerSession::HandleInternalPacket(uint8_t* buffer, uint16_t size) {
 		PacketHeader* inner = reinterpret_cast<PacketHeader*> (payload);
 		if (inner->id == PKT_S_ZONE_LEAVE_COMPLETED) {
 			auto* ack = reinterpret_cast<RES_ZoneLeaveCompletedPacket*>(payload);
-			target->OnZone1LeaveCompleted(ack->nextZoneId);
+			target->OnZone1LeaveCompleted(ack->nextZoneID);
 			return;
 		}
 	}

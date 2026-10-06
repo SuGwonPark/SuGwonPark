@@ -11,7 +11,7 @@ private:
 	int hp_;
 	uint64_t exp_;
 
-	uint32_t sessionID_ = 0;
+	uint64_t sessionID_ = 0;
 
 public:
 	Player(uint64_t playerID, std::string name, int x, int y, int z, int hp, uint64_t exp);
@@ -35,7 +35,5 @@ public:
 	int GetHp() const { return hp_; }
 
 	// ★ 추가: 세션 연결 + 패킷 전송
-	void SetSession(uint32_t sessionID) { sessionID_ = sessionID; }
 	void Send(const void* data, uint32_t length);
-
 };

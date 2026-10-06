@@ -17,12 +17,13 @@ public:
 	}
 
 	// Zone 프로세스 시작 시 한 번 호출해서 Gateway로 접속한다
-	void Connect(net::io_context& ioc, const std::string& host, uint16_t port, uint32_t zoneID, uint32_t channelID);
+	void Connect(net::io_context& ioc, const std::string& host, uint16_t port);
 
 	// Zone -> Gateway 제어 패킷 전송 (strand로 직렬화됨)
 	void Send(SendBufferRef sendBuffer);
-	void SetZone(ZoneRef zone) { zone_ = zone; }
+	void AddZone(ZoneRef zone);
 
+	void SendToClient(uint64_t sessionID, uint32_t zoneID, uint32_t channelID, const void* data, uint16_t size);
 	bool IsConnected() const { return isConnected_.load(); }
 
 private:
@@ -35,7 +36,7 @@ private:
 	void DoWrite();
 
 private:
-	ZoneRef zone_;
+	std::unordered_map<uint64_t, ZoneRef> zones_;
 	uint32_t zoneID_ = 0;
 	uint32_t channelID_ = 0;
 	std::unique_ptr<tcp::socket> socket_;

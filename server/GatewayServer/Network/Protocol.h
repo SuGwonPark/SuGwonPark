@@ -45,28 +45,33 @@ struct AttackPacket {
 	int32_t damage;
 };
 
-// 존 이동
-struct ZoneHandshakePacket {
-	PacketHeader header;
+#pragma pack(push, 1)
+// 핸드셰이크에 담을 인스턴스 하나
+struct ZoneKeyEntry {
 	uint32_t zoneID;
 	uint32_t channelID;
 };
 
-struct REQ_ReadyToSpawnPacket {
+// 가변 길이 패킷: 헤더 뒤에 ZoneKeyEntry가 count개 이어짐
+struct ZoneHandshakePacket {
 	PacketHeader header;
-	uint64_t playerID;
+	uint16_t count;
+	// ZoneKeyEntry entries[count];
 };
 
-// 게이트웨이 <-> 내부 Zone 서버 간 패킷 래퍼 헤더
-#pragma pack(push, 1)
+// 게이트웨이 <-> Zone 서버 간 래퍼 헤더
 struct InternalPacketHeader {
-	uint16_t size;        // 내부 패킷 전체 크기
-	uint16_t id;          // 내부 패킷 ID
-	uint64_t sessionID;   // 클라이언트 세션 고유 ID
+	uint16_t size;
+	uint16_t id;
+	uint64_t sessionID;
+	uint32_t zoneID;      // 추가: 목적지(또는 출발지) 인스턴스
+	uint32_t channelID;   // 추가
 };
 #pragma pack(pop)
 
-
+inline uint64_t MakeZoneKey(uint32_t zoneID, uint32_t channelID) {
+	return (static_cast<uint64_t>(zoneID) << 32) | channelID;
+}
 
 // 패킷 ID 정의 모음
 enum PacketID : uint16_t {
