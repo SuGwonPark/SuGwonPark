@@ -103,6 +103,13 @@ void ClientProxySession::RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint
 		Account::GetInstance()->Login(
 			shared_from_this(), reinterpret_cast<REQ_LoginPacket*>(packetPtr));
 		return;
+	case PKT_C_READY_TO_SPAWN: {
+		uint64_t pid = playerID_.load();
+		if (pid == 0) return;
+		if (packetSize < sizeof(REQ_ReadyToSpawnPacket)) return;
+		reinterpret_cast <REQ_ReadyToSpawnPacket*>(packetPtr)->playerID = pid;
+		break;
+	}
 
 	default:
 		break;

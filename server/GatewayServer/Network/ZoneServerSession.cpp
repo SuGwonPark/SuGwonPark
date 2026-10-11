@@ -71,6 +71,7 @@ void ZoneServerSession::ProcessPackets() {
 	while (true) {
 		size_t dataSize = writePos_ - readPos_;
 
+		// 처음 연결시 1번만
 		if (!handshakeDone_) {
 			if (dataSize < sizeof(ZoneHandshakePacket)) break;
 
@@ -92,6 +93,7 @@ void ZoneServerSession::ProcessPackets() {
 			for (const auto& e : zoneKeys_) {
 				ZoneManager::GetInstance()->RegisterZone(e.zoneID, e.channelID, shared_from_this());
 			}
+
 			std::cout << "Zone 서버 등록: 인스턴스 " << zoneKeys_.size() << "개" << std::endl;
 
 			handshakeDone_ = true;

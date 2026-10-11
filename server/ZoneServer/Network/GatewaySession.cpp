@@ -143,6 +143,12 @@ void GatewaySession::HandleInternalPacket(uint8_t* buffer, uint16_t size) {
 
 	if (it == zones_.end()) return; // 존이 세팅 안됬으면 무시
 
+	// 연결 종료
+	if (header->id == PKT_INTERNAL_DISCONNECT) {
+		it->second->HandleDisconnect(header->sessionID);
+		return;
+	}
+
 	it->second->HandleClientPacket(header->sessionID, payload, payloadSize);
 }
 
@@ -157,7 +163,7 @@ void GatewaySession::SendToClient(uint64_t sessionID, uint32_t zoneID, uint32_t 
 
 	auto* h = reinterpret_cast<InternalPacketHeader*>(buf->Buffer());
 	h->size = total;
-	h->id = 9999;
+	h->id = PKT_INTERNAL_FORWARD;
 	h->sessionID = sessionID;
 	h->zoneID = zoneID;
 	h->channelID = channelID;

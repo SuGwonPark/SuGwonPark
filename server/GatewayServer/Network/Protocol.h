@@ -28,7 +28,13 @@ struct RES_ZoneLeaveCompletedPacket {
 };
 
 
-// 이동 패킷
+struct REQ_ReadyToSpawnPacket {
+	PacketHeader header;
+	uint64_t playerID;   // 클라가 보내도 Gateway가 덮어씀
+};
+
+
+// 이동 패킷 
 struct MovePacket {
 	PacketHeader header;
 	uint64_t playerID;
@@ -99,6 +105,8 @@ enum PacketID : uint16_t {
 
 	// PacketID enum에 추가
 	PKT_ZONE_HANDSHAKE = 9997,
+	PKT_INTERNAL_DISCONNECT = 9998,
+	PKT_INTERNAL_FORWARD = 9999,
 };
 
 

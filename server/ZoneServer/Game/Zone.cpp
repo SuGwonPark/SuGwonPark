@@ -31,12 +31,38 @@ void Zone::schedule(Job job)
 
 void Zone::Enter(PlayerRef player) {
 	players_[player->GetPlayerID()] = player;
+	sessionToPlayer_[player->GetPlayerID()] = player;
 	// 주변 시야(AOI) 내 유저들에게 입장 알림 브로드캐스트
 }
 
 void Zone::Leave(uint64_t playerID) {
-	players_.erase(playerID);
-	// 주변 시야 내 유저들에게 퇴장 알림 브로드캐스트
+	auto it = players_.find(playerID);
+	if (it == players_.end())return;
+
+	sessionToPlayer_.erase(it->second->GetSessionID());
+	players_.erase(it);
+}
+
+void Zone::HandleDisconnect(uint64_t sessionID) {
+	auto self = shared_from_this();
+	// 스케쥴 시작
+	schedule([self, sessionID]() {
+		// 세션 ID 확인 없으면 종료
+		auto it = self->sessionToPlayer_.find(sessionID);
+		if (it == self->sessionToPlayer_.end()) return;
+
+		// 세션 캐릭터 정보
+		PlayerRef player = it->second;
+		// 캐릭터 정보 저장
+		GameDB::Instance().SaveCharacterProgressAsync(
+			player->GetPlayerID(), player->GetExp(),
+			player->GetX(), player->GetY(), player->GetZ(), player->GetHp());
+
+		// 퇴장 처리
+		self->Leave(player->GetPlayerID());
+		// 현재 존의 플레이어 정보 삭제
+		self->sessionToPlayer_.erase(it);
+		});
 }
 
 void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t size) {
@@ -74,15 +100,43 @@ void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t siz
 }
 
 void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t size) {
-	//if (size < sizeof(REQ_ReadyToSpawnPacket)) return;
-	//auto* req = reinterpret_cast<REQ_ReadyToSpawnPacket*>(payload);
+	if (size < sizeof(REQ_ReadyToSpawnPacket)) return;
+	uint64_t playerID = reinterpret_cast<REQ_ReadyToSpawnPacket*>(payload)->playerID;
 
-	//// DB에서 마지막 캐릭터 정보 로드하여 저장
-	//PlayerRef player = std::make_shared<Player>(req->playerID, "playerName", 0, 0, 0, 100, 0);
-	//player->SetSessionID(sessionID);
+	// 중복 스폰 방지
+	if (sessionToPlayer_.count(sessionID)) return;
 
-	//Enter(player);
-	//sessionToPlayer_[sessionID] = player;
+	auto self = shared_from_this();
+
+	GameDB::Instance().PushTask([self, sessionID, playerID](mysqlx::Session& db) {
+		try {
+			auto row = db.sql("SELECT name, x, y, z, hp, exp, FROM `character` WHERE playerID = ?")
+				.bind(playerID).execute().fetchOne();
+			if (row.isNull()) return;
+
+			std::string name = row[0].get<std::string>();
+			int x = row[1].get<float>(), y = row[2].get<float>(), z = row[3].get<float>();
+			int hp = row[4].get<int>();
+			uint64_t exp = row[5].get<uint64_t>();
+
+			self->schedule([=]() {
+				auto player = std::make_shared<Player>(playerID, name, x, y, z, hp, exp);
+				player->SetSessionID(sessionID);
+				self->Enter(player);
+				self->sessionToPlayer_[sessionID] = player;
+				});
+		}
+		catch (const mysqlx::Error& e) {
+			std::cerr << "[Spawn] DB 로드 실패:" << e.what() << std::endl;
+		}
+		});
+
+	// DB에서 마지막 캐릭터 정보 로드하여 저장
+	PlayerRef player = std::make_shared<Player>(req->playerID, "playerName", 0, 0, 0, 100, 0);
+	player->SetSessionID(sessionID);
+
+	Enter(player);
+	sessionToPlayer_[sessionID] = player;
 }
 
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z) {
@@ -99,11 +153,11 @@ void Zone::HandleMove(uint64_t playerID, float x, float y, float z) {
 	pkt.y = y;
 	pkt.z = z;
 
-	// 지금은 Zone 전체한테 뿌리는 가장 단순한 버전.
-	// 나중에 players_를 순회할 때 거리 체크(x_,y_,z_ 비교)만 추가하면 진짜 AOI가 됩니다.
+	// 지금은 Zone 전체에 뿌린다.
 	for (auto& [otherId, other] : players_) {
 		if (otherId == playerID) continue;
-		other->Send(&pkt, sizeof(pkt));
+		GatewaySession::GetInstance()->SendToClient(
+			other->GetSessionID(), zoneID_, channelID_, &pkt, sizeof(pkt));
 	}
 }
 
@@ -119,6 +173,7 @@ void Zone::HandlePortal(uint64_t playerID, uint32_t nextZoneID) {
 
 	// 1. Zone 월드에서 서버 제거 (추가 피격/상호작용 방지)
 	Leave(playerID);
+
 
 	RES_ZoneLeaveCompletedPacket ackPkt;
 	ackPkt.header.size = sizeof(ackPkt);

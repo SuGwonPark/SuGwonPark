@@ -2,7 +2,7 @@
 #include "Manager/ZoneManager.h"
 #include "Manager/SendBufferManager.h"
 #include "Network/ZoneServerSession.h"
-#include "Network/protocol.h"
+#include "Network/Protocol.h"
 
 // 존 생성
 void ZoneManager::RegisterZone(uint32_t zoneID, uint32_t channelID, ZoneServerSessionRef session) {
@@ -14,7 +14,7 @@ void ZoneManager::UnregisterZone(uint32_t zoneID, uint32_t channelID, ZoneServer
 	std::lock_guard<std::mutex> lock(lock_);
 	auto it = zoneServers_.find(MakeZoneKey(zoneID, channelID));
 
-	// 존 서버가 있으면서 세션이 다르면 제거 
+	// 존 서버가 있으면서 세션이 같으면 제거
 	if (it != zoneServers_.end() && it->second == session) {
 		zoneServers_.erase(it);
 	}
@@ -39,7 +39,7 @@ void ZoneManager::SendToZone(uint32_t zoneID, uint32_t channelID, uint64_t sessi
 
 	InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(wrappedBuffer->Buffer());
 	header->size = totalSize;
-	header->id = 9999; // 내부 포워딩용 패킷 ID
+	header->id = PKT_INTERNAL_FORWARD;
 	header->sessionID = sessionID;
 	header->zoneID = zoneID;
 	header->channelID = channelID;
@@ -55,10 +55,12 @@ void ZoneManager::SendToZone(uint32_t zoneID, uint32_t channelID, uint64_t sessi
 
 void ZoneManager::SendDisconnectToZone(uint32_t zoneID, uint32_t channelID, uint64_t sessionID) {
 	// 세션 종료 알림 패킷을 해당 Zone으로 전송하여 메모리 정리 유도
-	InternalPacketHeader header;
+	InternalPacketHeader header{};
 	header.size = sizeof(InternalPacketHeader);
 	header.id = 9998; // DISCONNECT 패킷 ID
 	header.sessionID = sessionID;
+	header.zoneID = zoneID;
+	header.channelID = channelID;
 
 	SendBufferRef sendBuffer = SendBufferManager::Open(sizeof(header));
 	sendBuffer->Write(&header, sizeof(header));

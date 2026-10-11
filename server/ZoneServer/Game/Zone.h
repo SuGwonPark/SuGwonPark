@@ -21,6 +21,7 @@ public:
 	void Enter(PlayerRef player);
 	void Leave(uint64_t playerId);
 
+	void HandleDisconnect(uint64_t sessionID);
 	void HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t size);
 	void HandleMove(uint64_t playerId, float x, float y, float z);
 

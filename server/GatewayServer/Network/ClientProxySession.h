@@ -28,6 +28,8 @@ public:
 	uint32_t GetCurrentChannelID() const { return currentChannelID_.load(std::memory_order_relaxed); }
 	void SetCurrentChannelID(uint32_t channelID) { currentChannelID_.store(channelID, std::memory_order_relaxed); }
 
+	uint64_t GetPlayerID() const { return playerID_.load(); }
+	void SetPlayerID(uint64_t playerID) { playerID_.store(playerID); }
 
 private:
 	// 네트워크 I/O 루프
@@ -41,6 +43,7 @@ private:
 
 private:
 	const uint64_t sessionID_;
+	std::atomic<uint64_t> playerID_{ 0 };
 	tcp::socket socket_;
 	net::strand<net::io_context::executor_type> strand_;
 
