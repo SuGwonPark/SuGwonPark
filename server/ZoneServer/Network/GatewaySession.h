@@ -1,6 +1,6 @@
 #pragma once
 #include "pch.h"
-#include "Network/Protocol.h"
+#include "Protocol/InternalPackets.h"
 #include "Network/SendBuffer.h"
 #include "Game/Zone.h"
 

@@ -43,7 +43,6 @@
     <ClInclude Include="..\GatewayServer\JobSystem\WorkStealingQueue.h" />
     <ClInclude Include="..\GatewayServer\JobSystem\WorkStealingThreadPool.h" />
     <ClInclude Include="..\GatewayServer\Manager\SendBufferManager.h" />
-    <ClInclude Include="..\GatewayServer\Network\Protocol.h" />
     <ClInclude Include="..\GatewayServer\Network\SendBuffer.h" />
     <ClInclude Include="Game\Player.h" />
     <ClInclude Include="Game\Zone.h" />
@@ -102,6 +101,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -139,7 +141,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;_WIN32_WINNT=0x0A00;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\GatewayServer\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\GatewayServer\;%(AdditionalIncludeDirectories);$(SolutionDir)Common\</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>

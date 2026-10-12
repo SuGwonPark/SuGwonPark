@@ -2,7 +2,7 @@
 #include "Zone.h"
 #include "Player.h"
 #include "DB/GameDB.h"
-#include "Network/Protocol.h"
+#include "Protocol/InternalPackets.h"
 #include "Network/GatewaySession.h"
 #include "Manager/SendBufferManager.h"
 
@@ -31,7 +31,7 @@ void Zone::schedule(Job job)
 
 void Zone::Enter(PlayerRef player) {
 	players_[player->GetPlayerID()] = player;
-	sessionToPlayer_[player->GetPlayerID()] = player;
+	sessionToPlayer_[player->GetSessionID()] = player;
 	// 주변 시야(AOI) 내 유저들에게 입장 알림 브로드캐스트
 }
 
@@ -60,8 +60,6 @@ void Zone::HandleDisconnect(uint64_t sessionID) {
 
 		// 퇴장 처리
 		self->Leave(player->GetPlayerID());
-		// 현재 존의 플레이어 정보 삭제
-		self->sessionToPlayer_.erase(it);
 		});
 }
 
@@ -110,7 +108,7 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
 
 	GameDB::Instance().PushTask([self, sessionID, playerID](mysqlx::Session& db) {
 		try {
-			auto row = db.sql("SELECT name, x, y, z, hp, exp, FROM `character` WHERE playerID = ?")
+			auto row = db.sql("SELECT name, PosX, PosY, PosZ, hp, exp FROM `character` WHERE playerID = ?")
 				.bind(playerID).execute().fetchOne();
 			if (row.isNull()) return;
 
@@ -131,12 +129,6 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
 		}
 		});
 
-	// DB에서 마지막 캐릭터 정보 로드하여 저장
-	PlayerRef player = std::make_shared<Player>(req->playerID, "playerName", 0, 0, 0, 100, 0);
-	player->SetSessionID(sessionID);
-
-	Enter(player);
-	sessionToPlayer_[sessionID] = player;
 }
 
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z) {

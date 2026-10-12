@@ -71,9 +71,6 @@
     <ClInclude Include="..\GatewayServer\DB\RedisDB.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="..\GatewayServer\Network\Protocol.h">
-      <Filter>Network</Filter>
-    </ClInclude>
     <ClInclude Include="..\GatewayServer\Network\SendBuffer.h">
       <Filter>Network</Filter>
     </ClInclude>

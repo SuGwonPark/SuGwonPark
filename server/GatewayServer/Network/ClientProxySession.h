@@ -1,6 +1,6 @@
 #pragma once
 #include "pch.h"
-#include "Network/Protocol.h"
+#include "Protocol/Packets.h"
 #include "Network/SendBuffer.h"
 
 class ClientProxySession : public std::enable_shared_from_this<ClientProxySession> {
@@ -21,7 +21,7 @@ public:
 
 	// Getters & Setters
 	tcp::socket& Socket() { return socket_; }
-	uint64_t GetSessionId() const { return sessionID_; }
+	uint64_t GetSessionID() const { return sessionID_; }
 	uint32_t GetCurrentZoneID() const { return currentZoneID_.load(std::memory_order_relaxed); }
 	void SetCurrentZoneID(uint32_t zoneId) { currentZoneID_.store(zoneId, std::memory_order_relaxed); }
 
@@ -30,6 +30,9 @@ public:
 
 	uint64_t GetPlayerID() const { return playerID_.load(); }
 	void SetPlayerID(uint64_t playerID) { playerID_.store(playerID); }
+
+	uint64_t GetUserUID() const { return userUID_.load(); }
+	void SetUserUID(uint64_t uid) { userUID_.store(uid); }
 
 private:
 	// 네트워크 I/O 루프
@@ -42,7 +45,11 @@ private:
 
 
 private:
+	// 세션 아이디
 	const uint64_t sessionID_;
+	// 유저 유니크 키
+	std::atomic<uint64_t> userUID_{ 0 };
+	// 캐릭터 유니크 키
 	std::atomic<uint64_t> playerID_{ 0 };
 	tcp::socket socket_;
 	net::strand<net::io_context::executor_type> strand_;

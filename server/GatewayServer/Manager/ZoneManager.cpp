@@ -2,7 +2,7 @@
 #include "Manager/ZoneManager.h"
 #include "Manager/SendBufferManager.h"
 #include "Network/ZoneServerSession.h"
-#include "Network/Protocol.h"
+#include "Protocol/InternalPackets.h"
 
 // 존 생성
 void ZoneManager::RegisterZone(uint32_t zoneID, uint32_t channelID, ZoneServerSessionRef session) {

@@ -3,7 +3,6 @@
 #include "Manager/ZoneManager.h"   
 #include "Manager/SendBufferManager.h"
 #include "DB/GameDB.h"
-
 #include "Game/Account.h"
 
 
@@ -102,6 +101,15 @@ void ClientProxySession::RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint
 	case PKT_C_LOGIN:
 		Account::GetInstance()->Login(
 			shared_from_this(), reinterpret_cast<REQ_LoginPacket*>(packetPtr));
+		return;
+	case PKT_C_CHARACTER_LIST:
+		Account::GetInstance()->SendCharacterList(shared_from_this());
+		return;
+
+	case PKT_C_SELECT_CHARACTER:
+		if (packetSize < sizeof(REQ_SelectCharacterPacket)) return;
+		//Account::GetInstance()->SelectCharacter(shared_from_this(),
+			//reinterpret_cast<REQ_SelectCharacterPacket*>(packetPtr)->playerID);
 		return;
 	case PKT_C_READY_TO_SPAWN: {
 		uint64_t pid = playerID_.load();

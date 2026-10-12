@@ -46,13 +46,10 @@ namespace DB {
 			{
 				std::unique_lock<std::mutex> lock(queueMutex_);
 				cv_.wait(lock, [this]() {return stop_ || !taskQueue_.empty(); });
+				if (stop_ && taskQueue_.empty()) return;
+				task = std::move(taskQueue_.front());
+				taskQueue_.pop();
 			}
-
-			if (stop_ && taskQueue_.empty()) return;
-
-			task = std::move(taskQueue_.front());
-			taskQueue_.pop();
-
 			try {
 				task(session);  // DB 작업 실행
 			}

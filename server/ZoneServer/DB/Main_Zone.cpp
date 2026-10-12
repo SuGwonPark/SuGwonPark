@@ -5,9 +5,6 @@
 
 
 int main(int argc, char* argv[]) {
-	uint32_t zoneID = static_cast<uint32_t>(std::stoul(argv[1]));
-	uint32_t channelID = static_cast<uint32_t>(std::stoul(argv[2]));
-
 	// 추후 config로 처리
 	std::vector<std::pair<uint32_t, uint32_t>> zoneConfig = {
 		{1,1}, {1,2}, {1,3}, {1,4},
@@ -22,13 +19,11 @@ int main(int argc, char* argv[]) {
 
 	}
 	catch (const mysqlx::Error& err) {
-
 		std::cerr << "MySQL Error: " << err.what() << std::endl;
 	}
 	catch (const std::exception& err) {
 		// 기타 표준 예외 감지
 		std::cerr << "Standard Exception: " << err.what() << std::endl;
-
 	}
 	boost::asio::io_context io;
 

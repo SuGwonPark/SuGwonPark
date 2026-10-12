@@ -15,7 +15,7 @@ void Server::Accept() {
 		[this, session](boost::system::error_code ec) {
 			if (!ec) {
 				std::cout << "클라이언트 접속: " << session->Socket().remote_endpoint()
-					<< " (sessionId=" << session->GetSessionId() << ")" << std::endl;
+					<< " (sessionId=" << session->GetSessionID() << ")" << std::endl;
 				session->Start();
 			}
 			Accept(); // 다음 접속 대기

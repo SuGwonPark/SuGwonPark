@@ -20,8 +20,6 @@ public:
 		}
 	}
 
-	void SaveCharacterProgressAsync(uint64_t userUID, uint64_t exp, float x, float y, float z, int hp);
-
 private:
 	AccountDB() = default;
 	std::unique_ptr<DB::DBThreadPool> pool_;
