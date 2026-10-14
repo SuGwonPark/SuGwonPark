@@ -18,14 +18,19 @@ public:
 
 	void schedule(Job job);
 
+	// 존 입장
 	void Enter(PlayerRef player);
+	// 존 퇴장
 	void Leave(uint64_t playerId);
 
+	// 종료
 	void HandleDisconnect(uint64_t sessionID);
+
 	void HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t size);
+	// 캐릭터 무브
 	void HandleMove(uint64_t playerId, float x, float y, float z);
 
-	// 포탈 진입 -> 잔여 큐 소진(Drain) & 저장 & Gateway 핸드셰이크 트리거
+	// 존 이동
 	void HandlePortal(uint64_t playerId, uint32_t nextZoneId);
 
 private:

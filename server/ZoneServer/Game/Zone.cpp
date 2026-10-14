@@ -56,7 +56,7 @@ void Zone::HandleDisconnect(uint64_t sessionID) {
 		// 캐릭터 정보 저장
 		GameDB::Instance().SaveCharacterProgressAsync(
 			player->GetPlayerID(), player->GetExp(),
-			player->GetX(), player->GetY(), player->GetZ(), player->GetHp());
+			player->GetX(), player->GetY(), player->GetZ(), player->GetHp(), player->GetMp(), self->GetZoneID());
 
 		// 퇴장 처리
 		self->Leave(player->GetPlayerID());
@@ -108,17 +108,17 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
 
 	GameDB::Instance().PushTask([self, sessionID, playerID](mysqlx::Session& db) {
 		try {
-			auto row = db.sql("SELECT name, PosX, PosY, PosZ, hp, exp FROM `character` WHERE playerID = ?")
+			auto row = db.sql("SELECT name, PosX, PosY, PosZ, hp, mp, exp FROM `character` WHERE playerID = ?")
 				.bind(playerID).execute().fetchOne();
 			if (row.isNull()) return;
 
 			std::string name = row[0].get<std::string>();
 			int x = row[1].get<float>(), y = row[2].get<float>(), z = row[3].get<float>();
-			int hp = row[4].get<int>();
-			uint64_t exp = row[5].get<uint64_t>();
+			int hp = row[4].get<int>(); int mp = row[5].get<int>();
+			uint64_t exp = row[6].get<uint64_t>();
 
 			self->schedule([=]() {
-				auto player = std::make_shared<Player>(playerID, name, x, y, z, hp, exp);
+				auto player = std::make_shared<Player>(playerID, name, x, y, z, hp, mp, exp);
 				player->SetSessionID(sessionID);
 				self->Enter(player);
 				self->sessionToPlayer_[sessionID] = player;
@@ -160,7 +160,7 @@ void Zone::HandlePortal(uint64_t playerID, uint32_t nextZoneID) {
 	PlayerRef player = it->second;
 
 	GameDB::Instance().SaveCharacterProgressAsync(
-		playerID, player->GetExp(), player->GetX(), player->GetY(), player->GetZ(), player->GetHp()
+		playerID, player->GetExp(), player->GetX(), player->GetY(), player->GetZ(), player->GetHp(), player->GetMp(), nextZoneID
 	);
 
 	// 1. Zone 월드에서 서버 제거 (추가 피격/상호작용 방지)

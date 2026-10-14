@@ -1,5 +1,5 @@
-#pragma once
-#include "Network/ClientProxySession.h"   // ClientProxySessionRef
+ï»¿#pragma once
+#include "Network/ClientProxySession.h"   
 #include "Protocol/Packets.h"
 
 class Account {
@@ -9,12 +9,12 @@ public:
 		return &instance;
 	}
 
+	// ë¡œê·¸ì¸
 	void Login(ClientProxySessionRef session, const REQ_LoginPacket* pkt);
-
-	// Ä³¸¯ÅÍ ¸®½ºÆ®
+	// ìºë¦­í„° ë¦¬ìŠ¤íŠ¸
 	void SendCharacterList(ClientProxySessionRef session);
-	// Ä³¸¯ÅÍ ¼±ÅÃ
-	void SelectCharacter(ClientProxySessionRef session);
+	// ìºë¦­í„° ì„ íƒ
+	void SelectCharacter(ClientProxySessionRef session, uint64_t playerID);
 
 
 private:

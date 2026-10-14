@@ -72,13 +72,21 @@ void ClientProxySession::DoRead() {
 void ClientProxySession::ProcessPackets() {
 	while (true) {
 		size_t dataSize = writePos_ - readPos_;
+
 		if (dataSize < sizeof(PacketHeader)) {
 			break; // 최소 헤더 크기 미만
 		}
 
 		PacketHeader* header = reinterpret_cast<PacketHeader*>(&recvBuffer_[readPos_]);
+		// 최소 헤더 크기 미만이거나 큰 패킷이면 강제 종료
+		if (header->size < sizeof(PacketHeader) || header->size > MAX_CLIENT_PACKET_SIZE) {
+			Close();
+			break;
+		}
+
+		// 온전한 패킷 1개가 아직 덜 도착함
 		if (dataSize < header->size) {
-			break; // 온전한 패킷 1개가 아직 덜 도착함
+			break;
 		}
 
 		// 완성된 패킷 1개 라우팅 처리
@@ -108,8 +116,8 @@ void ClientProxySession::RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint
 
 	case PKT_C_SELECT_CHARACTER:
 		if (packetSize < sizeof(REQ_SelectCharacterPacket)) return;
-		//Account::GetInstance()->SelectCharacter(shared_from_this(),
-			//reinterpret_cast<REQ_SelectCharacterPacket*>(packetPtr)->playerID);
+		Account::GetInstance()->SelectCharacter(shared_from_this(),
+			reinterpret_cast<REQ_SelectCharacterPacket*>(packetPtr)->playerID);
 		return;
 	case PKT_C_READY_TO_SPAWN: {
 		uint64_t pid = playerID_.load();
@@ -124,9 +132,7 @@ void ClientProxySession::RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint
 	}
 
 	// Zone 서버로 리턴하기위해 존재
-	SendBufferRef sendBuffer = SendBufferManager::Open(packetSize);
-	sendBuffer->Write(packetPtr, packetSize);
-	SendBufferManager::Close(packetSize);
+	SendBufferRef sendBuffer = SendBufferManager::Make(packetPtr, packetSize);
 
 	uint32_t zoneID = GetCurrentZoneID();
 	uint32_t channelID = GetCurrentChannelID();

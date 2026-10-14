@@ -21,7 +21,7 @@ SET @@SESSION.SQL_LOG_BIN= 0;
 -- GTID state at the beginning of the backup 
 --
 
-SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '15f2ced3-85a0-11f1-897c-b42e99f93d2a:1-56';
+SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '15f2ced3-85a0-11f1-897c-b42e99f93d2a:1-78';
 
 --
 -- Table structure for table `character`
@@ -31,22 +31,14 @@ DROP TABLE IF EXISTS `character`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `character` (
-  `playerID` bigint NOT NULL AUTO_INCREMENT,
-  `userUID` bigint NOT NULL,
+  `playerID` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `userUID` bigint unsigned NOT NULL,
   `name` varchar(50) NOT NULL,
-  `exp` bigint NOT NULL DEFAULT '0',
-  `hp` int NOT NULL DEFAULT '100',
-  `mp` int NOT NULL DEFAULT '50',
-  `gold` bigint NOT NULL DEFAULT '0',
-  `zoneID` int NOT NULL DEFAULT '1',
-  `posX` float NOT NULL DEFAULT '0',
-  `posY` float NOT NULL DEFAULT '0',
-  `posZ` float NOT NULL DEFAULT '0',
   `createTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updateTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `deleteTime` datetime DEFAULT NULL,
   PRIMARY KEY (`playerID`),
-  UNIQUE KEY `name_UNIQUE` (`name`)
+  UNIQUE KEY `name_UNIQUE` (`name`),
+  KEY `userUID_idx` (`userUID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -69,4 +61,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-12 13:13:07
+-- Dump completed on 2026-10-14 20:15:07

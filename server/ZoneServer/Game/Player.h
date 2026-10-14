@@ -9,12 +9,13 @@ private:
 	float y_;
 	float z_;
 	int hp_;
+	int mp_;
 	uint64_t exp_;
 
 	uint64_t sessionID_ = 0;
 
 public:
-	Player(uint64_t playerID, std::string name, int x, int y, int z, int hp, uint64_t exp);
+	Player(uint64_t playerID, std::string name, int x, int y, int z, int hp, int mp, uint64_t exp);
 
 	void SetPosition(float x, float y, float z);   // ¡Ú Ãß°¡
 
@@ -32,5 +33,5 @@ public:
 	float GetZ() const { return z_; }
 
 	int GetHp() const { return hp_; }
-
+	int GetMp() const { return mp_; }
 };

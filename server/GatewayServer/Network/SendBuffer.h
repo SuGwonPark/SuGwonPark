@@ -17,7 +17,9 @@ public:
 	}
 
 private:
+	// 총 버퍼 크기
 	uint8_t* buffer_;
+	// 클라이언트 패킷 크기 (Open에서 채움)
 	uint32_t allocSize_;
 	// 청크가 메모리에서 해제되지 않도록 참조 유지
 	std::shared_ptr<SendBufferChunk> owner_;

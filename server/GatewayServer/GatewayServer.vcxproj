@@ -40,7 +40,7 @@
     <ClCompile Include="NetWork\Server.cpp" />
   </ItemGroup>
   <ItemGroup>
-	<ClInclude Include="Network\ZoneServerSession.h" />
+    <ClInclude Include="Network\ZoneServerSession.h" />
     <ClInclude Include="DB\AccountDB.h" />
     <ClInclude Include="DB\DBConnection.h" />
     <ClInclude Include="DB\DBThreadPool.h" />
@@ -174,7 +174,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)Common\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

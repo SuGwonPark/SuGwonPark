@@ -104,10 +104,10 @@ void ZoneServerSession::ProcessPackets() {
 		if (dataSize < sizeof(InternalPacketHeader)) break;
 
 		InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(&recvBuffer_[readPos_]);
-		if (dataSize < header->size) break;
+		if (dataSize < header->header.size) break;
 
-		HandleInternalPacket(&recvBuffer_[readPos_], header->size);
-		readPos_ += header->size;
+		HandleInternalPacket(&recvBuffer_[readPos_], header->header.size);
+		readPos_ += header->header.size;
 	}
 
 	if (readPos_ == writePos_) {

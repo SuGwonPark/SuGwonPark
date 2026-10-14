@@ -13,8 +13,7 @@ enum InternalPacketID : uint16_t {
 
 // 모든 내부 패킷 앞에 붙는 래퍼 헤더
 struct InternalPacketHeader {
-	uint16_t size;
-	uint16_t id;
+	PacketHeader header;
 	uint64_t sessionID;
 	uint32_t zoneID;
 	uint32_t channelID;

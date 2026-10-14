@@ -22,24 +22,19 @@ void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint
 					isConnected_.store(true);
 					std::cout << "[GatewaySession] Gateway 접속 성공" << std::endl;
 
-					// 세팅된 zone,Channel 총 개수
-					uint16_t count = static_cast<uint16_t> (zones_.size());
-					// Zone,ChannelID 갯수만큼 size를 잡는다
-					uint16_t total = static_cast<uint16_t>(sizeof(ZoneHandshakePacket) + count * sizeof(ZoneKeyEntry));
-
-					SendBufferRef buf = SendBufferManager::Open(total);
-					auto* hs = reinterpret_cast<ZoneHandshakePacket*> (buf->Buffer());
-					hs->header.id = PKT_ZONE_HANDSHAKE;
-					hs->header.size = total;
-					hs->count = count;
-
-					auto* list = reinterpret_cast<ZoneKeyEntry*> (buf->Buffer() + sizeof(ZoneHandshakePacket));
-					int i = 0;
+					std::vector<ZoneKeyEntry> list;
 					for (auto& [key, zone] : zones_) {
-						list[i++] = { zone->GetZoneID(), zone->GetChannelID() };
+						ZoneKeyEntry c{};
+						c.zoneID = zone->GetZoneID();
+						c.channelID = zone->GetChannelID();
+						list.push_back(c);
 					}
-					SendBufferManager::Close(total);
 
+					ZoneHandshakePacket hs{};
+					hs.header.id = PKT_ZONE_HANDSHAKE;
+					hs.count = list.size();
+
+					SendBufferRef buf = SendBufferManager::MakeList(hs, list);
 					Send(buf);
 
 					DoRead();
@@ -86,10 +81,10 @@ void GatewaySession::ProcessPackets() {
 		if (dataSize < sizeof(InternalPacketHeader)) break;
 
 		InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(&recvBuffer_[readPos_]);
-		if (dataSize < header->size) break;
+		if (dataSize < header->header.size) break;
 
-		HandleInternalPacket(&recvBuffer_[readPos_], header->size);
-		readPos_ += header->size;
+		HandleInternalPacket(&recvBuffer_[readPos_], header->header.size);
+		readPos_ += header->header.size;
 	}
 
 	if (readPos_ == writePos_) {
@@ -144,7 +139,7 @@ void GatewaySession::HandleInternalPacket(uint8_t* buffer, uint16_t size) {
 	if (it == zones_.end()) return; // 존이 세팅 안됬으면 무시
 
 	// 연결 종료
-	if (header->id == PKT_INTERNAL_DISCONNECT) {
+	if (header->header.id == PKT_INTERNAL_DISCONNECT) {
 		it->second->HandleDisconnect(header->sessionID);
 		return;
 	}
@@ -158,18 +153,14 @@ void GatewaySession::AddZone(ZoneRef zone)
 }
 
 void GatewaySession::SendToClient(uint64_t sessionID, uint32_t zoneID, uint32_t channelID, const void* data, uint16_t size) {
-	uint16_t total = static_cast<uint16_t>(sizeof(InternalPacketHeader) + size);
-	SendBufferRef buf = SendBufferManager::Open(total);
+	InternalPacketHeader header{};
+	header.header.id = PKT_INTERNAL_FORWARD;
+	header.sessionID = sessionID;
+	header.zoneID = zoneID;
+	header.channelID = channelID;
 
-	auto* h = reinterpret_cast<InternalPacketHeader*>(buf->Buffer());
-	h->size = total;
-	h->id = PKT_INTERNAL_FORWARD;
-	h->sessionID = sessionID;
-	h->zoneID = zoneID;
-	h->channelID = channelID;
+	SendBufferRef buf = SendBufferManager::MakeWithPayload(header, data, size);
+	if (!buf) return;
 
-	std::memcpy(buf->Buffer() + sizeof(InternalPacketHeader), data, size);
-
-	SendBufferManager::Close(total);
 	Send(buf);
 }

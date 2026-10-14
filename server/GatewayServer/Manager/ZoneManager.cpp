@@ -33,38 +33,29 @@ void ZoneManager::SendToZone(uint32_t zoneID, uint32_t channelID, uint64_t sessi
 	// 존, 채널을 찾지 못하면 리턴
 	if (!targetSession) return;
 
-	// [패킷 래핑] 기존 패킷 앞에 12바이트 InternalPacketHeader를 덧붙여 전송
-	uint16_t totalSize = sizeof(InternalPacketHeader) + clientPacketBuffer->AllocSize();
-	SendBufferRef wrappedBuffer = SendBufferManager::Open(totalSize);
+	InternalPacketHeader header{};
+	header.header.id = PKT_INTERNAL_FORWARD;
+	header.sessionID = sessionID;
+	header.zoneID = zoneID;
+	header.channelID = channelID;
 
-	InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(wrappedBuffer->Buffer());
-	header->size = totalSize;
-	header->id = PKT_INTERNAL_FORWARD;
-	header->sessionID = sessionID;
-	header->zoneID = zoneID;
-	header->channelID = channelID;
+	SendBufferRef wrapped = SendBufferManager::MakeWithPayload(
+		header, clientPacketBuffer->Buffer(), clientPacketBuffer->AllocSize());
+	if (!wrapped) return;
 
-	// 뒤이어 원본 클라이언트 패킷 바이너리 복사
-	std::memcpy(wrappedBuffer->Buffer() + sizeof(InternalPacketHeader),
-		clientPacketBuffer->Buffer(),
-		clientPacketBuffer->AllocSize());
-
-	SendBufferManager::Close(totalSize);
-	targetSession->Send(wrappedBuffer);
+	targetSession->Send(wrapped);
 }
 
 void ZoneManager::SendDisconnectToZone(uint32_t zoneID, uint32_t channelID, uint64_t sessionID) {
 	// 세션 종료 알림 패킷을 해당 Zone으로 전송하여 메모리 정리 유도
 	InternalPacketHeader header{};
-	header.size = sizeof(InternalPacketHeader);
-	header.id = 9998; // DISCONNECT 패킷 ID
+	header.header.size = sizeof(InternalPacketHeader);
+	header.header.id = PKT_INTERNAL_DISCONNECT; // DISCONNECT 패킷 ID
 	header.sessionID = sessionID;
 	header.zoneID = zoneID;
 	header.channelID = channelID;
 
-	SendBufferRef sendBuffer = SendBufferManager::Open(sizeof(header));
-	sendBuffer->Write(&header, sizeof(header));
-	SendBufferManager::Close(sizeof(header));
+	SendBufferRef sendBuffer = SendBufferManager::Make(&header, sizeof(header));
 
 	std::lock_guard<std::mutex> lock(lock_);
 	auto it = zoneServers_.find(MakeZoneKey(zoneID, channelID));

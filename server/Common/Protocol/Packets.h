@@ -1,9 +1,8 @@
 #pragma once
 #include <cstdint>
-#include "Protocol/PacketID.h"
+#include "PacketID.h"
 
 #pragma pack(push, 1)
-
 struct PacketHeader {
 	uint16_t size;
 	uint16_t id;
@@ -20,7 +19,7 @@ struct RES_LoginPacket {
 	PacketHeader header;
 	uint64_t userUID;
 	bool success;
-	char message[64];
+	char message[50];
 };
 
 // ===== 로비 =====
@@ -30,15 +29,13 @@ struct REQ_CharacterListPacket {
 
 struct CharacterSummary {        // 목록 한 줄
 	uint64_t playerID;
-	uint8_t  slot;
-	char     name[16];
-	uint16_t level;
+	uint64_t exp;
+	char     name[50];
 };
 
 struct RES_CharacterListPacket {
 	PacketHeader header;
 	uint8_t count;
-	// CharacterSummary list[count];  (가변 길이)
 };
 
 struct REQ_SelectCharacterPacket {
@@ -48,6 +45,7 @@ struct REQ_SelectCharacterPacket {
 
 struct RES_SelectCharacterPacket {
 	PacketHeader header;
+	uint32_t zoneID;
 	bool success;
 };
 

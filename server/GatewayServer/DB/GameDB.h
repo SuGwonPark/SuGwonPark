@@ -20,7 +20,7 @@ public:
 		}
 	}
 
-	void SaveCharacterProgressAsync(uint64_t playerID, uint64_t exp, float x, float y, float z, int hp);
+	void SaveCharacterProgressAsync(uint64_t playerID, uint64_t exp, float x, float y, float z, int hp, int mp, uint32_t zoneID);
 
 private:
 	GameDB() = default;

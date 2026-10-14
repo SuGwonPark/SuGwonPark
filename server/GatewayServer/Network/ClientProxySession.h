@@ -4,7 +4,8 @@
 #include "Network/SendBuffer.h"
 
 class ClientProxySession : public std::enable_shared_from_this<ClientProxySession> {
-	enum { RECV_BUFFER_SIZE = 65536 };
+	enum { RECV_BUFFER_SIZE = 65536, MAX_CLIENT_PACKET_SIZE = 4096 };
+
 
 public:
 	ClientProxySession(uint64_t sessionID, net::io_context& ioc);
