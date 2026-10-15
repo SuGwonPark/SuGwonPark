@@ -5,28 +5,12 @@
 #include "Protocol/InternalPackets.h"
 #include "Network/GatewaySession.h"
 #include "Manager/SendBufferManager.h"
+#include "Game/ZoneData.h"
 
-static WorkStealingThreadPool& GetZoneWorkerPool() {
-	static WorkStealingThreadPool pool;   // 기본값: std::thread::hardware_concurrency()개 워커 생성
-	return pool;
-}
 
 Zone::Zone(uint32_t zoneID, uint32_t channelID)
 	: zoneID_(zoneID)
-	, channelID_(channelID)
-	, jobQueue_(std::make_shared<JobQueue>()) {
-}
-
-void Zone::schedule(Job job)
-{
-	jobQueue_->Push(std::move(job));
-
-	// 이 Zone의 큐를 워커 하나가 드레인하도록 예약.
-	// Execute()는 이미 누가 돌고 있으면 바로 리턴하니 중복 실행 걱정은 없음.
-	auto self = shared_from_this();
-	GetZoneWorkerPool().Post([self]() {
-		self->jobQueue_->Execute();
-		});
+	, channelID_(channelID) {
 }
 
 void Zone::Enter(PlayerRef player) {
@@ -46,7 +30,7 @@ void Zone::Leave(uint64_t playerID) {
 void Zone::HandleDisconnect(uint64_t sessionID) {
 	auto self = shared_from_this();
 	// 스케쥴 시작
-	schedule([self, sessionID]() {
+	Post([self, sessionID]() {
 		// 세션 ID 확인 없으면 종료
 		auto it = self->sessionToPlayer_.find(sessionID);
 		if (it == self->sessionToPlayer_.end()) return;
@@ -70,7 +54,7 @@ void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t siz
 	std::vector<uint8_t> copied(payload, payload + size);
 
 	auto self = shared_from_this();
-	schedule([self, sessionID, copied = std::move(copied)]() mutable {
+	Post([self, sessionID, copied = std::move(copied)]() mutable {
 		PacketHeader* header = reinterpret_cast<PacketHeader*>(copied.data());
 
 		switch (header->id) {
@@ -108,20 +92,24 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
 
 	GameDB::Instance().PushTask([self, sessionID, playerID](mysqlx::Session& db) {
 		try {
-			auto row = db.sql("SELECT name, PosX, PosY, PosZ, hp, mp, exp FROM `character` WHERE playerID = ?")
+			auto row = db.sql("SELECT c.name, cs.PosX, cs.PosY, cs.PosZ, cs.hp, cs.mp, cs.exp "
+				"FROM `character` c JOIN `character_state` cs "
+				"ON c.playerID = cs.playerID "
+				"WHERE c.playerID = ? AND c.deleteTime IS NULL")
 				.bind(playerID).execute().fetchOne();
-			if (row.isNull()) return;
+			if (!row) return;
 
 			std::string name = row[0].get<std::string>();
-			int x = row[1].get<float>(), y = row[2].get<float>(), z = row[3].get<float>();
+			float x = row[1].get<float>(), y = row[2].get<float>(), z = row[3].get<float>();
 			int hp = row[4].get<int>(); int mp = row[5].get<int>();
 			uint64_t exp = row[6].get<uint64_t>();
 
-			self->schedule([=]() {
+			self->Post([=]() {
+				if (self->sessionToPlayer_.count(sessionID)) return;   // 조회 중 중복 요청 방지
+
 				auto player = std::make_shared<Player>(playerID, name, x, y, z, hp, mp, exp);
 				player->SetSessionID(sessionID);
 				self->Enter(player);
-				self->sessionToPlayer_[sessionID] = player;
 				});
 		}
 		catch (const mysqlx::Error& e) {
@@ -132,6 +120,8 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
 }
 
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z) {
+	if (portalPending_.count(playerID)) return;    // 포탈 저장 중에는 위치를 고정
+
 	auto it = players_.find(playerID);
 	if (it == players_.end()) return;
 
@@ -157,22 +147,39 @@ void Zone::HandlePortal(uint64_t playerID, uint32_t nextZoneID) {
 	auto it = players_.find(playerID);
 	if (it == players_.end()) return;
 
+	auto sp = FindSpawnPoint(nextZoneID);
+	if (!sp) return;
+
+	// 이미 포탈 처리 중이면 무시
+	if (portalPending_.insert(playerID).second) return;
+
 	PlayerRef player = it->second;
+	const uint64_t sessionID = player->GetSessionID();
+
+	auto self = shared_from_this();
 
 	GameDB::Instance().SaveCharacterProgressAsync(
-		playerID, player->GetExp(), player->GetX(), player->GetY(), player->GetZ(), player->GetHp(), player->GetMp(), nextZoneID
-	);
+		playerID, player->GetExp(), sp->x, sp->y, sp->z,
+		player->GetHp(), player->GetMp(), nextZoneID,
+		// 콜백 DB 스레드에서 실행
+		[self, player, sessionID, playerID, nextZoneID](bool ok) {
+			self->Post([=]() {
+				// 포탈 로딩 종료
+				self->portalPending_.erase(playerID);
+				if (!ok) return;
 
-	// 1. Zone 월드에서 서버 제거 (추가 피격/상호작용 방지)
-	Leave(playerID);
+				// 1. Zone 월드에서 서버 제거 (추가 피격/상호작용 방지)
+				self->Leave(playerID);
 
+				RES_ZoneLeaveCompletedPacket ackPkt{};
+				ackPkt.header.size = sizeof(ackPkt);
+				ackPkt.header.id = PKT_S_ZONE_LEAVE_COMPLETED;
+				ackPkt.playerID = playerID;
+				ackPkt.nextZoneID = nextZoneID;
 
-	RES_ZoneLeaveCompletedPacket ackPkt;
-	ackPkt.header.size = sizeof(ackPkt);
-	ackPkt.header.id = PKT_S_ZONE_LEAVE_COMPLETED;
-	ackPkt.playerID = playerID;
-	ackPkt.nextZoneID = nextZoneID;
+				GatewaySession::GetInstance()->SendToClient(
+					sessionID, self->zoneID_, self->channelID_, &ackPkt, sizeof(ackPkt));
+				});
+		});
 
-	GatewaySession::GetInstance()->SendToClient(
-		player->GetSessionID(), zoneID_, channelID_, &ackPkt, sizeof(ackPkt));
 }

@@ -99,5 +99,8 @@
     <ClInclude Include="..\GatewayServer\DB\AccountDB.h">
       <Filter>DB</Filter>
     </ClInclude>
+    <ClInclude Include="Game\ZoneData.h">
+      <Filter>Game</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

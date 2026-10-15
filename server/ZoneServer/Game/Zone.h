@@ -2,21 +2,18 @@
 #include "pch.h"
 #include "JobSystem/JobQueue.h"
 #include "JobSystem/WorkStealingThreadPool.h" 
+#include "JobSystem/JobSerializer.h"
 
 class Player;
 using PlayerRef = std::shared_ptr<Player>;
 
-class Zone : public std::enable_shared_from_this<Zone> {
+class Zone : public JobSerializer<Zone> {
 public:
 	explicit Zone(uint32_t zoneID, uint32_t channelID);
 	~Zone() = default;
 
 	uint32_t GetZoneID() const { return zoneID_; }
 	uint32_t GetChannelID() const { return channelID_; }
-
-	JobQueueRef GetJobQueue() { return jobQueue_; }
-
-	void schedule(Job job);
 
 	// 존 입장
 	void Enter(PlayerRef player);
@@ -39,9 +36,9 @@ private:
 private:
 	uint32_t zoneID_;
 	uint32_t channelID_;
-	JobQueueRef jobQueue_;
 	std::unordered_map<uint64_t, PlayerRef> players_;
 	std::unordered_map<uint64_t, PlayerRef> sessionToPlayer_; // sessionID -> Player (신규)
+	std::unordered_set<uint64_t> portalPending_;   // 포탈 저장 중인 playerID
 };
 
 using ZoneRef = std::shared_ptr<Zone>;

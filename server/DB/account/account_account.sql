@@ -37,10 +37,10 @@ CREATE TABLE `account` (
   `returnTime` datetime NOT NULL,
   `loginTime` datetime NOT NULL,
   `remove` tinyint NOT NULL,
-  `id` varchar(45) NOT NULL,
-  `password` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `id` varchar(50) NOT NULL,
+  `passwordHash` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   PRIMARY KEY (`userUID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --

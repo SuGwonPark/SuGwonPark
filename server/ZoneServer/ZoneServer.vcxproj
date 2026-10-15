@@ -46,6 +46,7 @@
     <ClInclude Include="..\GatewayServer\Network\SendBuffer.h" />
     <ClInclude Include="Game\Player.h" />
     <ClInclude Include="Game\Zone.h" />
+    <ClInclude Include="Game\ZoneData.h" />
     <ClInclude Include="Network\GatewaySession.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>

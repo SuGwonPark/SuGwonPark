@@ -52,7 +52,8 @@ void Account::SendCharacterList(ClientProxySessionRef session) {
 		auto result = db.sql(
 			"SELECT c.playerID, c.name, cs.exp FROM `character` c JOIN `character_state` cs "
 			"ON c.playerID = cs.playerID "
-			"WHERE c.userUID = ? AND c.deleteTime IS NULL")
+			"WHERE c.userUID = ? AND c.deleteTime IS NULL "
+			"ORDER BY cs.slot DESC LIMIT 6")
 			.bind(userUID).execute();
 
 		std::vector<CharacterSummary> list;
