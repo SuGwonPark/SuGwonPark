@@ -10,4 +10,3 @@ Player::Player(uint64_t playerID, std::string name, float x, float y, float z, i
 void Player::SetPosition(float x, float y, float z) {
 	x_ = x; y_ = y; z_ = z;
 }
-

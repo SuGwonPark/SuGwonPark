@@ -1,5 +1,5 @@
 #pragma once
-#include "Network/SendBuffer.h"
+#include "ServerCore/Network/SendBuffer.h"
 
 
 class SendBufferManager {

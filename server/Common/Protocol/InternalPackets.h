@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include "Protocol/Packets.h"   // PacketHeader
+#include "Packets.h"   // PacketHeader
 
 // Gateway <-> Zone 전용 패킷 번호 (클라이언트와 겹치지 않게 9000번대)
 enum InternalPacketID : uint16_t {
@@ -39,6 +39,9 @@ struct RES_ZoneLeaveCompletedPacket {
 
 #pragma pack(pop)
 
+// (zoneID, channelID) <-> 64bit key. Gateway/Zone 공용
 inline uint64_t MakeZoneKey(uint32_t zoneID, uint32_t channelID) {
 	return (static_cast<uint64_t>(zoneID) << 32) | channelID;
 }
+inline uint32_t KeyToZoneID(uint64_t key) { return static_cast<uint32_t>(key >> 32); }
+inline uint32_t KeyToChannelID(uint64_t key) { return static_cast<uint32_t>(key); }

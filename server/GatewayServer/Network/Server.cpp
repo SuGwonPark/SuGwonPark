@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Network/Server.h"
 #include "Network/ClientProxySession.h"
+#include "Manager/SessionManager.h"
 
 Server::Server(boost::asio::io_context& io, short port)
 	: io_(io), acceptor_(io, tcp::endpoint(tcp::v4(), port)) {
@@ -16,6 +17,7 @@ void Server::Accept() {
 			if (!ec) {
 				std::cout << "클라이언트 접속: " << session->Socket().remote_endpoint()
 					<< " (sessionId=" << session->GetSessionID() << ")" << std::endl;
+				SessionManager::GetInstance()->Register(session->GetSessionID(), session);
 				session->Start();
 			}
 			Accept(); // 다음 접속 대기

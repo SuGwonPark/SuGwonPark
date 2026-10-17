@@ -1,7 +1,7 @@
 #pragma once
 #include "pch.h"
-#include "Network/SendBuffer.h"
-#include "Protocol/InternalPackets.h"
+#include "ServerCore/Network/SendBuffer.h"
+#include "Common/Protocol/InternalPackets.h"
 
 class ZoneServerSession : public std::enable_shared_from_this<ZoneServerSession> {
 	enum { RECV_BUFFER_SIZE = 65536 * 2 }; // 내부 백본용 대용량 버퍼 (128KB)
@@ -24,6 +24,7 @@ private:
 	void DoWrite();
 
 	void ProcessPackets();
+	// 유저에게 전달
 	void HandleInternalPacket(uint8_t* buffer, uint16_t size);
 
 private:

@@ -34,4 +34,6 @@ public:
 
 	int GetHp() const { return hp_; }
 	int GetMp() const { return mp_; }
+
+	const std::string& GetName() const { return name_; }
 };

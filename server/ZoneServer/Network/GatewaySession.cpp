@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "GatewaySession.h"
-#include "Manager/SendBufferManager.h"
+#include "ServerCore/Manager/SendBufferManager.h"
 
 void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint16_t port) {
 	socket_ = std::make_unique<tcp::socket>(ioc);
@@ -82,6 +82,14 @@ void GatewaySession::ProcessPackets() {
 
 		InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(&recvBuffer_[readPos_]);
 		if (dataSize < header->header.size) break;
+
+		if (header->header.size < sizeof(InternalPacketHeader)) {
+			std::cerr << "[GatewaySession] 잘못된 패킷 크기: " << header->header.size << std::endl;
+			isConnected_.store(false);
+			boost::system::error_code ec;
+			socket_->close(ec);
+			break;
+		}
 
 		HandleInternalPacket(&recvBuffer_[readPos_], header->header.size);
 		readPos_ += header->header.size;

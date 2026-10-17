@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Network/Server.h"
-#include "DB/GameDB.h"
-#include "DB/AccountDB.h"
+#include "ServerCore/DB/GameDB.h"
+#include "ServerCore/DB/AccountDB.h"
 #include "Network/InternalServer.h"
 
 

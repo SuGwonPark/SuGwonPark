@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "DB/DBConnection.h"
+#include "ServerCore/DB/DBConnection.h"
 
 DBConnection::DBConnection() {}
 

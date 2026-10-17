@@ -1,7 +1,17 @@
 #pragma once
 #include "pch.h"
-#include "Protocol/Packets.h"
-#include "Network/SendBuffer.h"
+#include "Common/Protocol/Packets.h"
+#include "ServerCore/Network/SendBuffer.h"
+#include "ServerCore/Utils/util.h"
+
+// 세션 상태값
+enum class SessionState : uint8_t {
+	Connected,    // 접속만 함
+	LoggingIn,    // 로그인 DB 처리 중
+	Lobby,        // 로그인 완료 (목록/선택 가능)
+	Selecting,    // 캐릭터 선택 DB 처리 중
+	InGame,       // 선택 완료 (Zone으로 패킷 전달)
+};
 
 class ClientProxySession : public std::enable_shared_from_this<ClientProxySession> {
 	enum { RECV_BUFFER_SIZE = 65536, MAX_CLIENT_PACKET_SIZE = 4096 };
@@ -18,7 +28,7 @@ public:
 	void Send(SendBufferRef sendBuffer);
 
 	// Zone 1 완료 신호 수신 시 호출 -> 타겟 Zone 교체
-	void OnZone1LeaveCompleted(uint32_t nextZoneId);
+	void OnZone1LeaveCompleted(uint32_t nextZoneID);
 
 	// Getters & Setters
 	tcp::socket& Socket() { return socket_; }
@@ -35,6 +45,13 @@ public:
 	uint64_t GetUserUID() const { return userUID_.load(); }
 	void SetUserUID(uint64_t uid) { userUID_.store(uid); }
 
+	SessionState GetState() const { return state_.load(); }
+	void SetState(SessionState state) { return state_.store(state); }
+
+	// 현재 상태가 일치할때만 to로 교체
+	bool TryTransition(SessionState from, SessionState to) {
+		return state_.compare_exchange_strong(from, to);
+	}
 private:
 	// 네트워크 I/O 루프
 	void DoRead();
@@ -59,6 +76,7 @@ private:
 	std::atomic<uint32_t> currentZoneID_{ 1 };
 	std::atomic<uint32_t> currentChannelID_{ 1 };
 	std::atomic<bool> isConnected_{ false };
+	std::atomic<SessionState> state_{ SessionState::Connected };
 
 	// 수신 버퍼
 	std::array<uint8_t, RECV_BUFFER_SIZE> recvBuffer_;

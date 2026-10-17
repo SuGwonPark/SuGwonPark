@@ -14,6 +14,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{C8D527
 		Common\Protocol\Packets.h = Common\Protocol\Packets.h
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ServerCore", "ServerCore\ServerCore.vcxproj", "{D9D7AE67-B519-4907-B672-96A3A90DCF98}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -38,6 +40,14 @@ Global
 		{61E3724B-8196-48EA-93E5-26C5B237F63C}.Release|x64.Build.0 = Release|x64
 		{61E3724B-8196-48EA-93E5-26C5B237F63C}.Release|x86.ActiveCfg = Release|Win32
 		{61E3724B-8196-48EA-93E5-26C5B237F63C}.Release|x86.Build.0 = Release|Win32
+		{D9D7AE67-B519-4907-B672-96A3A90DCF98}.Debug|x64.ActiveCfg = Debug|x64
+		{D9D7AE67-B519-4907-B672-96A3A90DCF98}.Debug|x64.Build.0 = Debug|x64
+		{D9D7AE67-B519-4907-B672-96A3A90DCF98}.Debug|x86.ActiveCfg = Debug|x86
+		{D9D7AE67-B519-4907-B672-96A3A90DCF98}.Debug|x86.Build.0 = Debug|x86
+		{D9D7AE67-B519-4907-B672-96A3A90DCF98}.Release|x64.ActiveCfg = Release|x64
+		{D9D7AE67-B519-4907-B672-96A3A90DCF98}.Release|x64.Build.0 = Release|x64
+		{D9D7AE67-B519-4907-B672-96A3A90DCF98}.Release|x86.ActiveCfg = Release|x86
+		{D9D7AE67-B519-4907-B672-96A3A90DCF98}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

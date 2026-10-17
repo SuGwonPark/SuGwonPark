@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Network/GatewaySession.h"
 #include "Game/Zone.h"
-#include "DB/GameDB.h"
+#include "ServerCore/DB/GameDB.h"
 
 
 int main(int argc, char* argv[]) {
@@ -20,10 +20,12 @@ int main(int argc, char* argv[]) {
 	}
 	catch (const mysqlx::Error& err) {
 		std::cerr << "MySQL Error: " << err.what() << std::endl;
+		return 1;
 	}
 	catch (const std::exception& err) {
 		// 기타 표준 예외 감지
 		std::cerr << "Standard Exception: " << err.what() << std::endl;
+		return 2;
 	}
 	boost::asio::io_context io;
 

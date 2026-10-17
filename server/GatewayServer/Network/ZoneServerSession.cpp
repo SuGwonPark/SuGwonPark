@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Network/ZoneServerSession.h"
 #include "Manager/ZoneManager.h"
-#include "Manager/SendBufferManager.h"
+#include "ServerCore/Manager/SendBufferManager.h"
 #include "Manager/SessionManager.h"   // sessionId -> ClientProxySession 찾기용 (신규)
 
 ZoneServerSession::ZoneServerSession(net::io_context& ioc)
@@ -101,9 +101,18 @@ void ZoneServerSession::ProcessPackets() {
 			continue;
 		}
 
+		// 데이터 길이가 기본 헤더보다 작으면 넘김
 		if (dataSize < sizeof(InternalPacketHeader)) break;
 
 		InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(&recvBuffer_[readPos_]);
+
+		// 헤더보다 작은 크기는 스트림이 깨진 것 → 연결 종료
+		if (header->header.size < sizeof(InternalPacketHeader)) {
+			Close();
+			return;
+		}
+
+		// 데이터 길이가 Response size보다 작을 경우 넘김
 		if (dataSize < header->header.size) break;
 
 		HandleInternalPacket(&recvBuffer_[readPos_], header->header.size);

@@ -1,7 +1,7 @@
 #pragma once
 #include "pch.h"
-#include "JobSystem/JobQueue.h"
-#include "JobSystem/WorkStealingThreadPool.h"
+#include "ServerCore/JobSystem/JobQueue.h"
+#include "ServerCore/JobSystem/WorkStealingThreadPool.h"
 
 // 프로세스 전체가 공유하는 워커 풀. inline 함수의 static 지역변수라 프로그램 전체에서 한 개만 생긴다.
 inline WorkStealingThreadPool& GlobalWorkerPool() {

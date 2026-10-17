@@ -1,8 +1,8 @@
 #pragma once
 #include "pch.h"
-#include "JobSystem/JobQueue.h"
-#include "JobSystem/WorkStealingThreadPool.h" 
-#include "JobSystem/JobSerializer.h"
+#include "ServerCore/JobSystem/JobQueue.h"
+#include "ServerCore/JobSystem/WorkStealingThreadPool.h" 
+#include "ServerCore/JobSystem/JobSerializer.h"
 
 class Player;
 using PlayerRef = std::shared_ptr<Player>;
@@ -29,6 +29,14 @@ public:
 
 	// 존 이동
 	void HandlePortal(uint64_t playerId, uint32_t nextZoneId);
+
+	// 포탈 이동
+	void HandlePortalRequest(const PlayerRef& player, uint32_t portalID);
+
+	// 플레이어에 전달
+	void SendTo(const PlayerRef& player, const void* data, uint16_t size);
+	// 모든 플레이어에 전달
+	void BroadCast(const void* data, uint16_t size, uint64_t exceptPlayerID = 0);
 
 private:
 	void HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t size);

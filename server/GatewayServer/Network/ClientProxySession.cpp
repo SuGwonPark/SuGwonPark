@@ -1,8 +1,9 @@
 #include "pch.h"
 #include "Network/ClientProxySession.h"
 #include "Manager/ZoneManager.h"   
-#include "Manager/SendBufferManager.h"
-#include "DB/GameDB.h"
+#include "Manager/SessionManager.h"
+#include "ServerCore/Manager/SendBufferManager.h"
+#include "ServerCore/DB/GameDB.h"
 #include "Game/Account.h"
 
 
@@ -18,6 +19,8 @@ ClientProxySession::~ClientProxySession() {
 
 void ClientProxySession::Start() {
 	isConnected_.store(true);
+	// 클라이언트 연결 상태 확인용 헬퍼 함수
+	EnableKeepAlive(socket_);
 	DoRead();
 }
 
@@ -27,9 +30,12 @@ void ClientProxySession::Close() {
 		net::post(strand_, [self = shared_from_this()]() {
 			boost::system::error_code ec;
 			self->socket_.shutdown(tcp::socket::shutdown_both, ec);
-			self->socket_.close(ec);
+			self->socket_.close();
 
-			// 연결 종료 시 내부 Zone 서버에 연결 끊김 통보
+			// 세션 연결 종료
+			SessionManager::GetInstance()->Unregister(self->sessionID_, self->GetUserUID());
+
+			// zone서버 세션 종료
 			ZoneManager::GetInstance()->SendDisconnectToZone(self->GetCurrentZoneID(), self->GetCurrentChannelID(), self->sessionID_);
 			});
 	}
@@ -62,6 +68,7 @@ void ClientProxySession::DoRead() {
 					DoRead();
 				}
 				else {
+					std::cout << "[Session " << sessionID_ << "] 연결 종료: " << ec.message() << std::endl;
 					Close();
 				}
 			}
@@ -120,16 +127,17 @@ void ClientProxySession::RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint
 			reinterpret_cast<REQ_SelectCharacterPacket*>(packetPtr)->playerID);
 		return;
 	case PKT_C_READY_TO_SPAWN: {
-		uint64_t pid = playerID_.load();
-		if (pid == 0) return;
+		if (GetState() != SessionState::InGame) return;
 		if (packetSize < sizeof(REQ_ReadyToSpawnPacket)) return;
-		reinterpret_cast <REQ_ReadyToSpawnPacket*>(packetPtr)->playerID = pid;
+		reinterpret_cast <REQ_ReadyToSpawnPacket*>(packetPtr)->playerID = GetPlayerID();
 		break;
 	}
-
 	default:
 		break;
 	}
+
+	// 게임 중이 아닌 세션은= 패킷을 Zone으로 보내지 않는다 (캐릭터 선택부터 Zone으로 보냄)
+	if (GetState() != SessionState::InGame) return;
 
 	// Zone 서버로 리턴하기위해 존재
 	SendBufferRef sendBuffer = SendBufferManager::Make(packetPtr, packetSize);
@@ -139,9 +147,25 @@ void ClientProxySession::RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint
 	ZoneManager::GetInstance()->SendToZone(zoneID, channelID, sessionID_, sendBuffer);
 }
 
-void ClientProxySession::OnZone1LeaveCompleted(uint32_t nextZoneId) {
-	// 추후 채널까지 추가
-	SetCurrentZoneID(nextZoneId);
+void ClientProxySession::OnZone1LeaveCompleted(uint32_t nextZoneID) {
+	auto channelID = ZoneManager::GetInstance()->PickChannel(nextZoneID);
+	if (!channelID) {
+		// 목적지 Zone이 현재 하나도 등록돼 있지 않음. 플레이어는 이미 옛 Zone에서 빠졌으므로 연결을 끊는다
+		std::cerr << "[Portal] 목적지 Zone 없음: " << nextZoneID << std::endl;
+		Close();
+		return;
+	}
+
+	SetCurrentChannelID(*channelID);
+	SetCurrentZoneID(nextZoneID);
+
+	// 클라이언트에 맵 전환 지시
+	RES_ZoneChangePacket pkt{};
+	pkt.header.id = PKT_S_ZONE_CHANGE;
+	pkt.header.size = sizeof(pkt);
+	pkt.zoneID = nextZoneID;
+	pkt.channelID = *channelID;
+	Send(SendBufferManager::Make(&pkt, sizeof(pkt)));
 }
 
 void ClientProxySession::Send(SendBufferRef sendBuffer) {

@@ -1,7 +1,7 @@
 #pragma once
 #include "pch.h"
-#include "Protocol/InternalPackets.h"
-#include "Network/SendBuffer.h"
+#include "Common/Protocol/InternalPackets.h"
+#include "ServerCore/Network/SendBuffer.h"
 #include "Game/Zone.h"
 
 // Zone 서버 -> Gateway로 향하는 연결 (ZoneServerSession의 반대편 끝).
@@ -23,6 +23,7 @@ public:
 	void Send(SendBufferRef sendBuffer);
 	void AddZone(ZoneRef zone);
 
+	// GatewayServer로 전송
 	void SendToClient(uint64_t sessionID, uint32_t zoneID, uint32_t channelID, const void* data, uint16_t size);
 	bool IsConnected() const { return isConnected_.load(); }
 

@@ -1,8 +1,9 @@
 #include "pch.h"
 #include "Manager/ZoneManager.h"
-#include "Manager/SendBufferManager.h"
+#include "ServerCore/Manager/SendBufferManager.h"
 #include "Network/ZoneServerSession.h"
-#include "Protocol/InternalPackets.h"
+#include "Common/Protocol/InternalPackets.h"
+#include "ServerCore/Utils/util.h"
 
 // 존 생성
 void ZoneManager::RegisterZone(uint32_t zoneID, uint32_t channelID, ZoneServerSessionRef session) {
@@ -62,4 +63,17 @@ void ZoneManager::SendDisconnectToZone(uint32_t zoneID, uint32_t channelID, uint
 	if (it != zoneServers_.end()) {
 		it->second->Send(sendBuffer);
 	}
+}
+
+std::optional<uint32_t> ZoneManager::PickChannel(uint32_t zoneID)
+{
+	std::lock_guard<std::mutex> lock(lock_);
+
+	std::optional<uint32_t> best;
+	for (const auto& [key, session] : zoneServers_) {
+		if (KeyToZoneID(key) != zoneID) continue;
+		uint32_t channelID = KeyToChannelID(key);
+		if (!best || channelID < *best) best = channelID;
+	}
+	return best;
 }

@@ -1,5 +1,5 @@
 #pragma once
-#include "DB/DBThreadPool.h"
+#include "ServerCore/DB/DBThreadPool.h"
 
 class GameDB {
 public:
@@ -17,6 +17,12 @@ public:
 	void PushTask(DB::DBTask task) {
 		if (pool_) {
 			pool_->PushTask(std::move(task));
+		}
+	}
+
+	void PushTask(uint64_t key, DB::DBTask task) {
+		if (pool_) {
+			pool_->PushTask(key, std::move(task));
 		}
 	}
 

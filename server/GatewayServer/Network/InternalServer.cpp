@@ -4,7 +4,8 @@
 #include "Manager/ZoneManager.h"
 
 InternalServer::InternalServer(net::io_context& io, short port)
-	: io_(io), acceptor_(io, tcp::endpoint(tcp::v4(), port)) {
+	: io_(io)
+	, acceptor_(io, tcp::endpoint(net::ip::make_address("127.0.0.1"), port)) {
 	Accept();
 }
 

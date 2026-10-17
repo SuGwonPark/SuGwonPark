@@ -8,9 +8,15 @@ enum PacketID : uint16_t {
 	PKT_C_MOVE = 1001,
 	PKT_C_ATTACK = 1002,
 	PKT_C_SKILL_CAST = 1003,
+	PKT_S_MOVE = 1004,
 
 	// 존 (2000~)
 	PKT_S_ZONE_LEAVE_COMPLETED = 2001,
+	PKT_S_ENTER_GAME = 2002,        // 내 입장 결과
+	PKT_S_SPAWN = 2003,             // 다른 플레이어 등장 (목록)
+	PKT_S_DESPAWN = 2004,           // 다른 플레이어 퇴장
+	PKT_C_PORTAL = 2005,
+	PKT_S_ZONE_CHANGE = 2006,
 
 	// 채팅 (3000~)
 	PKT_C_CHAT = 3001,
