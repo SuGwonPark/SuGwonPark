@@ -17,7 +17,7 @@
 #include <optional>
 #include <deque>
 #include <functional>
-
+#include <future>
 #include <sodium.h>
 #include <boost/asio.hpp>
 

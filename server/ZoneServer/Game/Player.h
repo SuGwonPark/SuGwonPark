@@ -14,6 +14,9 @@ private:
 
 	uint64_t sessionID_ = 0;
 
+	std::chrono::steady_clock::time_point lastMoveTime_ = std::chrono::steady_clock::now();
+	float moveBudget_ = 0.f;
+
 public:
 	Player(uint64_t playerID, std::string name, float x, float y, float z, int hp, int mp, uint64_t exp);
 
@@ -36,4 +39,6 @@ public:
 	int GetMp() const { return mp_; }
 
 	const std::string& GetName() const { return name_; }
+
+	bool TryMove(float x, float y, float z, float maxSpeed);
 };

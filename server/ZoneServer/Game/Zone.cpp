@@ -6,6 +6,7 @@
 #include "Network/GatewaySession.h"
 #include "ServerCore/Manager/SendBufferManager.h"
 #include "Game/ZoneData.h"
+#include "Game/ZoneConstants.h"
 
 static PlayerInfo ToInfo(const Player& p) {
 	PlayerInfo info{};
@@ -85,17 +86,23 @@ void Zone::HandleDisconnect(uint64_t sessionID) {
 	auto self = shared_from_this();
 	// 스케쥴 시작
 	Post([self, sessionID]() {
+		self->spawnPending_.erase(sessionID);
+
 		// 세션 ID 확인 없으면 종료
 		auto it = self->sessionToPlayer_.find(sessionID);
 		if (it == self->sessionToPlayer_.end()) return;
 
 		// 세션 캐릭터 정보
 		PlayerRef player = it->second;
-		// 캐릭터 정보 저장
-		GameDB::Instance().SaveCharacterProgressAsync(
-			player->GetPlayerID(), player->GetExp(),
-			player->GetX(), player->GetY(), player->GetZ(), player->GetHp(), player->GetMp(), self->GetZoneID());
+		const uint64_t playerID = player->GetPlayerID();
 
+		// 포탈 이동중이 아닐 경우
+		if (self->portalPending_.count(playerID) == 0) {
+			// 캐릭터 정보 저장
+			GameDB::Instance().SaveCharacterProgressAsync(
+				playerID, player->GetExp(),
+				player->GetX(), player->GetY(), player->GetZ(), player->GetHp(), player->GetMp(), self->GetZoneID());
+		}
 		// 퇴장 처리
 		self->Leave(player->GetPlayerID());
 		});
@@ -147,46 +154,77 @@ void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t siz
 		});
 }
 
+void Zone::SaveAllAndClear(std::function<void()> onDone) {
+	auto self = shared_from_this();
+	Post([self, onDone = std::move(onDone)]() {
+		for (auto& [playerID, player] : self->players_) {
+			if (self->portalPending_.count(playerID)) continue;   // 포탈 저장이 최종 상태
+			GameDB::Instance().SaveCharacterProgressAsync(
+				playerID, player->GetExp(),
+				player->GetX(), player->GetY(), player->GetZ(),
+				player->GetHp(), player->GetMp(), self->zoneID_);
+		}
+		self->players_.clear();
+		self->sessionToPlayer_.clear();
+		self->spawnPending_.clear();
+
+		if (onDone) onDone();      // 저장 "요청"까지 끝났다는 신호
+		});
+}
+
 void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t size) {
 	if (size < sizeof(REQ_ReadyToSpawnPacket)) return;
 	uint64_t playerID = reinterpret_cast<REQ_ReadyToSpawnPacket*>(payload)->playerID;
 
 	// 중복 스폰 방지
 	if (sessionToPlayer_.count(sessionID)) return;
+	// 이미 진행중이면 무시
+	if (!spawnPending_.insert(sessionID).second)return;
 
 	auto self = shared_from_this();
 
 	GameDB::Instance().PushTask(playerID, [self, sessionID, playerID](mysqlx::Session& db) {
+		PlayerRef player;
+		std::exception_ptr error;
 		try {
 			auto row = db.sql("SELECT c.name, cs.PosX, cs.PosY, cs.PosZ, cs.hp, cs.mp, cs.exp "
 				"FROM `character` c JOIN `character_state` cs "
 				"ON c.playerID = cs.playerID "
 				"WHERE c.playerID = ? AND c.deleteTime IS NULL")
 				.bind(playerID).execute().fetchOne();
-			if (!row) return;
+			if (row) {
 
-			std::string name = row[0].get<std::string>();
-			float x = row[1].get<float>(), y = row[2].get<float>(), z = row[3].get<float>();
-			int hp = row[4].get<int>(); int mp = row[5].get<int>();
-			uint64_t exp = row[6].get<uint64_t>();
+				std::string name = row[0].get<std::string>();
+				float x = row[1].get<float>(), y = row[2].get<float>(), z = row[3].get<float>();
+				int hp = row[4].get<int>(); int mp = row[5].get<int>();
+				uint64_t exp = row[6].get<uint64_t>();
 
-			self->Post([=]() {
-				if (self->sessionToPlayer_.count(sessionID)) return;   // 조회 중 중복 요청 방지
-
-				// zone에 캐릭터가 이미 있으면 종료
-				if (self->players_.count(playerID)) {
-					std::cerr << "[Spawn] 이미 Zone에 있는 캐릭터: " << playerID << std::endl;
-					return;
-				}
-
-				auto player = std::make_shared<Player>(playerID, name, x, y, z, hp, mp, exp);
+				player = std::make_shared<Player>(playerID, name, x, y, z, hp, mp, exp);
 				player->SetSessionID(sessionID);
-				self->Enter(player);
-				});
+			}
 		}
 		catch (const mysqlx::Error& e) {
 			std::cerr << "[Spawn] DB 로드 실패:" << e.what() << std::endl;
+			error = std::current_exception();
 		}
+
+
+		self->Post([=]() {
+			// true = HandleDisconnect에서 지워진거임
+			if (self->spawnPending_.erase(sessionID) == 0)return;
+			if (!player)return;
+
+			// zone에 캐릭터가 이미 있으면 종료
+			if (self->players_.count(playerID)) {
+				std::cerr << "[Spawn] 이미 Zone에 있는 캐릭터: " << playerID << std::endl;
+				return;
+			}
+
+			self->Enter(player);
+			});
+
+		if (error) std::rethrow_exception(error);
+
 		});
 
 }
@@ -196,13 +234,23 @@ void Zone::HandleMove(uint64_t playerID, float x, float y, float z) {
 
 	auto it = players_.find(playerID);
 	if (it == players_.end()) return;
-
-	it->second->SetPosition(x, y, z);
+	PlayerRef& player = it->second;
 
 	MovePacket pkt{};
 	pkt.header.size = sizeof(MovePacket);
 	pkt.header.id = PKT_S_MOVE;
 	pkt.playerID = playerID;
+
+	if (!player->TryMove(x, y, z, ZoneConst::MAX_MOVE_SPEED))
+	{
+		// 비정상적인 움직임 감지 현재 포지션값을 넘긴다
+		pkt.x = player->GetX();
+		pkt.y = player->GetY();
+		pkt.z = player->GetZ();
+		SendTo(player, &pkt, sizeof(pkt));
+		return;
+	}
+
 	pkt.x = x;
 	pkt.y = y;
 	pkt.z = z;
@@ -235,6 +283,9 @@ void Zone::HandlePortal(uint64_t playerID, uint32_t nextZoneID) {
 				// 포탈 로딩 종료
 				self->portalPending_.erase(playerID);
 				if (!ok) return;
+
+				auto it = self->players_.find(playerID);
+				if (it == self->players_.end() || it->second->GetSessionID() != sessionID) return;
 
 				// 1. Zone 월드에서 서버 제거 (추가 피격/상호작용 방지)
 				self->Leave(playerID);

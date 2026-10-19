@@ -28,6 +28,10 @@ public:
 
 	void SaveCharacterProgressAsync(uint64_t playerID, uint64_t exp, float x, float y, float z, int hp, int mp, uint32_t zoneID, std::function<void(bool)> onDone = nullptr);
 
+	// 큐에 남은 작업을 전부 실행하고 워커 스레드를 종료한다 (서버 종료 시 1회)
+	void Shutdown() { pool_.reset(); }
+
+
 private:
 	GameDB() = default;
 	std::unique_ptr<DB::DBThreadPool> pool_;

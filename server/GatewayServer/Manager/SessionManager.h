@@ -16,6 +16,8 @@ public:
 	// 이미 다른 세션이 있으면 false
 	bool TryBindUser(uint64_t userUID, uint64_t sessionID, ClientProxySessionRef& existing);
 
+	// 주어진 Zone 키들에 있는(InGame) 클라이언트 세션을 모아 돌려준다
+	std::vector<ClientProxySessionRef> CollectSessionsInZones(const std::unordered_set<uint64_t>& zoneKeys);
 private:
 	SessionManager() = default;
 

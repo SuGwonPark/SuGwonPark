@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Manager/SessionManager.h"
+#include "Common/Protocol/InternalPackets.h"  
 
 void SessionManager::Register(uint64_t sessionID, ClientProxySessionRef session) {
 	std::lock_guard<std::mutex> lock(lock_);
@@ -33,13 +34,31 @@ bool SessionManager::TryBindUser(uint64_t userUID, uint64_t sessionID, ClientPro
 	auto it = userToSession_.find(userUID);
 	// 중복 로그인시
 	if (it != userToSession_.end() && it->second != sessionID) {
+		// 기존 접속중인 유저의 session을 찾는다
 		auto s = sessions_.find(it->second);
-		// 세션 정보가 있으면 그대로 넘겨줌 없으면 nullptr
-		existing = (s != sessions_.end()) ? s->second : nullptr;
-		return false;
+		if (s != sessions_.end()) {
+			// 실제로 살아 있는 세션이 이 계정을 잡고 있음 → 중복 로그인
+			existing = s->second;
+			return false;
+		}
 	}
 
 	userToSession_[userUID] = sessionID;
 
 	return true;
+}
+
+std::vector<ClientProxySessionRef> SessionManager::CollectSessionsInZones(const std::unordered_set<uint64_t>& zoneKeys) {
+	std::vector<ClientProxySessionRef> result;
+
+	std::lock_guard<std::mutex> lock(lock_);
+	// 모든 세션
+	for (auto& [sessionID, session] : sessions_) {
+		// 상태값이 InGame인 세션만 찾는다
+		if (session->GetState() != SessionState::InGame) continue;
+
+		uint64_t key = MakeZoneKey(session->GetCurrentZoneID(), session->GetCurrentChannelID());
+		if (zoneKeys.count(key)) result.push_back(session);
+	}
+	return result;
 }

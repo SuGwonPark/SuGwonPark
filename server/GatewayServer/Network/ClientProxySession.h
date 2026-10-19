@@ -1,4 +1,5 @@
 #pragma once
+#include "GatewayConstants.h"
 #include "pch.h"
 #include "Common/Protocol/Packets.h"
 #include "ServerCore/Network/SendBuffer.h"
@@ -14,7 +15,6 @@ enum class SessionState : uint8_t {
 };
 
 class ClientProxySession : public std::enable_shared_from_this<ClientProxySession> {
-	enum { RECV_BUFFER_SIZE = 65536, MAX_CLIENT_PACKET_SIZE = 4096 };
 
 
 public:
@@ -24,7 +24,7 @@ public:
 	void Start();
 	void Close();
 
-	// 클라이언트로 패킷 송신 (Zone/Chat 서버에서 온 응답을 클라이언트로 보낼 때)
+	// 클라이언트로 패킷 송신 (Zone 서버에서 온 응답을 클라이언트로 보낼 때)
 	void Send(SendBufferRef sendBuffer);
 
 	// Zone 1 완료 신호 수신 시 호출 -> 타겟 Zone 교체
@@ -79,12 +79,17 @@ private:
 	std::atomic<SessionState> state_{ SessionState::Connected };
 
 	// 수신 버퍼
-	std::array<uint8_t, RECV_BUFFER_SIZE> recvBuffer_;
+	std::array<uint8_t, GatewayConst::CLIENT_RECV_BUFFER_SIZE> recvBuffer_;
 	size_t readPos_ = 0;
 	size_t writePos_ = 0;
 
 	// 송신 큐 (Strand로 동기화)
 	std::queue<SendBufferRef> sendQueue_;
+
+	// 이만큼 못 보내고 쌓이면 읽지 않는(또는 너무 느린) 클라이언트로 보고 끊는다
+	static constexpr size_t MAX_SEND_QUEUE_BYTES = 1 * 1024 * 1024;   // 1MB
+	size_t sendQueueBytes_ = 0;      // strand 안에서만 접근
+
 
 };
 

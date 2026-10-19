@@ -1,15 +1,11 @@
 #pragma once
 #include <cstdint>
 #include "PacketID.h"
+#include "ProtocolTypes.h"   // ObjectType, PlayerInfo, CharacterSummary, MonsterInfo
+
+// 요청(REQ_)/응답(RES_) 패킷만 둔다. 패킷 안에 들어가는 타입은 ProtocolTypes.h
 
 #pragma pack(push, 1)
-struct PlayerInfo {              // 다른 유저에게 보여줄 최소 정보
-	uint64_t playerID;
-	char     name[50];
-	float    x, y, z;
-	int32_t  hp;
-};
-
 
 //////////// 패킷 ////////////////
 struct PacketHeader {
@@ -34,12 +30,6 @@ struct RES_LoginPacket {
 // ===== 로비 =====
 struct REQ_CharacterListPacket {
 	PacketHeader header;
-};
-
-struct CharacterSummary {        // 목록 한 줄
-	uint64_t playerID;
-	uint64_t exp;
-	char     name[50];
 };
 
 struct RES_CharacterListPacket {

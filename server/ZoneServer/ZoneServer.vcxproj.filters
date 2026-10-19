@@ -22,24 +22,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\GatewayServer\DB\DBConnection.cpp">
-      <Filter>DB</Filter>
-    </ClCompile>
-    <ClCompile Include="..\GatewayServer\DB\DBThreadPool.cpp">
-      <Filter>DB</Filter>
-    </ClCompile>
-    <ClCompile Include="..\GatewayServer\DB\GameDB.cpp">
-      <Filter>DB</Filter>
-    </ClCompile>
-    <ClCompile Include="..\GatewayServer\DB\RedisDB.cpp">
-      <Filter>DB</Filter>
-    </ClCompile>
-    <ClCompile Include="..\GatewayServer\Network\SendBuffer.cpp">
-      <Filter>Network</Filter>
-    </ClCompile>
-    <ClCompile Include="..\GatewayServer\Manager\SendBufferManager.cpp">
-      <Filter>Manager</Filter>
-    </ClCompile>
     <ClCompile Include="Game\Player.cpp">
       <Filter>Game</Filter>
     </ClCompile>
@@ -50,42 +32,9 @@
       <Filter>Network</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="DB\Main_Zone.cpp" />
-    <ClCompile Include="..\GatewayServer\DB\AccountDB.cpp">
-      <Filter>DB</Filter>
-    </ClCompile>
+    <ClCompile Include="Main_Zone.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\GatewayServer\DB\DBConnection.h">
-      <Filter>DB</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GatewayServer\DB\DBThreadPool.h">
-      <Filter>DB</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GatewayServer\DB\DBTypes.h">
-      <Filter>DB</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GatewayServer\DB\GameDB.h">
-      <Filter>DB</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GatewayServer\DB\RedisDB.h">
-      <Filter>DB</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GatewayServer\Network\SendBuffer.h">
-      <Filter>Network</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GatewayServer\Manager\SendBufferManager.h">
-      <Filter>Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GatewayServer\JobSystem\JobQueue.h">
-      <Filter>JobSystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GatewayServer\JobSystem\WorkStealingQueue.h">
-      <Filter>JobSystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GatewayServer\JobSystem\WorkStealingThreadPool.h">
-      <Filter>JobSystem</Filter>
-    </ClInclude>
     <ClInclude Include="Game\Player.h">
       <Filter>Game</Filter>
     </ClInclude>
@@ -96,10 +45,10 @@
       <Filter>Network</Filter>
     </ClInclude>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="..\GatewayServer\DB\AccountDB.h">
-      <Filter>DB</Filter>
-    </ClInclude>
     <ClInclude Include="Game\ZoneData.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\ZoneConstants.h">
       <Filter>Game</Filter>
     </ClInclude>
   </ItemGroup>

@@ -38,6 +38,12 @@ public:
 	// 모든 플레이어에 전달
 	void BroadCast(const void* data, uint16_t size, uint64_t exceptPlayerID = 0);
 
+	// Gateway연결 끊켯을 때 모든 유저 저장 후 존 상태 초기화
+	void HandleGatewayLost();
+
+	// 모든 플레이어 저장 요청 후 Zone 비우기. 끝나면 onDone 호출 (Zone 스레드에서)
+	void SaveAllAndClear(std::function<void()> onDone = nullptr);
+	void HandleGatewayLost() { SaveAllAndClear(); }      // 기존 함수는 이걸 부르도록
 private:
 	void HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t size);
 
@@ -47,6 +53,7 @@ private:
 	std::unordered_map<uint64_t, PlayerRef> players_;
 	std::unordered_map<uint64_t, PlayerRef> sessionToPlayer_; // sessionID -> Player (신규)
 	std::unordered_set<uint64_t> portalPending_;   // 포탈 저장 중인 playerID
+	std::unordered_set<uint64_t> spawnPending_; // 스폰 조회 중인 SessionID
 };
 
 using ZoneRef = std::shared_ptr<Zone>;

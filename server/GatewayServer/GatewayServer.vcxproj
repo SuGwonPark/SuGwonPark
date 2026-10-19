@@ -40,6 +40,8 @@
     <ClInclude Include="Network\InternalServer.h" />
     <ClInclude Include="Network\RecvBuffer.h" />
     <ClInclude Include="NetWork\Server.h" />
+    <ClInclude Include="GatewayConstants.h" />
+    <ClInclude Include="..\Common\GameConstants.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>

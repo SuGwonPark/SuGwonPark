@@ -26,9 +26,21 @@ void ZoneServerSession::Close() {
 			self->socket_.shutdown(tcp::socket::shutdown_both, ec);
 			self->socket_.close(ec);
 
-			// 내부 백본 연결이 끊기면 라우팅 테이블에서도 제거
+			std::unordered_set<uint64_t> deadKeys;
+			// 모든 존 채널 확인
 			for (const auto& e : self->zoneKeys_) {
 				ZoneManager::GetInstance()->UnregisterZone(e.zoneID, e.channelID, self);
+				deadKeys.insert(MakeZoneKey(e.zoneID, e.channelID));
+			}
+
+			// 이 Zone 서버에 있던 클라이언트들은 더 이상 갈 곳이 없으므로 연결을 끊는다
+			auto orphans = SessionManager::GetInstance()->CollectSessionsInZones(deadKeys);
+			if (!orphans.empty()) {
+				std::cerr << "[ZoneServerSession] Zone 서버 연결 끊김, 클라이언트 "
+					<< orphans.size() << "명 접속 종료" << std::endl;
+			}
+			for (auto& session : orphans) {
+				session->Close();
 			}
 			});
 

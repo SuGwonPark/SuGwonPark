@@ -43,4 +43,3 @@ enum PacketID : uint16_t {
 	PKT_S_ENHANCE_ITEM = 7002,
 };
 
-constexpr int MAX_CHARACTER_SLOT = 6;

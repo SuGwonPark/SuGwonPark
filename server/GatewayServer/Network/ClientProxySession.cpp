@@ -30,7 +30,7 @@ void ClientProxySession::Close() {
 		net::post(strand_, [self = shared_from_this()]() {
 			boost::system::error_code ec;
 			self->socket_.shutdown(tcp::socket::shutdown_both, ec);
-			self->socket_.close();
+			self->socket_.close(ec);
 
 			// 세션 연결 종료
 			SessionManager::GetInstance()->Unregister(self->sessionID_, self->GetUserUID());
@@ -86,7 +86,7 @@ void ClientProxySession::ProcessPackets() {
 
 		PacketHeader* header = reinterpret_cast<PacketHeader*>(&recvBuffer_[readPos_]);
 		// 최소 헤더 크기 미만이거나 큰 패킷이면 강제 종료
-		if (header->size < sizeof(PacketHeader) || header->size > MAX_CLIENT_PACKET_SIZE) {
+		if (header->size < sizeof(PacketHeader) || header->size > Net::MAX_CLIENT_PACKET_SIZE) {
 			Close();
 			break;
 		}
@@ -169,13 +169,23 @@ void ClientProxySession::OnZone1LeaveCompleted(uint32_t nextZoneID) {
 }
 
 void ClientProxySession::Send(SendBufferRef sendBuffer) {
-	if (!isConnected_.load()) return;
+	if (!sendBuffer || !isConnected_.load()) return;
 
 	auto self = shared_from_this();
 	net::post(strand_, [this, self, sendBuffer]() {
+		if (!isConnected_.load()) return;
+
+		const size_t size = sendBuffer->AllocSize();
+		if (sendQueueBytes_ + size > MAX_SEND_QUEUE_BYTES) {
+			std::cerr << "[Session " << sessionID_ << "] 송신 큐 초과(" << sendQueueBytes_
+				<< " bytes), 연결 종료" << std::endl;
+			Close();
+			return;
+		}
+
 		bool isWriting = !sendQueue_.empty();
 		sendQueue_.push(sendBuffer);
-
+		sendQueueBytes_ += size;
 		if (!isWriting) {
 			DoWrite();
 		}
@@ -192,6 +202,8 @@ void ClientProxySession::DoWrite() {
 		net::bind_executor(strand_,
 			[this, self](const boost::system::error_code& ec, size_t bytesTransferred) {
 				if (!ec) {
+					// SendByte 값 감소 처리
+					sendQueueBytes_ -= sendQueue_.front()->AllocSize();
 					sendQueue_.pop();
 					if (!sendQueue_.empty()) {
 						DoWrite();

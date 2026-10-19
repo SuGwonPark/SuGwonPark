@@ -1,11 +1,10 @@
 #pragma once
 #include "pch.h"
+#include "GatewayConstants.h"
 #include "ServerCore/Network/SendBuffer.h"
 #include "Common/Protocol/InternalPackets.h"
 
 class ZoneServerSession : public std::enable_shared_from_this<ZoneServerSession> {
-	enum { RECV_BUFFER_SIZE = 65536 * 2 }; // 내부 백본용 대용량 버퍼 (128KB)
-
 public:
 	ZoneServerSession(net::io_context& ioc);
 	~ZoneServerSession();
@@ -17,7 +16,6 @@ public:
 	void Send(SendBufferRef sendBuffer);
 
 	tcp::socket& Socket() { return socket_; }
-
 
 private:
 	void DoRead();
@@ -39,7 +37,7 @@ private:
 	std::atomic<bool> isConnected_{ false };
 
 	// 수신 스트림 버퍼
-	std::array<uint8_t, RECV_BUFFER_SIZE> recvBuffer_;
+	std::array<uint8_t, GatewayConst::ZONE_RECV_BUFFER_SIZE> recvBuffer_;
 	size_t readPos_ = 0;
 	size_t writePos_ = 0;
 

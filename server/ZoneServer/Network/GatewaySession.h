@@ -36,10 +36,13 @@ private:
 
 	void DoWrite();
 
+	void TryConnect();
+	void OnConnected();
+	void OnDisconnected(const std::string& reson);
+	void ScheduleReconnect();
+
 private:
 	std::unordered_map<uint64_t, ZoneRef> zones_;
-	uint32_t zoneID_ = 0;
-	uint32_t channelID_ = 0;
 	std::unique_ptr<tcp::socket> socket_;
 	std::unique_ptr<net::strand<net::io_context::executor_type>> strand_;
 
@@ -50,4 +53,13 @@ private:
 	size_t writePos_ = 0;
 
 	std::queue<SendBufferRef> sendQueue_;
+
+	// 재연결 시간
+	static constexpr int RECONNECT_DELAY_SEC = 3;
+	net::io_context* ioc_ = nullptr;
+	std::string host_;
+	uint64_t port_ = 0;
+	std::unique_ptr<net::steady_timer> retryTimer_;
+	uint32_t connGen_ = 0;
+
 };

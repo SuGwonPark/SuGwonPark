@@ -3,42 +3,89 @@
 #include "ServerCore/Manager/SendBufferManager.h"
 
 void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint16_t port) {
-	socket_ = std::make_unique<tcp::socket>(ioc);
+	ioc_ = &ioc;
+	host_ = host;
+	port_ = port;
 	strand_ = std::make_unique<net::strand<net::io_context::executor_type>>(net::make_strand(ioc));
+	retryTimer_ = std::make_unique<net::steady_timer>(*strand_);   // 타이머 콜백도 strand에서 실행
 
-	auto resolver = std::make_shared<tcp::resolver>(ioc);
-	resolver->async_resolve(host, std::to_string(port),
-		[this, resolver](boost::system::error_code ec, tcp::resolver::results_type endpoints) {
-			if (ec) {
-				std::cerr << "[GatewaySession] 주소 확인 실패: " << ec.message() << std::endl;
-				return;
-			}
-			net::async_connect(*socket_, endpoints,
-				[this](boost::system::error_code ec, const tcp::endpoint&) {
-					if (ec) {
-						std::cerr << "[GatewaySession] Gateway 접속 실패: " << ec.message() << std::endl;
-						return;
-					}
-					isConnected_.store(true);
-					std::cout << "[GatewaySession] Gateway 접속 성공" << std::endl;
+	net::post(*strand_, [this]() { TryConnect(); });
+}
 
-					std::vector<ZoneKeyEntry> list;
-					for (auto& [key, zone] : zones_) {
-						ZoneKeyEntry c{};
-						c.zoneID = zone->GetZoneID();
-						c.channelID = zone->GetChannelID();
-						list.push_back(c);
-					}
+void GatewaySession::TryConnect() {
+	const uint32_t gen = ++connGen_;
 
-					ZoneHandshakePacket hs{};
-					hs.header.id = PKT_ZONE_HANDSHAKE;
-					hs.count = list.size();
+	// 새 연결 준비: 소켓 새로 만들고 버퍼/큐 비우기
+	socket_ = std::make_unique<tcp::socket>(*ioc_);
+	readPos_ = 0;
+	writePos_ = 0;
+	std::queue<SendBufferRef>().swap(sendQueue_);
 
-					SendBufferRef buf = SendBufferManager::MakeList(hs, list);
-					Send(buf);
+	auto resolver = std::make_shared<tcp::resolver>(*ioc_);
+	resolver->async_resolve(host_, std::to_string(port_),
+		net::bind_executor(*strand_,
+			[this, resolver, gen](boost::system::error_code ec, tcp::resolver::results_type endpoints) {
+				if (gen != connGen_) return;
+				if (ec) {
+					std::cerr << "[GatewaySession] 주소 확인 실패: " << ec.message() << std::endl;
+					ScheduleReconnect();
+					return;
+				}
+				net::async_connect(*socket_, endpoints,
+					net::bind_executor(*strand_,
+						[this, gen](boost::system::error_code ec, const tcp::endpoint&) {
+							if (gen != connGen_) return;
+							if (ec) {
+								std::cerr << "[GatewaySession] Gateway 접속 실패: " << ec.message() << std::endl;
+								ScheduleReconnect();
+								return;
+							}
+							OnConnected();
+						}));
+			}));
+}
 
-					DoRead();
-				});
+
+void GatewaySession::OnConnected() {
+	isConnected_.store(true);
+	std::cout << "[GatewaySession] Gateway 접속 성공" << std::endl;
+
+	// 핸드셰이크 (기존 코드 그대로)
+	std::vector<ZoneKeyEntry> list;
+	for (auto& [key, zone] : zones_) {
+		ZoneKeyEntry c{};
+		c.zoneID = zone->GetZoneID();
+		c.channelID = zone->GetChannelID();
+		list.push_back(c);
+	}
+	ZoneHandshakePacket hs{};
+	hs.header.id = PKT_ZONE_HANDSHAKE;
+	hs.count = static_cast<uint16_t>(list.size());
+	if (SendBufferRef buf = SendBufferManager::MakeList(hs, list)) Send(buf);
+
+	DoRead();
+}
+
+void GatewaySession::OnDisconnected(const std::string& reason) {
+	// 읽기/쓰기 에러가 동시에 와도 한 번만 처리
+	if (!isConnected_.exchange(false)) return;
+	std::cerr << "[GatewaySession] Gateway 연결 끊김: " << reason << std::endl;
+
+	boost::system::error_code ec;
+	socket_->close(ec);
+
+	// Gateway가 없으면 클라이언트도 전부 없는 것 → 모든 Zone의 플레이어 저장 후 비우기
+	for (auto& [key, zone] : zones_) zone->HandleGatewayLost();
+
+	ScheduleReconnect();
+}
+
+void GatewaySession::ScheduleReconnect() {
+	std::cout << "[GatewaySession] " << RECONNECT_DELAY_SEC << "초 후 재접속 시도" << std::endl;
+	retryTimer_->expires_after(std::chrono::seconds(RECONNECT_DELAY_SEC));
+	retryTimer_->async_wait([this](const boost::system::error_code& ec) {
+		if (ec) return;
+		TryConnect();
 		});
 }
 
@@ -59,15 +106,15 @@ void GatewaySession::DoRead() {
 	socket_->async_read_some(
 		net::buffer(&recvBuffer_[writePos_], freeSize),
 		net::bind_executor(*strand_,
-			[this](const boost::system::error_code& ec, size_t bytesTransferred) {
+			[this, gen = connGen_](const boost::system::error_code& ec, size_t bytesTransferred) {
+				if (gen != connGen_) return;          // 이전 연결의 콜백이면 무시
 				if (!ec) {
 					writePos_ += bytesTransferred;
 					ProcessPackets();
 					DoRead();
 				}
 				else {
-					isConnected_.store(false);
-					std::cerr << "[GatewaySession] Gateway 연결 끊김: " << ec.message() << std::endl;
+					OnDisconnected(ec.message());
 				}
 			}
 		)
@@ -84,11 +131,8 @@ void GatewaySession::ProcessPackets() {
 		if (dataSize < header->header.size) break;
 
 		if (header->header.size < sizeof(InternalPacketHeader)) {
-			std::cerr << "[GatewaySession] 잘못된 패킷 크기: " << header->header.size << std::endl;
-			isConnected_.store(false);
-			boost::system::error_code ec;
-			socket_->close(ec);
-			break;
+			OnDisconnected("잘못된 패킷 크기: " + std::to_string(header->header.size));
+			return;
 		}
 
 		HandleInternalPacket(&recvBuffer_[readPos_], header->header.size);
@@ -120,22 +164,19 @@ void GatewaySession::DoWrite() {
 	net::async_write(*socket_,
 		net::buffer(sendBuffer->Buffer(), sendBuffer->AllocSize()),
 		net::bind_executor(*strand_,
-			[this](boost::system::error_code ec, size_t bytesTransferred) {
+			[this, gen = connGen_](boost::system::error_code ec, size_t bytesTransferred) {
+				if (gen != connGen_) return;          // 이전 연결의 콜백이면 무시
 				if (!ec) {
 					sendQueue_.pop();
-					if (!sendQueue_.empty()) {
-						DoWrite();
-					}
+					if (!sendQueue_.empty()) DoWrite();
 				}
 				else {
-					isConnected_.store(false);
-					std::cerr << "[GatewaySession] 송신 실패: " << ec.message() << std::endl;
+					OnDisconnected(ec.message());     // 플래그만 내리지 말고 정리 경로로
 				}
 			}
 		)
 	);
 }
-
 
 void GatewaySession::HandleInternalPacket(uint8_t* buffer, uint16_t size) {
 	InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(buffer);

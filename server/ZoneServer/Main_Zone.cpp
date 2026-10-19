@@ -2,9 +2,13 @@
 #include "Network/GatewaySession.h"
 #include "Game/Zone.h"
 #include "ServerCore/DB/GameDB.h"
+#include "ServerCore/Utils/Config.h"
 
 
 int main(int argc, char* argv[]) {
+	// 실행 환경 설정 (Config/server.ini)
+	const ServerConfig cfg = LoadServerConfig();
+
 	// 추후 config로 처리
 	std::vector<std::pair<uint32_t, uint32_t>> zoneConfig = {
 		{1,1}, {1,2}, {1,3}, {1,4},
@@ -36,7 +40,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// Gateway로 접속 (Gateway의 InternalServer가 듣고 있는 포트로)
-	GatewaySession::GetInstance()->Connect(io, "127.0.0.1", 9000);
+	GatewaySession::GetInstance()->Connect(io, cfg.gatewayHost, cfg.internalPort);
 
 	io.run();
 

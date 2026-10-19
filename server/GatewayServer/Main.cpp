@@ -3,11 +3,16 @@
 #include "ServerCore/DB/GameDB.h"
 #include "ServerCore/DB/AccountDB.h"
 #include "Network/InternalServer.h"
+#include "GatewayConstants.h"
+#include "ServerCore/Utils/Config.h"
 
 
 int main() {
 	SetConsoleOutputCP(CP_UTF8);
 	SetConsoleCP(CP_UTF8);
+
+	// 실행 환경 설정 (Config/server.ini)
+	const ServerConfig cfg = LoadServerConfig();
 
 	// libsodium 초기화 (crypto_pwhash_* 사용 전에 반드시 한 번)
 	if (sodium_init() < 0) {
@@ -35,11 +40,11 @@ int main() {
 
 	// 서버 시작
 	boost::asio::io_context io;
-	Server server(io, 8080); // 게임 서버 
-	std::cout << "\n서버 시작 - 포트 8080" << std::endl;
+	Server server(io, cfg.clientPort); // 게임 서버 
+	std::cout << "\n서버 시작 - 포트 " << cfg.clientPort << std::endl;
 
-	InternalServer internalServer(io, 9000); // zone서버
-	std::cout << "\n서버 시작 - 포트 9000" << std::endl;
+	InternalServer internalServer(io, cfg.internalPort); // zone서버
+	std::cout << "\n서버 시작 - 포트 " << cfg.internalPort << std::endl;
 	io.run();
 
 	return 0;

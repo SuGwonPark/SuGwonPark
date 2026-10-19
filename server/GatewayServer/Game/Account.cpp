@@ -40,11 +40,11 @@ void Account::Login(ClientProxySessionRef session, const REQ_LoginPacket* pkt)
 					"WHERE id = ? AND `remove` = 0")
 					.bind(userID).execute().fetchOne();
 
-				if (!row) { reply(false, 0, "LOGIN_FAILED"); return; }
+				if (!row) { fail("LOGIN_FAILED"); return; }
 
 				std::string hash = row[1].get<std::string>();
 				if (crypto_pwhash_str_verify(hash.c_str(), password.c_str(), password.size()) != 0) {
-					reply(false, 0, "LOGIN_FAILED");
+					fail("LOGIN_PASSWORD_FAILED");
 					return;
 				}
 
@@ -52,8 +52,8 @@ void Account::Login(ClientProxySessionRef session, const REQ_LoginPacket* pkt)
 				// 같은 계정이 이미 접속 중이면: 기존 접속을 끊고, 이번 로그인은 거부
 				ClientProxySessionRef existing;
 				if (!SessionManager::GetInstance()->TryBindUser(userUID, session->GetSessionID(), existing)) {
-					if (existing) existing->Close();     // → Zone에 접속 종료 통보 → 저장 → 바인딩 해제
-					reply(false, 0, "DUPLICATE_LOGIN");  // 클라: "기존 접속을 종료했습니다. 다시 로그인해 주세요"
+					if (existing) existing->Close();     // → 기존 접속 유저 Zone에 접속 종료 통보 → 저장 → 바인딩 해제
+					fail("DUPLICATE_LOGIN");  // 현재 접속 유저도 1회 거부
 					return;
 				}
 

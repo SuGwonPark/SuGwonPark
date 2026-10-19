@@ -30,6 +30,7 @@
     <ClInclude Include="Game\Zone.h" />
     <ClInclude Include="Game\ZoneData.h" />
     <ClInclude Include="Network\GatewaySession.h" />
+    <ClInclude Include="Game\ZoneConstants.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
