@@ -1,10 +1,28 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="ServerCore.cpp" />
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="DB\AccountDB.cpp" />
+    <ClCompile Include="DB\DBThreadPool.cpp" />
+    <ClCompile Include="DB\GameDB.cpp" />
+    <ClCompile Include="DB\RedisDB.cpp" />
+    <ClCompile Include="Manager\SendBufferManager.cpp" />
+    <ClCompile Include="Network\SendBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ServerCore.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="DB\AccountDB.h" />
+    <ClInclude Include="DB\DBThreadPool.h" />
+    <ClInclude Include="DB\DBTypes.h" />
+    <ClInclude Include="DB\GameDB.h" />
+    <ClInclude Include="DB\RedisDB.h" />
+    <ClInclude Include="JobSystem\JobQueue.h" />
+    <ClInclude Include="JobSystem\JobSerializer.h" />
+    <ClInclude Include="JobSystem\WorkStealingQueue.h" />
+    <ClInclude Include="JobSystem\WorkStealingThreadPool.h" />
+    <ClInclude Include="Manager\SendBufferManager.h" />
+    <ClInclude Include="Network\SendBuffer.h" />
+    <ClInclude Include="Utils\util.h" />
+    <ClInclude Include="Utils\CsvReader.h" />
   </ItemGroup>
 </Project>

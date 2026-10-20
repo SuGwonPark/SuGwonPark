@@ -38,12 +38,12 @@ struct PlayerInfo {              // 다른 유저에게 보여줄 최소 정보
 	int32_t  hp;
 };
 
-struct MonsterInfo {             // 몬스터 등장 정보
-	uint64_t objectID;
-	uint32_t templateID;         // 클라이언트가 이 값으로 이름/모델을 찾는다
+struct MonsterInfo {
+	uint64_t monsterUID;
+	uint32_t monsterID;
 	float    x, y, z;
 	int32_t  hp;
-	int32_t  maxHp;              // HP 바 표시용
+	int32_t  maxHp;
 };
 
 #pragma pack(pop)

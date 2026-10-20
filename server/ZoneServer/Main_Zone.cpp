@@ -3,18 +3,21 @@
 #include "Game/Zone.h"
 #include "ServerCore/DB/GameDB.h"
 #include "ServerCore/Utils/Config.h"
-
+#include "Template/ZoneTemplate.h"
+#include "Template/Template.h"
 
 int main(int argc, char* argv[]) {
 	// 실행 환경 설정 (Config/server.ini)
 	const ServerConfig cfg = LoadServerConfig();
 
+	// DataTemplate 불러오기
+	if (!Template::LoadTemplate()) {
+		std::cerr << "[Template] 로드 실패, 서버를 종료합니다." << std::endl;
+		return 3;
+	}
+
 	// 추후 config로 처리
-	std::vector<std::pair<uint32_t, uint32_t>> zoneConfig = {
-		{1,1}, {1,2}, {1,3}, {1,4},
-		{2,1}, {2,2}, {2,3},
-		{3,1}, {3,2},
-	};
+	std::map<uint32_t, ZoneData> zoneTemplate = ZoneTemplate::Instance().All();
 
 	try {
 		//	// GameDB 연결
@@ -33,10 +36,11 @@ int main(int argc, char* argv[]) {
 	}
 	boost::asio::io_context io;
 
-	for (auto& [key, value] : zoneConfig)
-	{
-		// 존 등록
-		GatewaySession::GetInstance()->AddZone(std::make_shared<Zone>(key, value));
+	for (auto& [zoneID, zone] : zoneTemplate) {
+		for (uint32_t channelID = 1; channelID <= zone.channelCount; ++channelID) {
+			// 존 등록
+			GatewaySession::GetInstance()->AddZone(std::make_shared<Zone>(zoneID, channelID));
+		}
 	}
 
 	// Gateway로 접속 (Gateway의 InternalServer가 듣고 있는 포트로)

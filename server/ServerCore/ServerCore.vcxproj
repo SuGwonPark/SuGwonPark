@@ -23,7 +23,6 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="DB\AccountDB.cpp" />
-    <ClCompile Include="DB\DBConnection.cpp" />
     <ClCompile Include="DB\DBThreadPool.cpp" />
     <ClCompile Include="DB\GameDB.cpp" />
     <ClCompile Include="DB\RedisDB.cpp" />
@@ -33,7 +32,6 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="DB\AccountDB.h" />
-    <ClInclude Include="DB\DBConnection.h" />
     <ClInclude Include="DB\DBThreadPool.h" />
     <ClInclude Include="DB\DBTypes.h" />
     <ClInclude Include="DB\GameDB.h" />
@@ -44,6 +42,7 @@
     <ClInclude Include="JobSystem\WorkStealingThreadPool.h" />
     <ClInclude Include="Manager\SendBufferManager.h" />
     <ClInclude Include="Network\SendBuffer.h" />
+    <ClInclude Include="Utils\CsvReader.h" />
     <ClInclude Include="Utils\util.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

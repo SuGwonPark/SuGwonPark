@@ -28,7 +28,7 @@ public:
 	void HandleMove(uint64_t playerId, float x, float y, float z);
 
 	// 존 이동
-	void HandlePortal(uint64_t playerId, uint32_t nextZoneId);
+	void HandlePortal(uint64_t playerId, uint32_t portalID);
 
 	// 포탈 이동
 	void HandlePortalRequest(const PlayerRef& player, uint32_t portalID);
@@ -37,9 +37,6 @@ public:
 	void SendTo(const PlayerRef& player, const void* data, uint16_t size);
 	// 모든 플레이어에 전달
 	void BroadCast(const void* data, uint16_t size, uint64_t exceptPlayerID = 0);
-
-	// Gateway연결 끊켯을 때 모든 유저 저장 후 존 상태 초기화
-	void HandleGatewayLost();
 
 	// 모든 플레이어 저장 요청 후 Zone 비우기. 끝나면 onDone 호출 (Zone 스레드에서)
 	void SaveAllAndClear(std::function<void()> onDone = nullptr);

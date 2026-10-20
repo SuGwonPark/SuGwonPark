@@ -19,19 +19,30 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Game\Monster.cpp" />
     <ClCompile Include="Main_Zone.cpp" />
     <ClCompile Include="Game\Player.cpp" />
     <ClCompile Include="Game\Zone.cpp" />
     <ClCompile Include="Network\GatewaySession.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="Template\MonsterSpawnTemplate.cpp" />
+    <ClCompile Include="Template\MonsterTemplate.cpp" />
+    <ClCompile Include="Template\PortalTemlate.cpp" />
+    <ClCompile Include="Template\Template.cpp" />
+    <ClCompile Include="Template\ZoneTemplate.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Game\Monster.h" />
     <ClInclude Include="Game\Player.h" />
     <ClInclude Include="Game\Zone.h" />
-    <ClInclude Include="Game\ZoneData.h" />
     <ClInclude Include="Network\GatewaySession.h" />
     <ClInclude Include="Game\ZoneConstants.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Template\MonsterSpawnTemplate.h" />
+    <ClInclude Include="Template\MonsterTemplate.h" />
+    <ClInclude Include="Template\PortalTemplate.h" />
+    <ClInclude Include="Template\Template.h" />
+    <ClInclude Include="Template\ZoneTemplate.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ServerCore\ServerCore.vcxproj">

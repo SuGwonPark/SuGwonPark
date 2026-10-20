@@ -20,6 +20,9 @@
     <Filter Include="Manager">
       <UniqueIdentifier>{d3ecfc51-34ce-4b62-816a-436c5ab4eda6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Template">
+      <UniqueIdentifier>{b7ce8bf0-8b96-424b-a68b-a1a060211507}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Game\Player.cpp">
@@ -33,6 +36,24 @@
     </ClCompile>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Main_Zone.cpp" />
+    <ClCompile Include="Game\Monster.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Template\MonsterSpawnTemplate.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="Template\MonsterTemplate.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="Template\PortalTemlate.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="Template\Template.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="Template\ZoneTemplate.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Game\Player.h">
@@ -45,11 +66,26 @@
       <Filter>Network</Filter>
     </ClInclude>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="Game\ZoneData.h">
-      <Filter>Game</Filter>
-    </ClInclude>
     <ClInclude Include="Game\ZoneConstants.h">
       <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Monster.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Template\MonsterSpawnTemplate.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="Template\MonsterTemplate.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="Template\PortalTemplate.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="Template\Template.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="Template\ZoneTemplate.h">
+      <Filter>Template</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

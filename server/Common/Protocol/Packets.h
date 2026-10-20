@@ -100,4 +100,14 @@ struct AttackPacket {
 };
 
 
+struct RES_MonsterSpawnPacket {
+	PacketHeader header;
+	uint16_t count;
+};
+
+struct RES_MonsterDespawnPacket {
+	PacketHeader header;
+	uint64_t objectID;
+};
+
 #pragma pack(pop)

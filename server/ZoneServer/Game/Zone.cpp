@@ -5,8 +5,8 @@
 #include "Common/Protocol/InternalPackets.h"
 #include "Network/GatewaySession.h"
 #include "ServerCore/Manager/SendBufferManager.h"
-#include "Game/ZoneData.h"
 #include "Game/ZoneConstants.h"
+#include "Template/PortalTemplate.h"
 
 static PlayerInfo ToInfo(const Player& p) {
 	PlayerInfo info{};
@@ -259,12 +259,12 @@ void Zone::HandleMove(uint64_t playerID, float x, float y, float z) {
 	BroadCast(&pkt, sizeof(pkt), playerID);
 }
 
-void Zone::HandlePortal(uint64_t playerID, uint32_t nextZoneID) {
+void Zone::HandlePortal(uint64_t playerID, uint32_t portalID) {
 	auto it = players_.find(playerID);
 	if (it == players_.end()) return;
 
-	auto sp = FindSpawnPoint(nextZoneID);
-	if (!sp) return;
+	const PortalData* portalData = PortalTemplate::Instance().GetData(portalID);
+	if (!portalData) return;
 
 	// 이미 포탈 처리 중이면 무시
 	if (!portalPending_.insert(playerID).second) return;
@@ -275,10 +275,10 @@ void Zone::HandlePortal(uint64_t playerID, uint32_t nextZoneID) {
 	auto self = shared_from_this();
 
 	GameDB::Instance().SaveCharacterProgressAsync(
-		playerID, player->GetExp(), sp->x, sp->y, sp->z,
-		player->GetHp(), player->GetMp(), nextZoneID,
+		playerID, player->GetExp(), portalData->destX, portalData->destY, portalData->destZ,
+		player->GetHp(), player->GetMp(), portalData->destZoneID,
 		// 콜백 DB 스레드에서 실행
-		[self, sessionID, playerID, nextZoneID](bool ok) {
+		[self, sessionID, playerID, portalData](bool ok) {
 			self->Post([=]() {
 				// 포탈 로딩 종료
 				self->portalPending_.erase(playerID);
@@ -294,7 +294,7 @@ void Zone::HandlePortal(uint64_t playerID, uint32_t nextZoneID) {
 				ackPkt.header.size = sizeof(ackPkt);
 				ackPkt.header.id = PKT_S_ZONE_LEAVE_COMPLETED;
 				ackPkt.playerID = playerID;
-				ackPkt.nextZoneID = nextZoneID;
+				ackPkt.nextZoneID = portalData->destZoneID;
 
 				GatewaySession::GetInstance()->SendToClient(
 					sessionID, self->zoneID_, self->channelID_, &ackPkt, sizeof(ackPkt));
@@ -305,7 +305,7 @@ void Zone::HandlePortal(uint64_t playerID, uint32_t nextZoneID) {
 
 void Zone::HandlePortalRequest(const PlayerRef& player, uint32_t portalID)
 {
-	const PortalData* portal = FindPortal(zoneID_, portalID);
+	const PortalData* portal = PortalTemplate::Instance().Find(zoneID_, portalID);
 	if (!portal) return; // zone에 세팅되어 있지 않은 포탈
 
 	// 포탈 근처에서 사용한건지 체크
@@ -315,7 +315,7 @@ void Zone::HandlePortalRequest(const PlayerRef& player, uint32_t portalID)
 
 	if (dx * dx + dy * dy + dz * dz > portal->radius * portal->radius) return;
 
-	HandlePortal(player->GetPlayerID(), portal->destZoneID);
+	HandlePortal(player->GetPlayerID(), portal->portalID);
 }
 
 
