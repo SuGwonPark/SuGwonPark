@@ -13,6 +13,7 @@ enum PacketID : uint16_t {
 	// 몬스터 (1100~)
 	PKT_S_MONSTER_SPAWN = 1101,     // 몬스터 생성
 	PKT_S_MONSTER_DESPAWN = 1102,   // 몬스터 제거 (사망 등, 3단계에서 사용)
+	PKT_S_MONSTER_MOVE = 1103, // 몬스터 이동
 
 	// 존 (2000~)
 	PKT_S_ZONE_LEAVE_COMPLETED = 2001,

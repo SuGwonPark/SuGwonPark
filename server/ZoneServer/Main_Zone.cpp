@@ -5,6 +5,7 @@
 #include "ServerCore/Utils/Config.h"
 #include "Template/ZoneTemplate.h"
 #include "Template/Template.h"
+#include "Game/ZoneConstants.h"
 
 int main(int argc, char* argv[]) {
 	// 실행 환경 설정 (Config/server.ini)
@@ -36,15 +37,39 @@ int main(int argc, char* argv[]) {
 	}
 	boost::asio::io_context io;
 
+	// 틱 / 자동 저장 등에서 쓰려고 Zone 목록을 들고 있는다
+	std::vector<ZoneRef> zones;
+
 	for (auto& [zoneID, zone] : zoneTemplate) {
 		for (uint32_t channelID = 1; channelID <= zone.channelCount; ++channelID) {
+			auto z = std::make_shared<Zone>(zoneID, channelID);
+			// 미리 몬스터 생성 
+			z->InitMonster();
+			zones.push_back(z);
 			// 존 등록
-			GatewaySession::GetInstance()->AddZone(std::make_shared<Zone>(zoneID, channelID));
+			GatewaySession::GetInstance()->AddZone(z);
 		}
 	}
 
 	// Gateway로 접속 (Gateway의 InternalServer가 듣고 있는 포트로)
 	GatewaySession::GetInstance()->Connect(io, cfg.gatewayHost, cfg.internalPort);
+
+	// 존 틱 타이머: ZONE_TICK_MS마다 모든 Zone에 틱 요청
+	boost::asio::steady_timer tickTimer(io);
+	auto nextTick = std::chrono::steady_clock::now();
+	std::function<void()> scheduleTick;
+	scheduleTick = [&]() {
+		// expires_after가 아니라 expires_at: 핸들러 실행 시간만큼 주기가 밀리지 않게
+		nextTick += std::chrono::milliseconds(ZoneConst::ZONE_TICK_MS);
+		tickTimer.expires_at(nextTick);
+		tickTimer.async_wait([&](const boost::system::error_code& ec) {
+			if (ec) return;                         // cancel() 되면 멈춤 (종료 처리용)
+			for (auto& z : zones) z->RequestTick();
+			scheduleTick();
+			});
+		};
+
+	scheduleTick();
 
 	io.run();
 

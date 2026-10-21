@@ -1,8 +1,8 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "Network/ZoneServerSession.h"
 #include "Manager/ZoneManager.h"
 #include "ServerCore/Manager/SendBufferManager.h"
-#include "Manager/SessionManager.h"   // sessionId -> ClientProxySession Ã£±â¿ë (½Å±Ô)
+#include "Manager/SessionManager.h"   // sessionId -> ClientProxySession ì°¾ê¸°ìš© (ì‹ ê·œ)
 
 ZoneServerSession::ZoneServerSession(net::io_context& ioc)
 	: socket_(ioc)
@@ -27,17 +27,17 @@ void ZoneServerSession::Close() {
 			self->socket_.close(ec);
 
 			std::unordered_set<uint64_t> deadKeys;
-			// ¸ğµç Á¸ Ã¤³Î È®ÀÎ
+			// ëª¨ë“  ì¡´ ì±„ë„ í™•ì¸
 			for (const auto& e : self->zoneKeys_) {
 				ZoneManager::GetInstance()->UnregisterZone(e.zoneID, e.channelID, self);
 				deadKeys.insert(MakeZoneKey(e.zoneID, e.channelID));
 			}
 
-			// ÀÌ Zone ¼­¹ö¿¡ ÀÖ´ø Å¬¶óÀÌ¾ğÆ®µéÀº ´õ ÀÌ»ó °¥ °÷ÀÌ ¾øÀ¸¹Ç·Î ¿¬°áÀ» ²÷´Â´Ù
+			// ì´ Zone ì„œë²„ì— ìˆë˜ í´ë¼ì´ì–¸íŠ¸ë“¤ì€ ë” ì´ìƒ ê°ˆ ê³³ì´ ì—†ìœ¼ë¯€ë¡œ ì—°ê²°ì„ ëŠëŠ”ë‹¤
 			auto orphans = SessionManager::GetInstance()->CollectSessionsInZones(deadKeys);
 			if (!orphans.empty()) {
-				std::cerr << "[ZoneServerSession] Zone ¼­¹ö ¿¬°á ²÷±è, Å¬¶óÀÌ¾ğÆ® "
-					<< orphans.size() << "¸í Á¢¼Ó Á¾·á" << std::endl;
+				std::cerr << "[ZoneServerSession] Zone ì„œë²„ ì—°ê²° ëŠê¹€, í´ë¼ì´ì–¸íŠ¸ "
+					<< orphans.size() << "ëª… ì ‘ì† ì¢…ë£Œ" << std::endl;
 			}
 			for (auto& session : orphans) {
 				session->Close();
@@ -83,7 +83,7 @@ void ZoneServerSession::ProcessPackets() {
 	while (true) {
 		size_t dataSize = writePos_ - readPos_;
 
-		// Ã³À½ ¿¬°á½Ã 1¹ø¸¸
+		// ì²˜ìŒ ì—°ê²°ì‹œ 1ë²ˆë§Œ
 		if (!handshakeDone_) {
 			if (dataSize < sizeof(ZoneHandshakePacket)) break;
 
@@ -91,7 +91,7 @@ void ZoneServerSession::ProcessPackets() {
 			if (dataSize < hs->header.size) break;
 
 
-			// Å©±â °ËÁõ : Çì´õ¿¡ ÀûÈù count¿Í Å©±â°¡ ¸Â´ÂÁö È®ÀÎ
+			// í¬ê¸° ê²€ì¦ : í—¤ë”ì— ì íŒ countì™€ í¬ê¸°ê°€ ë§ëŠ”ì§€ í™•ì¸
 			size_t expected = sizeof(ZoneHandshakePacket) + hs->count * sizeof(ZoneKeyEntry);
 			if (hs->header.id != PKT_ZONE_HANDSHAKE || hs->header.size != expected) {
 				Close();
@@ -106,25 +106,25 @@ void ZoneServerSession::ProcessPackets() {
 				ZoneManager::GetInstance()->RegisterZone(e.zoneID, e.channelID, shared_from_this());
 			}
 
-			std::cout << "Zone ¼­¹ö µî·Ï: ÀÎ½ºÅÏ½º " << zoneKeys_.size() << "°³" << std::endl;
+			std::cout << "Zone ì„œë²„ ë“±ë¡: ì¸ìŠ¤í„´ìŠ¤ " << zoneKeys_.size() << "ê°œ" << std::endl;
 
 			handshakeDone_ = true;
 			readPos_ += hs->header.size;
 			continue;
 		}
 
-		// µ¥ÀÌÅÍ ±æÀÌ°¡ ±âº» Çì´õº¸´Ù ÀÛÀ¸¸é ³Ñ±è
+		// ë°ì´í„° ê¸¸ì´ê°€ ê¸°ë³¸ í—¤ë”ë³´ë‹¤ ì‘ìœ¼ë©´ ë„˜ê¹€
 		if (dataSize < sizeof(InternalPacketHeader)) break;
 
 		InternalPacketHeader* header = reinterpret_cast<InternalPacketHeader*>(&recvBuffer_[readPos_]);
 
-		// Çì´õº¸´Ù ÀÛÀº Å©±â´Â ½ºÆ®¸²ÀÌ ±úÁø °Í ¡æ ¿¬°á Á¾·á
+		// í—¤ë”ë³´ë‹¤ ì‘ì€ í¬ê¸°ëŠ” ìŠ¤íŠ¸ë¦¼ì´ ê¹¨ì§„ ê²ƒ â†’ ì—°ê²° ì¢…ë£Œ
 		if (header->header.size < sizeof(InternalPacketHeader)) {
 			Close();
 			return;
 		}
 
-		// µ¥ÀÌÅÍ ±æÀÌ°¡ Response sizeº¸´Ù ÀÛÀ» °æ¿ì ³Ñ±è
+		// ë°ì´í„° ê¸¸ì´ê°€ Response sizeë³´ë‹¤ ì‘ì„ ê²½ìš° ë„˜ê¹€
 		if (dataSize < header->header.size) break;
 
 		HandleInternalPacket(&recvBuffer_[readPos_], header->header.size);
@@ -143,12 +143,12 @@ void ZoneServerSession::HandleInternalPacket(uint8_t* buffer, uint16_t size) {
 	uint16_t payloadSize = size - sizeof(InternalPacketHeader);
 	uint8_t* payload = buffer + sizeof(InternalPacketHeader);
 
-	// ZoneÀÌ ÀÌ ÀÀ´äÀ» ´©±¸ÇÑÅ× º¸³»´Â °ÇÁö´Â header->sessionID·Î¸¸ ¾Ë ¼ö ÀÖÀ½
-	// ¡æ SessionManager¿¡¼­ ½ÇÁ¦ ClientProxySessionÀ» Ã£¾Æ¼­ ±×´ë·Î Àü´Ş
+	// Zoneì´ ì´ ì‘ë‹µì„ ëˆ„êµ¬í•œí…Œ ë³´ë‚´ëŠ” ê±´ì§€ëŠ” header->sessionIDë¡œë§Œ ì•Œ ìˆ˜ ìˆìŒ
+	// â†’ SessionManagerì—ì„œ ì‹¤ì œ ClientProxySessionì„ ì°¾ì•„ì„œ ê·¸ëŒ€ë¡œ ì „ë‹¬
 	ClientProxySessionRef target = SessionManager::GetInstance()->FindSession(header->sessionID);
-	if (!target) return; // ÀÌ¹Ì ²÷±ä Å¬¶óÀÌ¾ğÆ®¸é Á¶¿ëÈ÷ ¹ö¸²
+	if (!target) return; // ì´ë¯¸ ëŠê¸´ í´ë¼ì´ì–¸íŠ¸ë©´ ì¡°ìš©íˆ ë²„ë¦¼
 
-	//  Zone ÀÌµ¿ ¿Ï·á ½ÅÈ£¸é ¿©±â¼­ ¿Ï·á Ã³¸®
+	//  Zone ì´ë™ ì™„ë£Œ ì‹ í˜¸ë©´ ì—¬ê¸°ì„œ ì™„ë£Œ ì²˜ë¦¬
 	if (payloadSize >= sizeof(PacketHeader)) {
 		PacketHeader* inner = reinterpret_cast<PacketHeader*> (payload);
 		if (inner->id == PKT_S_ZONE_LEAVE_COMPLETED) {

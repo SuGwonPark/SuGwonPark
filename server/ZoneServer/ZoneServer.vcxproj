@@ -27,7 +27,7 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Template\MonsterSpawnTemplate.cpp" />
     <ClCompile Include="Template\MonsterTemplate.cpp" />
-    <ClCompile Include="Template\PortalTemlate.cpp" />
+    <ClCompile Include="Template\PortalTemplate.cpp" />
     <ClCompile Include="Template\Template.cpp" />
     <ClCompile Include="Template\ZoneTemplate.cpp" />
   </ItemGroup>

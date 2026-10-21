@@ -45,13 +45,13 @@
     <ClCompile Include="Template\MonsterTemplate.cpp">
       <Filter>Template</Filter>
     </ClCompile>
-    <ClCompile Include="Template\PortalTemlate.cpp">
-      <Filter>Template</Filter>
-    </ClCompile>
     <ClCompile Include="Template\Template.cpp">
       <Filter>Template</Filter>
     </ClCompile>
     <ClCompile Include="Template\ZoneTemplate.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="Template\PortalTemplate.cpp">
       <Filter>Template</Filter>
     </ClCompile>
   </ItemGroup>

@@ -7,6 +7,9 @@
 #include "ServerCore/Manager/SendBufferManager.h"
 #include "Game/ZoneConstants.h"
 #include "Template/PortalTemplate.h"
+#include "Template/MonsterSpawnTemplate.h"
+#include "Template/MonsterTemplate.h"
+#include "Game/Monster.h"
 
 static PlayerInfo ToInfo(const Player& p) {
 	PlayerInfo info{};
@@ -19,9 +22,31 @@ static PlayerInfo ToInfo(const Player& p) {
 	return info;
 }
 
+static MonsterInfo ToInfo(const Monster& m) {
+	MonsterInfo info{};
+	info.monsterUID = m.GetMonsterUID();
+	info.monsterID = m.GetMonsterID();
+	info.hp = m.GetHp();
+	info.maxHp = m.GetMaxHp();
+	info.x = m.GetX();
+	info.y = m.GetY();
+	info.z = m.GetZ();
+	return info;
+}
+
 Zone::Zone(uint32_t zoneID, uint32_t channelID)
 	: zoneID_(zoneID)
 	, channelID_(channelID) {
+}
+
+void Zone::InitMonster()
+{
+	for (const auto& sp : MonsterSpawnTemplate::Instance().GetByZone(zoneID_))
+	{
+		const MonsterData* data = MonsterTemplate::Instance().GetData(sp.monsterID);
+		const uint64_t monsterUID = ++nextMonsterUID_;
+		monsters_[monsterUID] = std::make_shared<Monster>(monsterUID, data, sp.x, sp.y, sp.z);
+	}
 }
 
 void Zone::Enter(PlayerRef player) {
@@ -50,6 +75,9 @@ void Zone::Enter(PlayerRef player) {
 		if (SendBufferRef buf = SendBufferManager::MakeList(header, others))
 			SendTo(player, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
 	}
+
+	// 나에게 몬스터 목록을 알려준다
+	SendMonsterList(player);
 
 	// 3) 기존 플레이어들에게: 새 플레이어 등장
 	{
@@ -227,6 +255,130 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
 
 		});
 
+}
+
+void Zone::SendMonsterList(const PlayerRef& player)
+{
+	if (monsters_.empty()) return;
+
+	std::vector<MonsterInfo> list;
+	list.reserve(monsters_.size());
+	for (auto& [uid, m] : monsters_) {
+		if (m->IsDead())continue; // 사망한 몬스터
+		list.push_back(ToInfo(*m));
+	}
+	if (list.empty())return;
+
+	RES_MonsterSpawnPacket pkt{};
+	pkt.header.id = PKT_S_MONSTER_SPAWN;
+	pkt.count = static_cast<uint16_t>(list.size());
+
+	if (SendBufferRef buf = SendBufferManager::MakeList(pkt, list)) {
+		SendTo(player, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+	}
+}
+
+
+void Zone::RequestTick()
+{
+	if (tickPending_.exchange(true)) return;
+
+	auto self = shared_from_this();
+	Post([self]() {
+		self->tickPending_.store(false);
+		self->Update();
+		});
+}
+
+void Zone::Update()
+{
+	// 현재 시간
+	auto now = std::chrono::steady_clock::now();
+	// 경과 시간 (float 형식 = 초 단위) 
+	float dt = std::chrono::duration<float>(now - lastTick_).count();
+	lastTick_ = now;
+	dt = std::min(dt, ZoneConst::MAX_TICK_DT);
+
+	for (auto& [uid, monster] : monsters_) {
+		UpdateMonster(*monster, dt);
+	}
+}
+
+void Zone::UpdateMonster(Monster& monster, float dt)
+{
+	if (monster.IsDead())return;
+
+	const MonsterData& data = monster.getData();
+	const float step = data.moveSpeed * dt; // 틱에 따른 갈 수 있는 거리
+	bool moved = false;
+
+	// 몬스터 상태에 따른 행동
+	switch (monster.GetState()) {
+	case MonsterState::Idle: {
+		// 플레이어 타깃 체크
+		if (PlayerRef target = FindNearestPlayer(monster, data.aggroRange))
+			monster.StartChase(target->GetPlayerID());
+		break;
+	}
+	case MonsterState::Chase: {
+		auto it = players_.find(monster.GetTargetID());
+		// 복귀 거리
+		const float leash = ZoneConst::MONSTER_LEASH_RANGE;
+
+		// 타겟이 없거나 일정 거리 이상 가면 초기화
+		if (it == players_.end() || monster.DistSqFromSpawn() > leash * leash) {
+			monster.StartReturn();
+			break;
+		}
+
+		// 공격 범위 안쪽까지 접근
+		const PlayerRef& target = it->second;
+		// 공격 범위까지 접근
+		moved = monster.MoveToward(target->GetX(), target->GetY(), target->GetZ(), step, data.attackRange * 0.9f);
+		break;
+	}
+	case MonsterState::Return: {
+		moved = monster.MoveToward(monster.GetSpawnX(), monster.GetSpawnY(), monster.GetSpawnZ(), step, 0.f);
+
+		const float eps = ZoneConst::MONSTER_ARRIVE_EPSILON;
+		if (monster.DistSqFromSpawn() <= eps * eps)
+			monster.SetIdle();
+		break;
+	}
+	}
+	if (moved) BroadcastMonsterMove(monster);
+}
+
+PlayerRef Zone::FindNearestPlayer(const Monster& monster, float range) const
+{
+	PlayerRef nearest;
+	float bestSq = range * range;
+
+	for (const auto& [playerID, player] : players_) {
+		if (portalPending_.count(playerID)) continue;
+
+		// 플레이어 위치 체크
+		float dsq = monster.DistSqTo(player->GetX(), player->GetY(), player->GetZ());
+		// 이전 플레이어보다 가까우면 교체
+		if (dsq <= bestSq) {
+			bestSq = dsq;
+			nearest = player;
+		}
+	}
+
+	return nearest;
+}
+
+void Zone::BroadcastMonsterMove(const Monster& monster)
+{
+	RES_MonsterMovePacket pkt{};
+	pkt.header.id = PKT_S_MONSTER_MOVE;
+	pkt.header.size = sizeof(pkt);
+	pkt.monsterUID = monster.GetMonsterUID();
+	pkt.x = monster.GetX();
+	pkt.y = monster.GetY();
+	pkt.z = monster.GetZ();
+	BroadCast(&pkt, sizeof(pkt));
 }
 
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z) {

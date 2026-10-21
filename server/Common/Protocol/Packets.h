@@ -107,7 +107,13 @@ struct RES_MonsterSpawnPacket {
 
 struct RES_MonsterDespawnPacket {
 	PacketHeader header;
-	uint64_t objectID;
+	uint64_t monsterUID;
+};
+
+struct RES_MonsterMovePacket {
+	PacketHeader header;
+	uint64_t monsterUID;
+	float x, y, z;
 };
 
 #pragma pack(pop)

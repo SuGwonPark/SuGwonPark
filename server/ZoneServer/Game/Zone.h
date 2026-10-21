@@ -7,6 +7,9 @@
 class Player;
 using PlayerRef = std::shared_ptr<Player>;
 
+class Monster;
+using MonsterRef = std::shared_ptr<Monster>;
+
 class Zone : public JobSerializer<Zone> {
 public:
 	explicit Zone(uint32_t zoneID, uint32_t channelID);
@@ -14,6 +17,9 @@ public:
 
 	uint32_t GetZoneID() const { return zoneID_; }
 	uint32_t GetChannelID() const { return channelID_; }
+
+	// 서버 시작 시 1회 Zone에 몬스터 정보 세팅
+	void InitMonster();
 
 	// 존 입장
 	void Enter(PlayerRef player);
@@ -41,16 +47,39 @@ public:
 	// 모든 플레이어 저장 요청 후 Zone 비우기. 끝나면 onDone 호출 (Zone 스레드에서)
 	void SaveAllAndClear(std::function<void()> onDone = nullptr);
 	void HandleGatewayLost() { SaveAllAndClear(); }      // 기존 함수는 이걸 부르도록
+
+	// 틱 타이머
+	void RequestTick();
 private:
 	void HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t size);
+
+	// 입장판 플레이어에 존의 몬스터 정보 전송
+	void SendMonsterList(const PlayerRef& player);
+
+	// 실시간 업데이트
+	void Update();
+
+	// 몬스터 행동 업데이트
+	void UpdateMonster(Monster& monster, float dt);
+	// 가까운 플레이어 탐색
+	PlayerRef FindNearestPlayer(const Monster& monster, float range) const;
+	// 클라이언트에 전송
+	void BroadcastMonsterMove(const Monster& monster);
 
 private:
 	uint32_t zoneID_;
 	uint32_t channelID_;
 	std::unordered_map<uint64_t, PlayerRef> players_;
 	std::unordered_map<uint64_t, PlayerRef> sessionToPlayer_; // sessionID -> Player (신규)
+	std::unordered_map<uint64_t, MonsterRef> monsters_; // 스폰중인 몬스터 정보
+	uint64_t nextMonsterUID_ = 0;
+
+	std::chrono::steady_clock::time_point lastTick_ = std::chrono::steady_clock::now();
+
+
 	std::unordered_set<uint64_t> portalPending_;   // 포탈 저장 중인 playerID
 	std::unordered_set<uint64_t> spawnPending_; // 스폰 조회 중인 SessionID
+	std::atomic<bool> tickPending_{ false };
 };
 
 using ZoneRef = std::shared_ptr<Zone>;

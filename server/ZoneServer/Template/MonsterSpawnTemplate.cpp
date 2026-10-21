@@ -33,7 +33,7 @@ const MonsterSpawnData* MonsterSpawnTemplate::GetData(uint32_t spawnID) const
 const std::vector<MonsterSpawnData>& MonsterSpawnTemplate::GetByZone(uint32_t zoneID) const
 {
 	static const std::vector<MonsterSpawnData> empty;
-	auto it = byZone_.find(zoneID);
+	const auto it = byZone_.find(zoneID);
 	return it == byZone_.end() ? empty : it->second;
 }
 
