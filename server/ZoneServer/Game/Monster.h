@@ -5,10 +5,12 @@ enum class MonsterState : uint8_t {
 	Idle,     // 스폰 위치에서 대기. 어그로 범위 안 플레이어를 찾는다
 	Chase,    // 타겟 플레이어 추적
 	Return,   // 스폰 위치로 귀환 (귀환 중에는 어그로를 받지 않음)
+	Dead,	  // 사망
 };
 
 class Monster {
 public:
+	using Clock = std::chrono::steady_clock;
 	Monster(uint64_t monsterUID, const MonsterData* data, float x, float y, float z);
 
 	uint64_t GetMonsterUID() const { return monsterUID_; }
@@ -25,7 +27,7 @@ public:
 
 	int32_t GetHp() const { return hp_; }
 	int32_t GetMaxHp() const { return data_->maxHp; }
-	bool IsDead() const { return maxHp_ <= 0; }
+	bool IsDead() const { return state_ == MonsterState::Dead; }
 
 	MonsterState GetState() const { return state_; }
 	uint64_t GetTargetID() const { return targetPlayerID_; }
@@ -35,6 +37,7 @@ public:
 	// 기본 상태
 	void SetIdle() { state_ = MonsterState::Idle; targetPlayerID_ = 0; }
 
+	// ========= 전투 ===========
 	// 거리 제곱
 	float DistSqTo(float x, float y, float z) const;
 	float DistSqFromSpawn() const { return DistSqTo(spawnX_, spawnY_, spawnZ_); }
@@ -42,6 +45,14 @@ public:
 	// (tx,ty,tz) 쪽으로 최대 step만큼 이동. 목표와 stopDist 거리가 되면 멈춘다. 움직였으면 true
 	bool MoveToward(float tx, float ty, float tz, float step, float stopDist);
 
+	int32_t TakeDamage(int32_t damage);
+	// 사망 처리
+	void Die(Clock::time_point now);
+	// 부활 가능 여부 체크
+	bool CanRespawn(Clock::time_point now) const { return IsDead() && now >= respawnAt_; }
+	// 리스폰
+	void Respawn();
+	bool ResetHp();
 
 private:
 	uint64_t monsterUID_;
@@ -53,6 +64,8 @@ private:
 
 	MonsterState state_ = MonsterState::Idle;
 	uint64_t targetPlayerID_ = 0;
+
+	Clock::time_point respawnAt_{};
 
 };
 

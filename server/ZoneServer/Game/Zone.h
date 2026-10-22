@@ -3,6 +3,7 @@
 #include "ServerCore/JobSystem/JobQueue.h"
 #include "ServerCore/JobSystem/WorkStealingThreadPool.h" 
 #include "ServerCore/JobSystem/JobSerializer.h"
+#include "Common/Protocol/ProtocolTypes.h"
 
 class Player;
 using PlayerRef = std::shared_ptr<Player>;
@@ -65,6 +66,12 @@ private:
 	PlayerRef FindNearestPlayer(const Monster& monster, float range) const;
 	// 클라이언트에 전송
 	void BroadcastMonsterMove(const Monster& monster);
+
+	// 전투
+	void HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64_t targetUID);
+	void OnMonsterDead(Monster& monster, const PlayerRef& killer);
+	void RespawnMonster(Monster& monster);
+	void BroadcastMonsterHp(const Monster& monster);
 
 private:
 	uint32_t zoneID_;

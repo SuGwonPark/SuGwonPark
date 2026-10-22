@@ -9,11 +9,13 @@ enum PacketID : uint16_t {
 	PKT_C_ATTACK = 1002,
 	PKT_C_SKILL_CAST = 1003,
 	PKT_S_MOVE = 1004,
+	PKT_S_ATTACK = 1005,
 
 	// 몬스터 (1100~)
 	PKT_S_MONSTER_SPAWN = 1101,     // 몬스터 생성
 	PKT_S_MONSTER_DESPAWN = 1102,   // 몬스터 제거 (사망 등, 3단계에서 사용)
 	PKT_S_MONSTER_MOVE = 1103, // 몬스터 이동
+	PKT_S_MONSTER_HP = 1104, // 몬스터 체력 상태
 
 	// 존 (2000~)
 	PKT_S_ZONE_LEAVE_COMPLETED = 2001,
@@ -47,4 +49,3 @@ enum PacketID : uint16_t {
 	PKT_C_ENHANCE_ITEM = 7001,
 	PKT_S_ENHANCE_ITEM = 7002,
 };
-

@@ -59,9 +59,10 @@ int main(int argc, char* argv[]) {
 	auto nextTick = std::chrono::steady_clock::now();
 	std::function<void()> scheduleTick;
 	scheduleTick = [&]() {
-		// expires_after가 아니라 expires_at: 핸들러 실행 시간만큼 주기가 밀리지 않게
+		// 타이머 설정
 		nextTick += std::chrono::milliseconds(ZoneConst::ZONE_TICK_MS);
 		tickTimer.expires_at(nextTick);
+		// 스케쥴 실행
 		tickTimer.async_wait([&](const boost::system::error_code& ec) {
 			if (ec) return;                         // cancel() 되면 멈춤 (종료 처리용)
 			for (auto& z : zones) z->RequestTick();

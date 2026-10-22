@@ -116,4 +116,26 @@ struct RES_MonsterMovePacket {
 	float x, y, z;
 };
 
+struct REQ_AttackPacket {
+	PacketHeader header;
+	ObjectType   targetType;   // 타겟 타이 
+	uint64_t     targetUID;    // 타겟 고유값
+};
+
+struct RES_AttackPacket {        // 공격 결과. 존 전체에 브로드캐스트
+	PacketHeader header;
+	ObjectType   attackerType; // 4단계(몬스터 반격)에서 Monster도 사용
+	uint64_t     attackerUID;
+	ObjectType   targetType;
+	uint64_t     targetUID;
+	int32_t      damage;       // 실제로 깎인 양
+	int32_t      targetHp;     // 맞은 뒤 남은 HP
+};
+
+struct RES_MonsterHpPacket {
+	PacketHeader header;
+	uint64_t monsterUID;
+	int32_t  hp;
+};
+
 #pragma pack(pop)

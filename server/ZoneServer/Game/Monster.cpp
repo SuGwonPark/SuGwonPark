@@ -35,3 +35,36 @@ bool Monster::MoveToward(float tx, float ty, float tz, float step, float stopDis
 
 	return true;
 }
+
+int32_t Monster::TakeDamage(int32_t damage)
+{
+	if (IsDead() || damage <= 0) return 0;
+	const int32_t applied = std::min(damage, hp_);
+	hp_ -= applied;
+	return applied;
+}
+
+void Monster::Die(Clock::time_point now)
+{
+	hp_ = 0;
+	state_ = MonsterState::Dead;
+	targetPlayerID_ = 0;
+	// 리스폰 시간 세팅 (현재시간 + 리스폰 시간 이후 생성)
+	respawnAt_ = now + std::chrono::seconds(data_->respawnSec);
+}
+
+// 초기화
+void Monster::Respawn()
+{
+	x_ = spawnX_; y_ = spawnY_; z_ = spawnZ_;
+	hp_ = data_->maxHp;
+	SetIdle();
+}
+
+bool Monster::ResetHp()
+{
+	if (hp_ == data_->maxHp) return false;
+	hp_ = data_->maxHp;
+	return true;
+}
+

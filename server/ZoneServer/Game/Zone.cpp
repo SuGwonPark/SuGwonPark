@@ -176,6 +176,17 @@ void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t siz
 			self->HandlePortalRequest(it->second, req->portalID);
 			break;
 		}
+
+		case PKT_C_ATTACK: {
+			if (copied.size() < sizeof(REQ_AttackPacket))return;
+
+			auto it = self->sessionToPlayer_.find(sessionID);
+			if (it == self->sessionToPlayer_.end()) return;
+
+			auto* req = reinterpret_cast<REQ_AttackPacket*> (copied.data());
+			self->HandleAttack(it->second, req->targetType, req->targetUID);
+			break;
+		}
 		default:
 			break;
 		}
@@ -278,7 +289,6 @@ void Zone::SendMonsterList(const PlayerRef& player)
 	}
 }
 
-
 void Zone::RequestTick()
 {
 	if (tickPending_.exchange(true)) return;
@@ -300,6 +310,11 @@ void Zone::Update()
 	dt = std::min(dt, ZoneConst::MAX_TICK_DT);
 
 	for (auto& [uid, monster] : monsters_) {
+		// 죽어 있으면 리스폰 시간 체크하여 리스폰 시킴
+		if (monster->IsDead()) {
+			if (monster->CanRespawn(now)) RespawnMonster(*monster);
+			continue;
+		}
 		UpdateMonster(*monster, dt);
 	}
 }
@@ -338,11 +353,14 @@ void Zone::UpdateMonster(Monster& monster, float dt)
 		break;
 	}
 	case MonsterState::Return: {
+		// 스폰 위치 확인
 		moved = monster.MoveToward(monster.GetSpawnX(), monster.GetSpawnY(), monster.GetSpawnZ(), step, 0.f);
 
 		const float eps = ZoneConst::MONSTER_ARRIVE_EPSILON;
-		if (monster.DistSqFromSpawn() <= eps * eps)
+		if (monster.DistSqFromSpawn() <= eps * eps) {
 			monster.SetIdle();
+			if (monster.ResetHp()) BroadcastMonsterHp(monster);
+		}
 		break;
 	}
 	}
@@ -378,6 +396,90 @@ void Zone::BroadcastMonsterMove(const Monster& monster)
 	pkt.x = monster.GetX();
 	pkt.y = monster.GetY();
 	pkt.z = monster.GetZ();
+	BroadCast(&pkt, sizeof(pkt));
+}
+
+
+void Zone::HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64_t targetUID)
+{
+	const uint64_t attackerUID = attacker->GetPlayerID();
+	if (portalPending_.count(attackerUID)) return;
+	if (targetType != ObjectType::Monster) return;
+
+	auto it = monsters_.find(targetUID);
+	if (it == monsters_.end()) return;
+	Monster& monster = *it->second;
+
+	// 죽었거나 복귀중이면 무시
+	if (monster.IsDead()) return;
+	if (monster.GetState() == MonsterState::Return) return;
+
+	// 사거리 체크
+	const float range = ZoneConst::PLAYER_ATTACK_RANGE + ZoneConst::ATTACK_RANGE_TOLERANCE;
+	if (monster.DistSqTo(attacker->GetX(), attacker->GetY(), attacker->GetZ()) > range * range) return;
+
+	// 공격 쿨타임
+	const auto now = std::chrono::steady_clock::now();
+	if (!attacker->TryUseAttack(now, std::chrono::milliseconds(ZoneConst::PLAYER_ATTACK_COOLDOWN_MS)))return;
+
+	// 데미지
+	const int32_t damage = monster.TakeDamage(ZoneConst::PLAYER_ATTACK_DAMAGE);
+
+	if (monster.GetState() == MonsterState::Idle) {
+		monster.StartChase(attackerUID);
+	}
+
+	RES_AttackPacket pkt{};
+	pkt.header.id = PKT_S_ATTACK;
+	pkt.header.size = sizeof(pkt);
+	pkt.attackerType = ObjectType::Player;
+	pkt.attackerUID = attackerUID;
+	pkt.targetType = ObjectType::Monster;
+	pkt.targetUID = monster.GetMonsterUID();
+	pkt.damage = damage;
+	pkt.targetHp = monster.GetHp();
+	BroadCast(&pkt, sizeof(pkt));
+
+	if (monster.GetHp() <= 0) {
+		OnMonsterDead(monster, attacker);
+	}
+}
+
+void Zone::OnMonsterDead(Monster& monster, const PlayerRef& killer)
+{
+	monster.Die(std::chrono::steady_clock::now());
+
+	RES_MonsterDespawnPacket pkt{};
+	pkt.header.id = PKT_S_MONSTER_DESPAWN;
+	pkt.header.size = sizeof(pkt);
+	pkt.monsterUID = monster.GetMonsterUID();
+	BroadCast(&pkt, sizeof(pkt));
+
+	(void)killer;
+
+}
+
+void Zone::RespawnMonster(Monster& monster)
+{
+	monster.Respawn();
+
+	RES_MonsterSpawnPacket pkt{};
+	pkt.header.id = PKT_S_MONSTER_SPAWN;
+	pkt.header.size = sizeof(pkt);
+	pkt.count = 1;
+
+	std::vector<MonsterInfo> one{ ToInfo(monster) };
+	if (SendBufferRef buf = SendBufferManager::MakeList(pkt, one))
+		BroadCast(buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+}
+
+void Zone::BroadcastMonsterHp(const Monster& monster)
+{
+	RES_MonsterHpPacket pkt{};
+	pkt.header.id = PKT_S_MONSTER_HP;
+	pkt.header.size = sizeof(pkt);
+	pkt.monsterUID = monster.GetMonsterUID();
+	pkt.hp = monster.GetHp();
 	BroadCast(&pkt, sizeof(pkt));
 }
 

@@ -1,6 +1,8 @@
 #pragma once
 #include "pch.h"
 #include "mstcpip.h"
+#include "Common/Protocol/VarEnum.h"
+#include "magic_enum/magic_enum.hpp"
 
 // 연결이 조용할 때 OS가 대신 생존 확인 패킷을 보내도록 설정한다
 inline static void EnableKeepAlive(tcp::socket& s) {
@@ -17,3 +19,15 @@ inline static void EnableKeepAlive(tcp::socket& s) {
 
 }
 
+
+// string->Type
+template<typename T>
+inline std::optional<T> ParseType(std::string_view s) {
+	return magic_enum::enum_cast<T>(s);
+}
+
+// Type->string 
+template<typename T>
+inline std::string_view TypeToString(T value) {
+	return magic_enum::enum_name(value);
+}

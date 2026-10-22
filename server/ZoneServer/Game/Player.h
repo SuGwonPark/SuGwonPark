@@ -14,8 +14,12 @@ private:
 
 	uint64_t sessionID_ = 0;
 
+	// 마지막 이동 시간
 	std::chrono::steady_clock::time_point lastMoveTime_ = std::chrono::steady_clock::now();
 	float moveBudget_ = 0.f;
+
+	// 마지막 공격 시간
+	std::chrono::steady_clock::time_point lastAttackTime_{};
 
 public:
 	Player(uint64_t playerID, std::string name, float x, float y, float z, int hp, int mp, uint64_t exp);
@@ -41,4 +45,11 @@ public:
 	const std::string& GetName() const { return name_; }
 
 	bool TryMove(float x, float y, float z, float maxSpeed);
+
+	// 공격 가능 여부 체크
+	bool TryUseAttack(std::chrono::steady_clock::time_point now, std::chrono::milliseconds cooldown) {
+		if (now - lastAttackTime_ < cooldown) return false;
+		lastAttackTime_ = now;
+		return true;
+	}
 };
