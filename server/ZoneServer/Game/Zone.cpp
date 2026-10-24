@@ -2,14 +2,18 @@
 #include "Zone.h"
 #include "Player.h"
 #include "ServerCore/DB/GameDB.h"
-#include "Common/Protocol/InternalPackets.h"
+#include "ServerCore/Protocol/InternalPackets.h"
 #include "Network/GatewaySession.h"
 #include "ServerCore/Manager/SendBufferManager.h"
 #include "Game/ZoneConstants.h"
 #include "Template/PortalTemplate.h"
 #include "Template/MonsterSpawnTemplate.h"
 #include "Template/MonsterTemplate.h"
+#include "Template/RewardTemplate.h"
+#include "Template/ZoneTemplate.h"
+#include "Template/SkillTemplate.h"
 #include "Game/Monster.h"
+#include "ServerCore/Utils/util.h"
 
 static PlayerInfo ToInfo(const Player& p) {
 	PlayerInfo info{};
@@ -148,11 +152,11 @@ void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t siz
 
 		switch (header->id) {
 			// 스폰 준비
-		case PKT_C_READY_TO_SPAWN:
+		case PKT_C_READY_TO_SPAWN: {
 			self->HandleReadyToSpawn(sessionID, copied.data(), static_cast<uint16_t>(copied.size()));
 			break;
-
-			// 캐릭터 이동
+		}
+								 // 캐릭터 이동
 		case PKT_C_MOVE: {
 			if (copied.size() < sizeof(MovePacket))return;
 
@@ -187,9 +191,28 @@ void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t siz
 			self->HandleAttack(it->second, req->targetType, req->targetUID);
 			break;
 		}
+
+		case PKT_C_REVIVE: {
+			auto it = self->sessionToPlayer_.find(sessionID);
+			if (it == self->sessionToPlayer_.end()) return;
+			self->HandleRevive(it->second);
+			break;
+		}
+
+		case PKT_C_SKILL_CAST: {
+			if (copied.size() < sizeof(REQ_SkillCastPacket)) return;
+
+			auto it = self->sessionToPlayer_.find(sessionID);
+			if (it == self->sessionToPlayer_.end()) return;
+
+			auto* req = reinterpret_cast<REQ_SkillCastPacket*>(copied.data());
+			self->HandleSkillCast(it->second, req->skillID, req->targetType, req->targetUID);
+			break;
+		}
 		default:
 			break;
 		}
+
 		});
 }
 
@@ -240,6 +263,12 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
 
 				player = std::make_shared<Player>(playerID, name, x, y, z, hp, mp, exp);
 				player->SetSessionID(sessionID);
+
+				// 죽은 플레이어 재접속시 살릴지 말지
+				//if (player->IsDead()) {
+				//	if (const ZoneData* zone = ZoneTemplate::Instance().GetData(self->GetZoneID()))
+						//player->Revive(zone->spawnX, zone->spawnY, zone->spawnZ, player->GetMaxHp());
+				//}
 			}
 		}
 		catch (const mysqlx::Error& e) {
@@ -315,11 +344,11 @@ void Zone::Update()
 			if (monster->CanRespawn(now)) RespawnMonster(*monster);
 			continue;
 		}
-		UpdateMonster(*monster, dt);
+		UpdateMonster(*monster, dt, now);
 	}
 }
 
-void Zone::UpdateMonster(Monster& monster, float dt)
+void Zone::UpdateMonster(Monster& monster, float dt, std::chrono::steady_clock::time_point now)
 {
 	if (monster.IsDead())return;
 
@@ -336,20 +365,40 @@ void Zone::UpdateMonster(Monster& monster, float dt)
 		break;
 	}
 	case MonsterState::Chase: {
-		auto it = players_.find(monster.GetTargetID());
+
 		// 복귀 거리
 		const float leash = ZoneConst::MONSTER_LEASH_RANGE;
 
-		// 타겟이 없거나 일정 거리 이상 가면 초기화
-		if (it == players_.end() || monster.DistSqFromSpawn() > leash * leash) {
+		// 일정 거리 이상 가면 초기화
+		if (monster.DistSqFromSpawn() > leash * leash) {
 			monster.StartReturn();
 			break;
 		}
 
-		// 공격 범위 안쪽까지 접근
-		const PlayerRef& target = it->second;
+		PlayerRef target;
+		auto it = players_.find(monster.GetTargetID());
+		// 타겟이 없거나 죽으면 새로운 타깃 찾기
+		if (it != players_.end() && !it->second->IsDead())
+			target = it->second;
+		else
+			target = FindNearestPlayer(monster, data.aggroRange);
+
+		if (!target)
+		{
+			monster.StartReturn();
+			break;
+		}
+
 		// 공격 범위까지 접근
 		moved = monster.MoveToward(target->GetX(), target->GetY(), target->GetZ(), step, data.attackRange * 0.9f);
+
+		// 공격 범위 안이면 쿨타임 체크하여 공격
+		const float atk = data.attackRange;
+		if (monster.DistSqTo(target->GetX(), target->GetY(), target->GetZ()) <= atk * atk
+			&& monster.TryUseAttack(now, std::chrono::milliseconds(ZoneConst::MONSTER_ATTACK_COOLDOWN_MS)))
+		{
+			MonsterAttack(monster, target);
+		}
 		break;
 	}
 	case MonsterState::Return: {
@@ -370,10 +419,12 @@ void Zone::UpdateMonster(Monster& monster, float dt)
 PlayerRef Zone::FindNearestPlayer(const Monster& monster, float range) const
 {
 	PlayerRef nearest;
+
 	float bestSq = range * range;
 
 	for (const auto& [playerID, player] : players_) {
 		if (portalPending_.count(playerID)) continue;
+		if (player->IsDead()) continue;
 
 		// 플레이어 위치 체크
 		float dsq = monster.DistSqTo(player->GetX(), player->GetY(), player->GetZ());
@@ -402,6 +453,8 @@ void Zone::BroadcastMonsterMove(const Monster& monster)
 
 void Zone::HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64_t targetUID)
 {
+	if (attacker->IsDead())return;
+
 	const uint64_t attackerUID = attacker->GetPlayerID();
 	if (portalPending_.count(attackerUID)) return;
 	if (targetType != ObjectType::Monster) return;
@@ -455,7 +508,9 @@ void Zone::OnMonsterDead(Monster& monster, const PlayerRef& killer)
 	pkt.monsterUID = monster.GetMonsterUID();
 	BroadCast(&pkt, sizeof(pkt));
 
-	(void)killer;
+	std::vector<RewardResult> rewards;
+	RewardTemplate::Instance().Roll(monster.getData().rewardGroupID, rewards);
+	GiveRewards(killer, rewards);
 
 }
 
@@ -483,12 +538,200 @@ void Zone::BroadcastMonsterHp(const Monster& monster)
 	BroadCast(&pkt, sizeof(pkt));
 }
 
+void Zone::MonsterAttack(Monster& monster, const PlayerRef& target)
+{
+	const int32_t damage = target->TakeDamage(monster.getData().attack);
+
+	RES_AttackPacket pkt{};
+	pkt.header.id = PKT_S_ATTACK;
+	pkt.header.size = sizeof(pkt);
+	pkt.attackerType = ObjectType::Monster;
+	pkt.attackerUID = monster.GetMonsterUID();
+	pkt.targetType = ObjectType::Player;
+	pkt.targetUID = target->GetPlayerID();
+	pkt.damage = damage;
+	pkt.targetHp = target->GetHp();
+	BroadCast(&pkt, sizeof(pkt));
+}
+
+void Zone::HandleRevive(const PlayerRef& player)
+{
+	if (!player->IsDead()) return;
+
+	const ZoneData* zone = ZoneTemplate::Instance().GetData(zoneID_);
+	if (!zone) return;
+
+	player->Revive(zone->spawnX, zone->spawnY, zone->spawnZ, player->GetMaxHp());
+
+	RES_RevivePacket pkt{};
+	pkt.header.id = PKT_S_REVIVE;
+	pkt.header.size = sizeof(pkt);
+	pkt.playerID = player->GetPlayerID();
+	pkt.x = player->GetX();
+	pkt.y = player->GetY();
+	pkt.z = player->GetZ();
+	pkt.hp = player->GetHp();
+	BroadCast(&pkt, sizeof(pkt));
+}
+
+void Zone::GiveRewards(const PlayerRef& player, const std::vector<RewardResult>& rewards)
+{
+	uint64_t gainedExp = 0;
+	for (const auto& r : rewards) {
+		if (r.delivery == RewardDeliveryType::Direct && r.type == RewardItemType::Exp) {
+			gainedExp += r.count;
+			continue;
+		}
+
+		// 나머지 보상도 추가 해야함
+
+	}
+
+	if (gainedExp > 0) {
+		player->AddExp(gainedExp);
+
+		RES_ExpPacket pkt{};
+		pkt.header.id = PKT_S_EXP;
+		pkt.header.size = sizeof(pkt);
+		pkt.gainedExp = gainedExp;
+		pkt.totalExp = player->GetExp();
+		SendTo(player, &pkt, sizeof(pkt));
+	}
+}
+
+void Zone::HandleSkillCast(const PlayerRef& caster, uint32_t skillID, ObjectType targetType, uint64_t targetUID)
+{
+	const uint64_t casterID = caster->GetPlayerID();
+	if (portalPending_.count(casterID))return;
+
+	auto fail = [&](SkillFailReason reason) { SendSkillFail(caster, skillID, reason); };
+
+	if (caster->IsDead()) return fail(SkillFailReason::Dead);
+
+	const SkillData* skill = SkillTemplate::Instance().GetData(skillID);
+	if (!skill) return fail(SkillFailReason::InvalidSkill);
+
+	const auto now = std::chrono::steady_clock::now();
+	// 스킬 쿨타임 확이 
+	if (!caster->IsSkillReady(skillID, now)) return fail(SkillFailReason::Cooldown);
+	// 스킬 코스트 확인
+	if (!caster->CheckSKillCost(skill->costType, skill->cost))
+		return fail(SkillFailReason::NotEnoughCost);
+
+	// 지정 대상 1마리 (Single / TargetArea 공용): 타입 → 존재/상태 → 사거리 순으로 검사
+	auto findTarget = [&](SkillFailReason& reason) -> Monster* {
+		if (targetType != ObjectType::Monster) { reason = SkillFailReason::InvalidTarget; return nullptr; }
+
+		auto it = monsters_.find(targetUID);
+		if (it == monsters_.end() || it->second->IsDead() || it->second->GetState() == MonsterState::Return) {
+			reason = SkillFailReason::InvalidTarget;
+			return nullptr;
+		}
+
+		const float range = skill->range + ZoneConst::ATTACK_RANGE_TOLERANCE;
+		if (it->second->DistSqTo(caster->GetX(), caster->GetY(), caster->GetZ()) > range * range) {
+			reason = SkillFailReason::OutOfRange;
+			return nullptr;
+		}
+		return it->second.get();
+		};
+
+	std::vector<Monster*> targets;
+	SkillFailReason reason = SkillFailReason::None;
+	Monster* target{};
+	switch (skill->targetType) {
+	case SkillTargetType::Single: {
+		target = findTarget(reason);
+		if (!target) return fail(reason);
+		targets.push_back(target);
+		break;
+	}
+	case SkillTargetType::SelfArea: {
+		CollectMonstersInRadius(caster->GetX(), caster->GetY(), caster->GetZ(), skill->radius, ZoneConst::SKILL_MAX_TARGETS, targets);
+		break;
+	}
+	case SkillTargetType::TargetArea: {
+		target = findTarget(reason);
+		if (!target) return fail(reason);
+
+		CollectMonstersInRadius(target->GetX(), target->GetY(), target->GetZ(),
+			skill->radius, ZoneConst::SKILL_MAX_TARGETS, targets);
+		break;
+	}
+	case SkillTargetType::None: {
+		return fail(SkillFailReason::InvalidSkill);
+	}
+	}
+
+	// 스킬 확정 이후 처리: 자원 처리 -> 데미지 -> 결과 -> 사망처리
+	caster->TrySpendSkill(skill->costType, skill->cost);
+	caster->StartSkillCooldown(skillID, now, std::chrono::milliseconds(skill->cooldownMs));
+
+	std::vector<SkillHit> hits;
+	hits.reserve(targets.size());
+	for (Monster* m : targets) {
+		const int32_t damage = m->TakeDamage(skill->damage);
+		if (m->GetState() == MonsterState::Idle) m->StartChase(casterID);
+
+		SkillHit hit{};
+		hit.targetType = ObjectType::Monster;
+		hit.targetUID = m->GetMonsterUID();
+		hit.damage = damage;
+		hit.targetHp = m->GetHp();
+
+		hits.push_back(hit);
+	}
+	RES_SkillCastPacket pkt{};
+	pkt.header.id = PKT_S_SKILL_CAST;
+	pkt.casterID = casterID;
+	pkt.skillID = skillID;
+	pkt.casterHp = caster->GetHp();
+	pkt.casterMp = caster->GetMp();
+	pkt.hitCount = static_cast<uint16_t> (hits.size());
+	if (SendBufferRef buf = SendBufferManager::MakeList(pkt, hits))
+		BroadCast(buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+
+	for (Monster* m : targets) {
+		if (m->GetHp() <= 0) OnMonsterDead(*m, caster);
+	}
+}
+
+void Zone::SendSkillFail(const PlayerRef& caster, uint32_t skillID, SkillFailReason reason)
+{
+	RES_SkillFailPacket pkt{};
+	pkt.header.id = PKT_S_SKILL_FAIL;
+	pkt.header.size = sizeof(pkt);
+	pkt.skillID = skillID;
+	pkt.reason = reason;
+	SendTo(caster, &pkt, sizeof(pkt));
+}
+
+void Zone::CollectMonstersInRadius(float cx, float cy, float cz, float radius, size_t maxCount, std::vector<Monster*>& out) const
+{
+	std::vector<std::pair<float, Monster*>> found; // <거리 제곱, 몬스터>
+	const float rSq = radius * radius;
+
+	for (auto& [uid, m] : monsters_) {
+		if (m->IsDead() || m->GetState() == MonsterState::Return) continue;
+		const float dSq = m->DistSqTo(cx, cy, cz);
+		if (dSq <= rSq) found.emplace_back(dSq, m.get());
+	}
+
+	// 앞쪽 n개만 정렬 
+	const size_t n = std::min(found.size(), maxCount);
+	std::partial_sort(found.begin(), found.begin() + n, found.end(),
+		[](const auto& a, const auto& b) { return a.first < b.first; });
+
+	for (size_t i = 0; i < n; ++i) out.push_back(found[i].second);
+}
+
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z) {
 	if (portalPending_.count(playerID)) return;    // 포탈 저장 중에는 위치를 고정
 
 	auto it = players_.find(playerID);
 	if (it == players_.end()) return;
 	PlayerRef& player = it->second;
+	if (player->IsDead()) return;
 
 	MovePacket pkt{};
 	pkt.header.size = sizeof(MovePacket);
@@ -559,6 +802,8 @@ void Zone::HandlePortal(uint64_t playerID, uint32_t portalID) {
 
 void Zone::HandlePortalRequest(const PlayerRef& player, uint32_t portalID)
 {
+	if (player->IsDead()) return;
+
 	const PortalData* portal = PortalTemplate::Instance().Find(zoneID_, portalID);
 	if (!portal) return; // zone에 세팅되어 있지 않은 포탈
 

@@ -103,7 +103,7 @@ namespace Csv {
 	//  - 헤더/데이터 줄의 칸 수가 columnCount와 다르면 실패
 	//  - parse 안에서 예외가 나면 "파일 line N: 이유" 출력 후 실패
 	template<typename ParseFn>
-	bool ForEachRow(const std::string& fileName, size_t columnCount, ParseFn parse) {
+	bool ForEachRow(const std::string& fileName, ParseFn parse) {
 		const std::filesystem::path path = FindDataFile(fileName);
 		if (path.empty()) {
 			std::cerr << "[Csv] Data/" << fileName << " 파일을 찾지 못함" << std::endl;
@@ -118,7 +118,7 @@ namespace Csv {
 
 		std::string line;
 		size_t lineNo = 0;
-		bool headerDone = false;
+		size_t columnCount = 0;
 
 		while (std::getline(file, line)) {
 			++lineNo;
@@ -128,13 +128,8 @@ namespace Csv {
 
 			CsvRow row = SplitLine(line);
 
-			if (!headerDone) {
-				headerDone = true;
-				if (row.size() != columnCount) {
-					std::cerr << "[Csv] " << fileName << " 헤더 칸 수 " << row.size()
-						<< " (코드는 " << columnCount << "칸 기준)" << std::endl;
-					return false;
-				}
+			if (columnCount == 0) {  // 첫 줄 = 헤더: 칸 수만 기억
+				columnCount = row.size();
 				continue;
 			}
 
@@ -153,10 +148,6 @@ namespace Csv {
 			}
 		}
 
-		if (!headerDone) {
-			std::cerr << "[Csv] " << fileName << " 비어 있음 (헤더 없음)" << std::endl;
-			return false;
-		}
 		return true;
 	}
 }

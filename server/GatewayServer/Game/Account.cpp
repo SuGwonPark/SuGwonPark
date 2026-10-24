@@ -3,8 +3,8 @@
 #include "ServerCore/DB/AccountDB.h"
 #include "ServerCore/DB/GameDB.h"
 #include "ServerCore/Manager/SendBufferManager.h"
-#include "Common/Protocol/Packets.h"
-#include "Common/Protocol/PacketID.h"
+#include "ServerCore/Protocol/Packets.h"
+#include "ServerCore/Protocol/PacketID.h"
 #include "Manager/ZoneManager.h" 
 #include "Manager/SessionManager.h"
 

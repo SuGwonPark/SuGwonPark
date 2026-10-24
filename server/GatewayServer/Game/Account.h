@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "Network/ClientProxySession.h"   
-#include "Common/Protocol/Packets.h"
+#include "ServerCore/Protocol/Packets.h"
 
 class Account {
 public:

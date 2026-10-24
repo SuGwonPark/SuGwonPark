@@ -10,6 +10,9 @@ enum PacketID : uint16_t {
 	PKT_C_SKILL_CAST = 1003,
 	PKT_S_MOVE = 1004,
 	PKT_S_ATTACK = 1005,
+	PKT_S_EXP = 1006,
+	PKT_S_SKILL_CAST = 1007,        // 스킬 결과 (브로드캐스트)
+	PKT_S_SKILL_FAIL = 1008,        // 스킬 실패 (시전자에게만)
 
 	// 몬스터 (1100~)
 	PKT_S_MONSTER_SPAWN = 1101,     // 몬스터 생성
@@ -32,6 +35,8 @@ enum PacketID : uint16_t {
 	// 시스템 (4000~)
 	PKT_C_READY_TO_SPAWN = 4001,
 	PKT_C_USE_ITEM = 4002,
+	PKT_C_REVIVE = 4003,            // 부활 요청
+	PKT_S_REVIVE = 4004,            // 부활 (브로드캐스트)
 
 	// 로그인 (5000~)
 	PKT_C_LOGIN = 5001,

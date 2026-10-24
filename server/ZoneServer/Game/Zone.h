@@ -3,7 +3,7 @@
 #include "ServerCore/JobSystem/JobQueue.h"
 #include "ServerCore/JobSystem/WorkStealingThreadPool.h" 
 #include "ServerCore/JobSystem/JobSerializer.h"
-#include "Common/Protocol/ProtocolTypes.h"
+#include "ServerCore/Protocol/ProtocolTypes.h"
 
 class Player;
 using PlayerRef = std::shared_ptr<Player>;
@@ -61,7 +61,7 @@ private:
 	void Update();
 
 	// 몬스터 행동 업데이트
-	void UpdateMonster(Monster& monster, float dt);
+	void UpdateMonster(Monster& monster, float dt, std::chrono::steady_clock::time_point now);
 	// 가까운 플레이어 탐색
 	PlayerRef FindNearestPlayer(const Monster& monster, float range) const;
 	// 클라이언트에 전송
@@ -73,6 +73,15 @@ private:
 	void RespawnMonster(Monster& monster);
 	void BroadcastMonsterHp(const Monster& monster);
 
+	void MonsterAttack(Monster& monster, const PlayerRef& target);
+	void HandleRevive(const PlayerRef& player);
+	void GiveRewards(const PlayerRef& player, const std::vector<RewardResult>& rewards);
+
+	// 스킬 캐스팅
+	void HandleSkillCast(const PlayerRef& caster, uint32_t skillID, ObjectType TargetType, uint64_t targetUID);
+	// 스킬 실패
+	void SendSkillFail(const PlayerRef& caster, uint32_t skillID, SkillFailReason reason);
+	void CollectMonstersInRadius(float cx, float cy, float cz, float radius, size_t maxCount, std::vector<Monster*>& out) const;
 private:
 	uint32_t zoneID_;
 	uint32_t channelID_;

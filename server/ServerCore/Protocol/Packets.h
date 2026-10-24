@@ -2,7 +2,7 @@
 #include <cstdint>
 #include "PacketID.h"
 #include "ProtocolTypes.h"   // ObjectType, PlayerInfo, CharacterSummary, MonsterInfo
-
+#include "VarEnum.h"
 // 요청(REQ_)/응답(RES_) 패킷만 둔다. 패킷 안에 들어가는 타입은 ProtocolTypes.h
 
 #pragma pack(push, 1)
@@ -136,6 +136,45 @@ struct RES_MonsterHpPacket {
 	PacketHeader header;
 	uint64_t monsterUID;
 	int32_t  hp;
+};
+
+struct RES_ExpPacket {
+	PacketHeader header;
+	uint64_t gainedExp;    // 이번에 얻은 양
+	uint64_t totalExp;     // 누적
+};
+
+struct REQ_RevivePacket {
+	PacketHeader header;
+};
+
+struct RES_RevivePacket {
+	PacketHeader header;
+	uint64_t playerID;
+	float    x, y, z;      // 부활 위치
+	int32_t  hp;
+};
+
+struct REQ_SkillCastPacket {
+	PacketHeader header;
+	uint32_t   skillID;
+	ObjectType targetType;       // Single 스킬일 때만 사용
+	uint64_t   targetUID;
+};
+
+struct RES_SkillCastPacket {     // 가변 길이: header + ... + SkillHit[hitCount]
+	PacketHeader header;
+	uint64_t casterID;
+	uint32_t skillID;
+	int32_t  casterHp;           // 시전 후 남은 MP
+	int32_t casterMp;
+	uint16_t hitCount;
+};
+
+struct RES_SkillFailPacket {
+	PacketHeader header;
+	uint32_t        skillID;
+	SkillFailReason reason;
 };
 
 #pragma pack(pop)

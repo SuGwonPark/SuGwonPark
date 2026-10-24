@@ -2,7 +2,7 @@
 #include "Manager/ZoneManager.h"
 #include "ServerCore/Manager/SendBufferManager.h"
 #include "Network/ZoneServerSession.h"
-#include "Common/Protocol/InternalPackets.h"
+#include "ServerCore/Protocol/InternalPackets.h"
 #include "ServerCore/Utils/util.h"
 
 // 존 생성

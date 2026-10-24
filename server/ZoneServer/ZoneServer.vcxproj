@@ -28,6 +28,8 @@
     <ClCompile Include="Template\MonsterSpawnTemplate.cpp" />
     <ClCompile Include="Template\MonsterTemplate.cpp" />
     <ClCompile Include="Template\PortalTemplate.cpp" />
+    <ClCompile Include="Template\RewardTemplate.cpp" />
+    <ClCompile Include="Template\SkillTemplate.cpp" />
     <ClCompile Include="Template\Template.cpp" />
     <ClCompile Include="Template\ZoneTemplate.cpp" />
   </ItemGroup>
@@ -41,6 +43,8 @@
     <ClInclude Include="Template\MonsterSpawnTemplate.h" />
     <ClInclude Include="Template\MonsterTemplate.h" />
     <ClInclude Include="Template\PortalTemplate.h" />
+    <ClInclude Include="Template\RewardTemplate.h" />
+    <ClInclude Include="Template\SkillTemplate.h" />
     <ClInclude Include="Template\Template.h" />
     <ClInclude Include="Template\ZoneTemplate.h" />
   </ItemGroup>

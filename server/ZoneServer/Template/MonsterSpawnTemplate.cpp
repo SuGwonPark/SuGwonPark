@@ -10,8 +10,8 @@ bool MonsterSpawnTemplate::Load()
 	byZone_.clear();
 	return Csv::ForEachRow("MonsterSpawn.csv", 4, [this](const CsvRow& r) {
 		MonsterSpawnData d{};
-		d.spawnID = Csv::ToU32(r[0]);
-		d.zoneID = Csv::ToU32(r[1]);
+		d.spawnID   = Csv::ToU32(r[0]);
+		d.zoneID    = Csv::ToU32(r[1]);
 		d.monsterID = Csv::ToU32(r[2]);
 		Csv::ToVec3(r[3], d.x, d.y, d.z);
 
@@ -33,10 +33,11 @@ const MonsterSpawnData* MonsterSpawnTemplate::GetData(uint32_t spawnID) const
 const std::vector<MonsterSpawnData>& MonsterSpawnTemplate::GetByZone(uint32_t zoneID) const
 {
 	static const std::vector<MonsterSpawnData> empty;
-	const auto it = byZone_.find(zoneID);
+	auto it = byZone_.find(zoneID);
 	return it == byZone_.end() ? empty : it->second;
 }
 
+// Zone.csv, Monster.csv 가 먼저 로드된 뒤에 호출
 bool MonsterSpawnTemplate::Validate() const
 {
 	bool ok = true;

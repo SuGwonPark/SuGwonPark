@@ -43,6 +43,12 @@
     <ClInclude Include="Manager\SendBufferManager.h" />
     <ClInclude Include="Network\SendBuffer.h" />
     <ClInclude Include="Utils\CsvReader.h" />
+    <ClInclude Include="Protocol\InternalPackets.h" />
+    <ClInclude Include="Protocol\PacketID.h" />
+    <ClInclude Include="Protocol\Packets.h" />
+    <ClInclude Include="Protocol\ProtocolTypes.h" />
+    <ClInclude Include="Protocol\VarEnum.h" />
+    <ClInclude Include="Utils\Config.h" />
     <ClInclude Include="Utils\util.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

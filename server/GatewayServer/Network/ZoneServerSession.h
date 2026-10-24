@@ -2,7 +2,7 @@
 #include "pch.h"
 #include "GatewayConstants.h"
 #include "ServerCore/Network/SendBuffer.h"
-#include "Common/Protocol/InternalPackets.h"
+#include "ServerCore/Protocol/InternalPackets.h"
 
 class ZoneServerSession : public std::enable_shared_from_this<ZoneServerSession> {
 public:

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Player.h"
 
+
 // ... 기존 생성자에 z_(0) 추가
 Player::Player(uint64_t playerID, std::string name, float x, float y, float z, int hp, int mp, uint64_t exp)
 	: playerID_(playerID), name_(name), x_(x), y_(y), z_(z), hp_(hp), mp_(mp), exp_(exp) {
@@ -31,4 +32,38 @@ bool Player::TryMove(float x, float y, float z, float maxSpeed)
 	SetPosition(x, y, z);
 	return true;
 }
+
+bool Player::CheckSKillCost(SkillCostType type, int32_t cost) const
+{
+	switch (type)
+	{
+	case SkillCostType::None: return true;
+	case SkillCostType::Hp: return hp_ > cost;
+	case SkillCostType::Mp: return mp_ >= cost;
+	default:	return false;
+	}
+}
+
+void Player::SpendSkillCost(SkillCostType type, int32_t cost)
+{
+	switch (type) {
+	case SkillCostType::Hp: hp_ -= cost;
+		break;
+
+	case SkillCostType::Mp:	mp_ -= cost;
+		break;
+	}
+}
+
+bool Player::TrySpendSkill(SkillCostType type, int32_t cost)
+{
+	// 차감 가능 여부 체크
+	if (!CheckSKillCost(type, cost)) return false;
+
+	// 차감 처리
+	SpendSkillCost(type, cost);
+
+	return true;
+}
+
 

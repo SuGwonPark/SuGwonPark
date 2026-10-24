@@ -54,6 +54,13 @@ public:
 	void Respawn();
 	bool ResetHp();
 
+	bool TryUseAttack(Clock::time_point now, std::chrono::milliseconds cooldown) {
+		if (now - lastAttackTime_ < cooldown) return false;
+		lastAttackTime_ = now;
+		return true;
+
+	}
+
 private:
 	uint64_t monsterUID_;
 	const MonsterData* data_;    // 정적 테이블을 가리킴 (수명 걱정 없음)
@@ -66,6 +73,7 @@ private:
 	uint64_t targetPlayerID_ = 0;
 
 	Clock::time_point respawnAt_{};
+	Clock::time_point lastAttackTime_{};
 
 };
 

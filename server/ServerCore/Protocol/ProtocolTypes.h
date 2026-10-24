@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <cstdint>
+#include "VarEnum.h"
 
 // 패킷 필드에서 공통으로 쓰는 타입 모음
 //  - 패킷 번호: PacketID.h
@@ -16,11 +17,6 @@ namespace Game {
 	inline constexpr int MAX_CHARACTER_SLOT = 6; // 계정당 캐릭터 슬롯 수
 }
 
-// 게임 오브젝트 종류. 대상을 가리키는 필드에서는 항상 ID와 함께 쓴다
-enum class ObjectType : uint8_t {
-	Player = 1,
-	Monster = 2,
-};
 
 // 아래 구조체는 패킷 바이트에 그대로 복사되므로 반드시 1바이트 정렬
 #pragma pack(push, 1)
@@ -44,6 +40,13 @@ struct MonsterInfo {
 	float    x, y, z;
 	int32_t  hp;
 	int32_t  maxHp;
+};
+
+struct SkillHit {                // 스킬에 맞은 대상 1건
+	ObjectType targetType;
+	uint64_t   targetUID;
+	int32_t    damage;
+	int32_t    targetHp;         // 맞은 뒤 남은 HP
 };
 
 #pragma pack(pop)

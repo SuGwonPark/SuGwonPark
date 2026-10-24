@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "Manager/SessionManager.h"
-#include "Common/Protocol/InternalPackets.h"  
+#include "ServerCore/Protocol/InternalPackets.h"  
 
 void SessionManager::Register(uint64_t sessionID, ClientProxySessionRef session) {
 	std::lock_guard<std::mutex> lock(lock_);

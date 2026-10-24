@@ -4,6 +4,8 @@
 #include "Template/PortalTemplate.h"
 #include "Template/MonsterTemplate.h"
 #include "Template/MonsterSpawnTemplate.h"
+#include "Template/RewardTemplate.h"
+#include "Template/SkillTemplate.h"
 
 bool Template::LoadTemplate()
 {
@@ -13,10 +15,14 @@ bool Template::LoadTemplate()
 		if (!PortalTemplate::Instance().Load())  return false;
 		if (!MonsterTemplate::Instance().Load()) return false;
 		if (!MonsterSpawnTemplate::Instance().Load()) return false;
+		if (!RewardTemplate::Instance().Load()) return false;
+		if (!SkillTemplate::Instance().Load()) return false;
 
 		// 2) 테이블끼리 참조 검증 (Portal → Zone)
 		if (!PortalTemplate::Instance().Validate()) return false;
 		if (!MonsterSpawnTemplate::Instance().Validate()) return false;
+		if (!RewardTemplate::Instance().Validate()) return false;
+		if (!MonsterTemplate::Instance().Validate()) return false;
 	}
 	catch (const std::exception& e) {
 		std::cerr << "[Template] 로드 중 예외: " << e.what() << std::endl;

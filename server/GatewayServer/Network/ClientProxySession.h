@@ -1,7 +1,7 @@
 #pragma once
 #include "GatewayConstants.h"
 #include "pch.h"
-#include "Common/Protocol/Packets.h"
+#include "ServerCore/Protocol/Packets.h"
 #include "ServerCore/Network/SendBuffer.h"
 #include "ServerCore/Utils/util.h"
 

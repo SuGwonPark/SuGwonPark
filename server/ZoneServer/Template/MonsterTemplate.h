@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include "RewardTemplate.h"
 
 // Data/Monster.csv : ID,Name,MaxHp,Attack,MoveSpeed,AggroRange,AttackRange,RewardID,ResponSec
 struct MonsterData {
@@ -12,7 +13,7 @@ struct MonsterData {
 	float       moveSpeed;		// 속도
 	float       aggroRange;		// 어그로 범위
 	float       attackRange;	// 공격 범위
-	uint64_t    rewardID;		// 보상 정보
+	uint32_t    rewardGroupID;		// 보상 그룹 정보
 	int32_t     respawnSec;		// 리스폰 시간
 };
 
@@ -24,6 +25,8 @@ public:
 	bool Load();
 	const MonsterData* GetData(uint32_t monsterID) const;   // 없으면 nullptr
 	const std::unordered_map<uint32_t, MonsterData>& All() const { return data_; }
+
+	bool Validate() const;
 
 private:
 	std::unordered_map<uint32_t, MonsterData> data_;
