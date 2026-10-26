@@ -8,7 +8,7 @@ bool MonsterSpawnTemplate::Load()
 {
 	data_.clear();
 	byZone_.clear();
-	return Csv::ForEachRow("MonsterSpawn.csv", 4, [this](const CsvRow& r) {
+	return Csv::ForEachRow("MonsterSpawn.csv",  [this](const CsvRow& r) {
 		MonsterSpawnData d{};
 		d.spawnID   = Csv::ToU32(r[0]);
 		d.zoneID    = Csv::ToU32(r[1]);

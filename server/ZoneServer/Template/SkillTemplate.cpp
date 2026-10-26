@@ -1,4 +1,4 @@
-#include "pch.h"
+Ôªø#include "pch.h"
 #include "Template/SkillTemplate.h"
 #include "ServerCore/Utils/CsvReader.h"
 #include "ServerCore/Utils/util.h"        // ParseCsvEnum<T>
@@ -18,17 +18,17 @@ bool SkillTemplate::Load()
 		d.costType = ParseCsvEnum2<SkillCostType>(r.at(7), "SkillCostType");
 		d.cost = Csv::ToI32(r.at(8));
 
-		if (d.name.empty())      throw std::invalid_argument("Name¿Ã ∫ÒæÓ ¿÷¿Ω");
-		if (d.damage <= 0)       throw std::invalid_argument("Damage¥¬ 1 ¿ÃªÛ");
-		if (d.cooldownMs < 0)    throw std::invalid_argument("CooldownMs¥¬ 0 ¿ÃªÛ");
-		if (d.cost < 0)        throw std::invalid_argument("cost¥¬ 0 ¿ÃªÛ");
+		if (d.name.empty())      throw std::invalid_argument("NameÏù¥ ÎπÑÏñ¥ ÏûàÏùå");
+		if (d.damage <= 0)       throw std::invalid_argument("DamageÎäî 1 Ïù¥ÏÉÅ");
+		if (d.cooldownMs < 0)    throw std::invalid_argument("CooldownMsÎäî 0 Ïù¥ÏÉÅ");
+		if (d.cost < 0)        throw std::invalid_argument("costÎäî 0 Ïù¥ÏÉÅ");
 		if (d.targetType == SkillTargetType::Single && d.range <= 0.f)
-			throw std::invalid_argument("Single Ω∫≈≥¿∫ Range∞° 0∫∏¥Ÿ ƒøæﬂ «‘");
+			throw std::invalid_argument("Single Ïä§ÌÇ¨ÏùÄ RangeÍ∞Ä 0Î≥¥Îã§ Ïª§Ïïº Ìï®");
 		if (d.targetType == SkillTargetType::SelfArea && d.radius <= 0.f)
-			throw std::invalid_argument("SelfArea Ω∫≈≥¿∫ Radius∞° 0∫∏¥Ÿ ƒøæﬂ «‘");
+			throw std::invalid_argument("SelfArea Ïä§ÌÇ¨ÏùÄ RadiusÍ∞Ä 0Î≥¥Îã§ Ïª§Ïïº Ìï®");
 		if (d.targetType == SkillTargetType::TargetArea && (d.range <= 0.f || d.radius <= 0.f))
-			throw std::invalid_argument("TargetArea Ω∫≈≥¿∫ RangeøÕ Radius∞° 0∫∏¥Ÿ ƒøæﬂ «‘");
-		if (!data_.emplace(d.skillID, d).second) throw std::invalid_argument("¡ﬂ∫π ID " + r.at(0));
+			throw std::invalid_argument("TargetArea Ïä§ÌÇ¨ÏùÄ RangeÏôÄ RadiusÍ∞Ä 0Î≥¥Îã§ Ïª§Ïïº Ìï®");
+		if (!data_.emplace(d.skillID, d).second) throw std::invalid_argument("Ï§ëÎ≥µ ID " + r.at(0));
 		});
 }
 

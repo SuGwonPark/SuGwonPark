@@ -1,39 +1,48 @@
-#pragma once
+ï»¿#pragma once
 #include "ServerCore/Protocol/VarEnum.h"
 class Player {
 private:
-	uint64_t userUID = 0; // ÀÓ½Ã
+	uint64_t userUID = 0; // ì„ì‹œ
 	uint64_t playerID_;
 	std::string name_;
 	float x_;
 	float y_;
 	float z_;
-	int maxHp_ = 100; // ÀÓ½Ã
+	int maxHp_ = 100; // ì„ì‹œ
 	int hp_;
-	int maxMp_ = 50; // ÀÓ½Ã
+	int maxMp_ = 50; // ì„ì‹œ
 	int mp_;
 	uint64_t exp_;
 
 	uint64_t sessionID_ = 0;
 
-	// ¸¶Áö¸· ÀÌµ¿ ½Ã°£
+	// ë§ˆì§€ë§‰ ì´ë™ ì‹œê°„
 	std::chrono::steady_clock::time_point lastMoveTime_ = std::chrono::steady_clock::now();
 	float moveBudget_ = 0.f;
 
-	// ¸¶Áö¸· °ø°İ ½Ã°£
+	// ë§ˆì§€ë§‰ ê³µê²© ì‹œê°„
 	std::chrono::steady_clock::time_point lastAttackTime_{};
 
-	// ½ºÅ³º° ÄğÅ¸ÀÓ
+	// ìŠ¤í‚¬ë³„ ì¿¨íƒ€ì„
 	std::unordered_map<uint32_t, std::chrono::steady_clock::time_point> skillReadyAt_;
 
 private:
-	// ½ºÅ³ »ç¿ë Ã³¸®
+	// ìŠ¤í‚¬ ì‚¬ìš© ì²˜ë¦¬
 	void SpendSkillCost(SkillCostType type, int32_t cost);
 
 public:
 	Player(uint64_t playerID, std::string name, float x, float y, float z, int hp, int mp, uint64_t exp);
 
-	void SetPosition(float x, float y, float z);   // ¡Ú Ãß°¡
+	void SetPosition(float x, float y, float z);  
+	bool TryMove(float x, float y, float z, float maxSpeed);
+
+	// ìŠ¤í‚¬ ì‚¬ìš©
+	bool TrySpendSkill(SkillCostType type, int32_t cost);
+	// ìŠ¤í‚¬ ì‚¬ìš© ê°€ëŠ¥ ì—¬ë¶€ ì²´í¬
+	bool CheckSKillCost(SkillCostType type, int32_t cost) const;
+
+	// ìë™ íšŒë³µ
+	bool Regen(int32_t hpAmount, int32_t mpAmount);
 
 	uint64_t GetExp() const { return exp_; }
 	void AddExp(uint64_t exp) { exp_ += exp; }
@@ -55,7 +64,6 @@ public:
 
 	const std::string& GetName() const { return name_; }
 
-	bool TryMove(float x, float y, float z, float maxSpeed);
 	bool IsDead() const { return hp_ <= 0; }
 
 	int32_t TakeDamage(int32_t damage) {
@@ -70,26 +78,23 @@ public:
 		SetPosition(x, y, z);
 	}
 
-	// °ø°İ °¡´É ¿©ºÎ Ã¼Å©
+	// ê³µê²© ê°€ëŠ¥ ì—¬ë¶€ ì²´í¬
 	bool TryUseAttack(std::chrono::steady_clock::time_point now, std::chrono::milliseconds cooldown) {
 		if (now - lastAttackTime_ < cooldown) return false;
 		lastAttackTime_ = now;
 		return true;
 	}
 
-	// ½ºÅ³ »ç¿ë °¡´É ¿©ºÎ
+	// ìŠ¤í‚¬ ì‚¬ìš© ê°€ëŠ¥ ì—¬ë¶€
 	bool IsSkillReady(uint32_t skillID, std::chrono::steady_clock::time_point now) {
 		auto it = skillReadyAt_.find(skillID);
 		return it == skillReadyAt_.end() || now >= it->second;
 	}
 
-	// ½ºÅ³ ÄğÅ¸ÀÓ Àû¿ë
+	// ìŠ¤í‚¬ ì¿¨íƒ€ì„ ì ìš©
 	void StartSkillCooldown(uint32_t skillID, std::chrono::steady_clock::time_point now, std::chrono::milliseconds cooldown) {
 		skillReadyAt_[skillID] = now + cooldown;
 	}
 
-	// ½ºÅ³ »ç¿ë
-	bool TrySpendSkill(SkillCostType type, int32_t cost);
-	// ½ºÅ³ »ç¿ë °¡´É ¿©ºÎ Ã¼Å©
-	bool CheckSKillCost(SkillCostType type, int32_t cost) const;
+
 };

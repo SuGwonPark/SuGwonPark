@@ -1,0 +1,24 @@
+BasedOnStyle: Microsoft
+ColumnLimit: 120
+
+# 포인터/참조: int* p, int& r
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+# include: 빈 줄로 나눈 블록 유지, 순서는 건드리지 않음
+IncludeBlocks: Preserve
+SortIncludes: Never
+
+# 인자가 길면 한 줄에 하나씩
+BinPackArguments: false
+BinPackParameters: false
+
+# switch-case 들여쓰기 (패킷 분기에 보기 좋음)
+IndentCaseLabels: true
+
+# 네임스페이스
+NamespaceIndentation: None
+FixNamespaceComments: true
+
+# 템플릿 선언 뒤 줄바꿈
+AlwaysBreakTemplateDeclarations: Yes

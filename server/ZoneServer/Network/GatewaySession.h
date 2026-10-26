@@ -1,12 +1,12 @@
-#pragma once
+ï»¿#pragma once
 #include "pch.h"
 #include "ServerCore/Protocol/InternalPackets.h"
 #include "ServerCore/Network/SendBuffer.h"
 #include "Game/Zone.h"
 
-// Zone ¼­¹ö -> Gateway·Î ÇâÇÏ´Â ¿¬°á (ZoneServerSessionÀÇ ¹İ´ëÆí ³¡).
-// Zone¿¡¼­ Gateway·Î º¸³»¾ß ÇÏ´Â Á¦¾î ÆĞÅ¶(¿¹: Zone ÀÌµ¿ ¿Ï·á ACK)À» ¿©±â·Î º¸³½´Ù.
-// ÇÁ·Î¼¼½º »ı¾ÖÁÖ±â ³»³» ÇÏ³ª¸¸ Á¸ÀçÇÏ´Â ½Ì±ÛÅÏÀÌ¶ó shared_from_this´Â ¾²Áö ¾Ê´Â´Ù.
+// Zone ì„œë²„ -> Gatewayë¡œ í–¥í•˜ëŠ” ì—°ê²° (ZoneServerSessionì˜ ë°˜ëŒ€í¸ ë).
+// Zoneì—ì„œ Gatewayë¡œ ë³´ë‚´ì•¼ í•˜ëŠ” ì œì–´ íŒ¨í‚·(ì˜ˆ: Zone ì´ë™ ì™„ë£Œ ACK)ì„ ì—¬ê¸°ë¡œ ë³´ë‚¸ë‹¤.
+// í”„ë¡œì„¸ìŠ¤ ìƒì• ì£¼ê¸° ë‚´ë‚´ í•˜ë‚˜ë§Œ ì¡´ì¬í•˜ëŠ” ì‹±ê¸€í„´ì´ë¼ shared_from_thisëŠ” ì“°ì§€ ì•ŠëŠ”ë‹¤.
 class GatewaySession {
 	enum { RECV_BUFFER_SIZE = 65536 };
 
@@ -16,14 +16,14 @@ public:
 		return &inst;
 	}
 
-	// Zone ÇÁ·Î¼¼½º ½ÃÀÛ ½Ã ÇÑ ¹ø È£ÃâÇØ¼­ Gateway·Î Á¢¼ÓÇÑ´Ù
+	// Zone í”„ë¡œì„¸ìŠ¤ ì‹œì‘ ì‹œ í•œ ë²ˆ í˜¸ì¶œí•´ì„œ Gatewayë¡œ ì ‘ì†í•œë‹¤
 	void Connect(net::io_context& ioc, const std::string& host, uint16_t port);
 
-	// Zone -> Gateway Á¦¾î ÆĞÅ¶ Àü¼Û (strand·Î Á÷·ÄÈ­µÊ)
+	// Zone -> Gateway ì œì–´ íŒ¨í‚· ì „ì†¡ (strandë¡œ ì§ë ¬í™”ë¨)
 	void Send(SendBufferRef sendBuffer);
 	void AddZone(ZoneRef zone);
 
-	// GatewayServer·Î Àü¼Û
+	// GatewayServerë¡œ ì „ì†¡
 	void SendToClient(uint64_t sessionID, uint32_t zoneID, uint32_t channelID, const void* data, uint16_t size);
 	bool IsConnected() const { return isConnected_.load(); }
 
@@ -54,7 +54,7 @@ private:
 
 	std::queue<SendBufferRef> sendQueue_;
 
-	// Àç¿¬°á ½Ã°£
+	// ì¬ì—°ê²° ì‹œê°„
 	static constexpr int RECONNECT_DELAY_SEC = 3;
 	net::io_context* ioc_ = nullptr;
 	std::string host_;

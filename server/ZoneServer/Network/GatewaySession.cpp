@@ -1,4 +1,4 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "GatewaySession.h"
 #include "ServerCore/Manager/SendBufferManager.h"
 
@@ -7,7 +7,7 @@ void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint
 	host_ = host;
 	port_ = port;
 	strand_ = std::make_unique<net::strand<net::io_context::executor_type>>(net::make_strand(ioc));
-	retryTimer_ = std::make_unique<net::steady_timer>(*strand_);   // Å¸ÀÌ¸Ó Äİ¹éµµ strand¿¡¼­ ½ÇÇà
+	retryTimer_ = std::make_unique<net::steady_timer>(*strand_);   // íƒ€ì´ë¨¸ ì½œë°±ë„ strandì—ì„œ ì‹¤í–‰
 
 	net::post(*strand_, [this]() { TryConnect(); });
 }
@@ -15,7 +15,7 @@ void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint
 void GatewaySession::TryConnect() {
 	const uint32_t gen = ++connGen_;
 
-	// »õ ¿¬°á ÁØºñ: ¼ÒÄÏ »õ·Î ¸¸µé°í ¹öÆÛ/Å¥ ºñ¿ì±â
+	// ìƒˆ ì—°ê²° ì¤€ë¹„: ì†Œì¼“ ìƒˆë¡œ ë§Œë“¤ê³  ë²„í¼/í ë¹„ìš°ê¸°
 	socket_ = std::make_unique<tcp::socket>(*ioc_);
 	readPos_ = 0;
 	writePos_ = 0;
@@ -27,7 +27,7 @@ void GatewaySession::TryConnect() {
 			[this, resolver, gen](boost::system::error_code ec, tcp::resolver::results_type endpoints) {
 				if (gen != connGen_) return;
 				if (ec) {
-					std::cerr << "[GatewaySession] ÁÖ¼Ò È®ÀÎ ½ÇÆĞ: " << ec.message() << std::endl;
+					std::cerr << "[GatewaySession] ì£¼ì†Œ í™•ì¸ ì‹¤íŒ¨: " << ec.message() << std::endl;
 					ScheduleReconnect();
 					return;
 				}
@@ -36,7 +36,7 @@ void GatewaySession::TryConnect() {
 						[this, gen](boost::system::error_code ec, const tcp::endpoint&) {
 							if (gen != connGen_) return;
 							if (ec) {
-								std::cerr << "[GatewaySession] Gateway Á¢¼Ó ½ÇÆĞ: " << ec.message() << std::endl;
+								std::cerr << "[GatewaySession] Gateway ì ‘ì† ì‹¤íŒ¨: " << ec.message() << std::endl;
 								ScheduleReconnect();
 								return;
 							}
@@ -48,9 +48,9 @@ void GatewaySession::TryConnect() {
 
 void GatewaySession::OnConnected() {
 	isConnected_.store(true);
-	std::cout << "[GatewaySession] Gateway Á¢¼Ó ¼º°ø" << std::endl;
+	std::cout << "[GatewaySession] Gateway ì ‘ì† ì„±ê³µ" << std::endl;
 
-	// ÇÚµå¼ÎÀÌÅ© (±âÁ¸ ÄÚµå ±×´ë·Î)
+	// í•¸ë“œì…°ì´í¬ (ê¸°ì¡´ ì½”ë“œ ê·¸ëŒ€ë¡œ)
 	std::vector<ZoneKeyEntry> list;
 	for (auto& [key, zone] : zones_) {
 		ZoneKeyEntry c{};
@@ -67,21 +67,21 @@ void GatewaySession::OnConnected() {
 }
 
 void GatewaySession::OnDisconnected(const std::string& reason) {
-	// ÀĞ±â/¾²±â ¿¡·¯°¡ µ¿½Ã¿¡ ¿Íµµ ÇÑ ¹ø¸¸ Ã³¸®
+	// ì½ê¸°/ì“°ê¸° ì—ëŸ¬ê°€ ë™ì‹œì— ì™€ë„ í•œ ë²ˆë§Œ ì²˜ë¦¬
 	if (!isConnected_.exchange(false)) return;
-	std::cerr << "[GatewaySession] Gateway ¿¬°á ²÷±è: " << reason << std::endl;
+	std::cerr << "[GatewaySession] Gateway ì—°ê²° ëŠê¹€: " << reason << std::endl;
 
 	boost::system::error_code ec;
 	socket_->close(ec);
 
-	// Gateway°¡ ¾øÀ¸¸é Å¬¶óÀÌ¾ğÆ®µµ ÀüºÎ ¾ø´Â °Í ¡æ ¸ğµç ZoneÀÇ ÇÃ·¹ÀÌ¾î ÀúÀå ÈÄ ºñ¿ì±â
+	// Gatewayê°€ ì—†ìœ¼ë©´ í´ë¼ì´ì–¸íŠ¸ë„ ì „ë¶€ ì—†ëŠ” ê²ƒ â†’ ëª¨ë“  Zoneì˜ í”Œë ˆì´ì–´ ì €ì¥ í›„ ë¹„ìš°ê¸°
 	for (auto& [key, zone] : zones_) zone->HandleGatewayLost();
 
 	ScheduleReconnect();
 }
 
 void GatewaySession::ScheduleReconnect() {
-	std::cout << "[GatewaySession] " << RECONNECT_DELAY_SEC << "ÃÊ ÈÄ ÀçÁ¢¼Ó ½Ãµµ" << std::endl;
+	std::cout << "[GatewaySession] " << RECONNECT_DELAY_SEC << "ì´ˆ í›„ ì¬ì ‘ì† ì‹œë„" << std::endl;
 	retryTimer_->expires_after(std::chrono::seconds(RECONNECT_DELAY_SEC));
 	retryTimer_->async_wait([this](const boost::system::error_code& ec) {
 		if (ec) return;
@@ -107,7 +107,7 @@ void GatewaySession::DoRead() {
 		net::buffer(&recvBuffer_[writePos_], freeSize),
 		net::bind_executor(*strand_,
 			[this, gen = connGen_](const boost::system::error_code& ec, size_t bytesTransferred) {
-				if (gen != connGen_) return;          // ÀÌÀü ¿¬°áÀÇ Äİ¹éÀÌ¸é ¹«½Ã
+				if (gen != connGen_) return;          // ì´ì „ ì—°ê²°ì˜ ì½œë°±ì´ë©´ ë¬´ì‹œ
 				if (!ec) {
 					writePos_ += bytesTransferred;
 					ProcessPackets();
@@ -131,7 +131,7 @@ void GatewaySession::ProcessPackets() {
 		if (dataSize < header->header.size) break;
 
 		if (header->header.size < sizeof(InternalPacketHeader)) {
-			OnDisconnected("Àß¸øµÈ ÆĞÅ¶ Å©±â: " + std::to_string(header->header.size));
+			OnDisconnected("ì˜ëª»ëœ íŒ¨í‚· í¬ê¸°: " + std::to_string(header->header.size));
 			return;
 		}
 
@@ -165,13 +165,13 @@ void GatewaySession::DoWrite() {
 		net::buffer(sendBuffer->Buffer(), sendBuffer->AllocSize()),
 		net::bind_executor(*strand_,
 			[this, gen = connGen_](boost::system::error_code ec, size_t bytesTransferred) {
-				if (gen != connGen_) return;          // ÀÌÀü ¿¬°áÀÇ Äİ¹éÀÌ¸é ¹«½Ã
+				if (gen != connGen_) return;          // ì´ì „ ì—°ê²°ì˜ ì½œë°±ì´ë©´ ë¬´ì‹œ
 				if (!ec) {
 					sendQueue_.pop();
 					if (!sendQueue_.empty()) DoWrite();
 				}
 				else {
-					OnDisconnected(ec.message());     // ÇÃ·¡±×¸¸ ³»¸®Áö ¸»°í Á¤¸® °æ·Î·Î
+					OnDisconnected(ec.message());     // í”Œë˜ê·¸ë§Œ ë‚´ë¦¬ì§€ ë§ê³  ì •ë¦¬ ê²½ë¡œë¡œ
 				}
 			}
 		)
@@ -185,9 +185,9 @@ void GatewaySession::HandleInternalPacket(uint8_t* buffer, uint16_t size) {
 
 	auto it = zones_.find(MakeZoneKey(header->zoneID, header->channelID));
 
-	if (it == zones_.end()) return; // Á¸ÀÌ ¼¼ÆÃ ¾È‰çÀ¸¸é ¹«½Ã
+	if (it == zones_.end()) return; // ì¡´ì´ ì„¸íŒ… ì•ˆë¬ìœ¼ë©´ ë¬´ì‹œ
 
-	// ¿¬°á Á¾·á
+	// ì—°ê²° ì¢…ë£Œ
 	if (header->header.id == PKT_INTERNAL_DISCONNECT) {
 		it->second->HandleDisconnect(header->sessionID);
 		return;

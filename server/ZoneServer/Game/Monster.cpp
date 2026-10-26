@@ -1,4 +1,4 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "Monster.h"
 
 Monster::Monster(uint64_t monsterUID, const MonsterData* data, float x, float y, float z)
@@ -8,25 +8,25 @@ Monster::Monster(uint64_t monsterUID, const MonsterData* data, float x, float y,
 	, maxHp_(data_->maxHp), hp_(data_->maxHp) {
 }
 
-// Á¦°ö »ç¿ë (´ë»ó ¹üÀ§µµ Á¦°öÇØ¾ßÇÔ)
+// ì œê³± ì‚¬ìš© (ëŒ€ìƒ ë²”ìœ„ë„ ì œê³±í•´ì•¼í•¨)
 float Monster::DistSqTo(float x, float y, float z) const
 {
 	float dx = x - x_, dy = y - y_, dz = z - z_;
 	return dx * dx + dy * dy + dz * dz;
 }
 
-// Å¸°Ù ³²Àº °Å¸® Ã¼Å©
+// íƒ€ê²Ÿ ë‚¨ì€ ê±°ë¦¬ ì²´í¬
 bool Monster::MoveToward(float tx, float ty, float tz, float step, float stopDist)
 {
 	float dx = tx - x_, dy = ty - y_, dz = tz - z_;
-	// ¸ó½ºÅÍ À§Ä¡¿¡¼­ ³» À§Ä¡±îÁöÀÇ °Å¸®
+	// ëª¬ìŠ¤í„° ìœ„ì¹˜ì—ì„œ ë‚´ ìœ„ì¹˜ê¹Œì§€ì˜ ê±°ë¦¬
 	float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-	// ³²Àº °Å¸®
+	// ë‚¨ì€ ê±°ë¦¬
 	float remain = dist - stopDist;
 	if (remain <= 0.f || step <= 0.f) return false;
 
-	// ¸ñÇ¥¹° ¾Õ ±îÁö¸¸ ÀÌµ¿
+	// ëª©í‘œë¬¼ ì• ê¹Œì§€ë§Œ ì´ë™
 	float move = std::min(step, remain);
 	float ratio = move / dist;
 	x_ += dx * ratio;
@@ -49,11 +49,11 @@ void Monster::Die(Clock::time_point now)
 	hp_ = 0;
 	state_ = MonsterState::Dead;
 	targetPlayerID_ = 0;
-	// ¸®½ºÆù ½Ã°£ ¼¼ÆÃ (ÇöÀç½Ã°£ + ¸®½ºÆù ½Ã°£ ÀÌÈÄ »ı¼º)
+	// ë¦¬ìŠ¤í° ì‹œê°„ ì„¸íŒ… (í˜„ì¬ì‹œê°„ + ë¦¬ìŠ¤í° ì‹œê°„ ì´í›„ ìƒì„±)
 	respawnAt_ = now + std::chrono::seconds(data_->respawnSec);
 }
 
-// ÃÊ±âÈ­
+// ì´ˆê¸°í™”
 void Monster::Respawn()
 {
 	x_ = spawnX_; y_ = spawnY_; z_ = spawnZ_;

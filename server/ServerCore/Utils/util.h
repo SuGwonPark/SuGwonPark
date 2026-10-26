@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "pch.h"
 #include "mstcpip.h"
 #include "magic_enum/magic_enum.hpp"
@@ -8,17 +8,17 @@
 #include <cstdint>
 
 
-// ¿¬°áÀÌ Á¶¿ëÇÒ ¶§ OS°¡ ´ë½Å »ıÁ¸ È®ÀÎ ÆĞÅ¶À» º¸³»µµ·Ï ¼³Á¤ÇÑ´Ù
+// ì—°ê²°ì´ ì¡°ìš©í•  ë•Œ OSê°€ ëŒ€ì‹  ìƒì¡´ í™•ì¸ íŒ¨í‚·ì„ ë³´ë‚´ë„ë¡ ì„¤ì •í•œë‹¤
 inline static void EnableKeepAlive(tcp::socket& s) {
 	tcp_keepalive ka{};
 	ka.onoff = 1;
-	ka.keepalivetime = 30'000;      // ¸¶Áö¸· ¼ö½Å ÈÄ 30ÃÊ Á¶¿ëÇÏ¸é Ã¹ È®ÀÎ ÆĞÅ¶ (ms)
-	ka.keepaliveinterval = 5'000;   // ÀÀ´äÀÌ ¾øÀ¸¸é 5ÃÊ °£°İÀ¸·Î ÀçÀü¼Û (ms)
+	ka.keepalivetime = 30'000;      // ë§ˆì§€ë§‰ ìˆ˜ì‹  í›„ 30ì´ˆ ì¡°ìš©í•˜ë©´ ì²« í™•ì¸ íŒ¨í‚· (ms)
+	ka.keepaliveinterval = 5'000;   // ì‘ë‹µì´ ì—†ìœ¼ë©´ 5ì´ˆ ê°„ê²©ìœ¼ë¡œ ì¬ì „ì†¡ (ms)
 
 	DWORD bytes = 0;
 	if (WSAIoctl(s.native_handle(), SIO_KEEPALIVE_VALS, &ka, sizeof(ka),
 		nullptr, 0, &bytes, nullptr, nullptr) == SOCKET_ERROR) {
-		std::cerr << "[KeepAlive] ¼³Á¤ ½ÇÆĞ: " << WSAGetLastError() << std::endl;
+		std::cerr << "[KeepAlive] ì„¤ì • ì‹¤íŒ¨: " << WSAGetLastError() << std::endl;
 	}
 
 }
@@ -30,65 +30,65 @@ inline std::string_view TypeToString(T value) {
 	return magic_enum::enum_name(value);
 }
 
-// CSV ¹®ÀÚ¿­ ¡æ enum À¸·Î º¯È¯
+// CSV ë¬¸ìì—´ â†’ enum ìœ¼ë¡œ ë³€í™˜
 template<typename T>
 inline T ParseCsvEnum(const std::string& text, const char* column) {
 	std::optional<T> value = magic_enum::enum_cast<T>(text);
 	if (!value || *value == T::None)
-		throw std::invalid_argument(std::string("¾Ë ¼ö ¾ø´Â ") + column + ": '" + text + "'");
+		throw std::invalid_argument(std::string("ì•Œ ìˆ˜ ì—†ëŠ” ") + column + ": '" + text + "'");
 	return *value;
 }
 
-// None Çã¿ë
+// None í—ˆìš©
 template<typename T>
 inline T ParseCsvEnum2(const std::string& text, const char* column) {
-	std::optional<T> value = ParseType<T>(text);
+	std::optional<T> value = magic_enum::enum_cast<T>(text);
 	if (!value)
-		throw std::invalid_argument(std::string("¾Ë ¼ö ¾ø´Â ") + column + ": '" + text + "'");
+		throw std::invalid_argument(std::string("ì•Œ ìˆ˜ ì—†ëŠ” ") + column + ": '" + text + "'");
 	return *value;
 }
 
 namespace Random {
 
-	// ½º·¹µå¸¶´Ù ÇÏ³ª¾¿ »ı±â´Â ³­¼ö ¿£Áø (¸ÖÆ¼½º·¹µå ¾ÈÀü)
+	// ìŠ¤ë ˆë“œë§ˆë‹¤ í•˜ë‚˜ì”© ìƒê¸°ëŠ” ë‚œìˆ˜ ì—”ì§„ (ë©€í‹°ìŠ¤ë ˆë“œ ì•ˆì „)
 	inline std::mt19937& Engine() {
-		// °ËÁõ¿ë (Ç×»ó °°Àº°ªÀÌ ³ª¿Â´Ù)
+		// ê²€ì¦ìš© (í•­ìƒ ê°™ì€ê°’ì´ ë‚˜ì˜¨ë‹¤)
 		//thread_local std::mt19937 gen(12345);
 		thread_local std::mt19937 gen(std::random_device{}());
 		return gen;
 	}
 
-	// Á¤¼ö: min ~ max (µÑ ´Ù Æ÷ÇÔ)
+	// ì •ìˆ˜: min ~ max (ë‘˜ ë‹¤ í¬í•¨)
 	inline int Int(int min, int max) {
 		std::uniform_int_distribution<int> dist(min, max);
 		return dist(Engine());
 	}
 
-	// ½Ç¼ö: min ~ max
+	// ì‹¤ìˆ˜: min ~ max
 	inline float Float(float min, float max) {
 		std::uniform_real_distribution<float> dist(min, max);
 		return dist(Engine());
 	}
 
-	// È®·ü: p (0.0 ~ 1.0) È®·ü·Î true
+	// í™•ë¥ : p (0.0 ~ 1.0) í™•ë¥ ë¡œ true
 	inline bool Chance(double p) {
 		std::bernoulli_distribution dist(p);
 		return dist(Engine());
 	}
 
-	// ¸¸ºĞÀ² È®·ü: rate / 10000 (±âÈ¹ µ¥ÀÌÅÍ¿¡¼­ ¸¹ÀÌ ¾¸, 500 = 5%)
+	// ë§Œë¶„ìœ¨ í™•ë¥ : rate / 10000 (ê¸°íš ë°ì´í„°ì—ì„œ ë§ì´ ì”€, 500 = 5%)
 	inline bool ChanceRate(int rate, int maxRate = 10000) {
 		return Int(1, maxRate) <= rate;
 	}
 
-	// ¸ñ·Ï¿¡¼­ ÇÏ³ª °í¸£±â (ºó ¸ñ·ÏÀÌ¸é nullptr)
+	// ëª©ë¡ì—ì„œ í•˜ë‚˜ ê³ ë¥´ê¸° (ë¹ˆ ëª©ë¡ì´ë©´ nullptr)
 	template<typename T>
 	inline const T* Pick(const std::vector<T>& list) {
 		if (list.empty()) return nullptr;
 		return &list[Int(0, static_cast<int>(list.size()) - 1)];
 	}
 
-	// °¡ÁßÄ¡ »Ì±â: ÀÎµ¦½º ¹İÈ¯ (°¡ÁßÄ¡ ÇÕÀÌ 0ÀÌ¸é -1)
+	// ê°€ì¤‘ì¹˜ ë½‘ê¸°: ì¸ë±ìŠ¤ ë°˜í™˜ (ê°€ì¤‘ì¹˜ í•©ì´ 0ì´ë©´ -1)
 	inline int WeightedIndex(const std::vector<int>& weights) {
 		int64_t total = 0;
 		for (int w : weights) total += (w > 0 ? w : 0);
@@ -104,7 +104,7 @@ namespace Random {
 		return -1;
 	}
 
-	// ¸ñ·Ï ¼¯±â
+	// ëª©ë¡ ì„ê¸°
 	template<typename T>
 	inline void Shuffle(std::vector<T>& list) {
 		std::shuffle(list.begin(), list.end(), Engine());

@@ -1,0 +1,10 @@
+root = true
+
+# C++ 소스: UTF-8(BOM), CRLF
+[*.{h,hpp,cpp,c,inl}]
+charset = utf-8-bom
+end_of_line = crlf
+
+# 게임 데이터: UTF-8(BOM) (엑셀에서 열어도 한글이 안 깨짐)
+[*.csv]
+charset = utf-8-bom

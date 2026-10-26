@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
@@ -7,29 +7,29 @@
 struct RewardData {
 	uint32_t   id;				// RewardID
 	uint32_t   groupID;         // RewardGroupID
-	RewardType type;			// º¸»ó Áö±Ş ¹æ½Ä
-	uint32_t   itemGroupID;		// Áö±Ş ¾ÆÀÌÅÛ ±×·ì
+	RewardType type;			// ë³´ìƒ ì§€ê¸‰ ë°©ì‹
+	uint32_t   itemGroupID;		// ì§€ê¸‰ ì•„ì´í…œ ê·¸ë£¹
 };
 
 struct RewardItemData {
 	uint32_t           id;
-	uint32_t           groupID;		// Áö±Ş ¾ÆÀÌÅÛ ±×·ì
-	RewardDeliveryType delivery;	// Àü´Ş ¹æ½Ä
-	RewardItemType     type;		// Áö±Ş ¾ÆÀÌÅÛ Å¸ÀÔ (°ñµå, exp, °æÇèÄ¡, ¾ÆÀÌÅÛ µî)
-	uint32_t           value;		// ¼¼ºÎ Å¸ÀÔ
-	uint32_t           minCount;	// ÃÖ¼Ò ¼ö·®
-	uint32_t           maxCount;	// ÃÖ´ë ¼ö·®
-	uint32_t           rate;		// È®·ü (ÀÏºÎ Delivery Å¸ÀÔ¿¡¼± Ã¼Å© ¾ÈÇÔ)
+	uint32_t           groupID;		// ì§€ê¸‰ ì•„ì´í…œ ê·¸ë£¹
+	RewardDeliveryType delivery;	// ì „ë‹¬ ë°©ì‹
+	RewardItemType     type;		// ì§€ê¸‰ ì•„ì´í…œ íƒ€ì… (ê³¨ë“œ, exp, ê²½í—˜ì¹˜, ì•„ì´í…œ ë“±)
+	uint32_t           value;		// ì„¸ë¶€ íƒ€ì…
+	uint32_t           minCount;	// ìµœì†Œ ìˆ˜ëŸ‰
+	uint32_t           maxCount;	// ìµœëŒ€ ìˆ˜ëŸ‰
+	uint32_t           rate;		// í™•ë¥  (ì¼ë¶€ Delivery íƒ€ì…ì—ì„  ì²´í¬ ì•ˆí•¨)
 };
 
-struct RewardItemGroup {               // RewardItem.csvÀÇ GroupID ÇÏ³ª
+struct RewardItemGroup {               // RewardItem.csvì˜ GroupID í•˜ë‚˜
 	std::vector<RewardItemData> items;
-	std::vector<int> pickWeights;      // PickOne¿ë: itemsÀÇ rate ±×´ë·Î
-	std::vector<int> randomWeights;    // Random¿ë: itemsÀÇ rate + ¸Ç µÚ¿¡ ²Î(RewardMaxRate - ÇÕ)
+	std::vector<int> pickWeights;      // PickOneìš©: itemsì˜ rate ê·¸ëŒ€ë¡œ
+	std::vector<int> randomWeights;    // Randomìš©: itemsì˜ rate + ë§¨ ë’¤ì— ê½(RewardMaxRate - í•©)
 	uint64_t rateSum = 0;
 };
 
-struct RewardResult {				// º¸»ó È¹µæ °á°ú
+struct RewardResult {				// ë³´ìƒ íšë“ ê²°ê³¼
 	RewardDeliveryType delivery;
 	RewardItemType     type;
 	uint32_t           value;
@@ -41,11 +41,11 @@ public:
 	static RewardTemplate& Instance() { static RewardTemplate inst; return inst; }
 
 	bool Load();                       // Reward.csv + RewardItem.csv
-	bool Validate() const;             // Reward ¡æ RewardItem ÂüÁ¶, ±×·ìº° Rate ÇÕ
+	bool Validate() const;             // Reward â†’ RewardItem ì°¸ì¡°, ê·¸ë£¹ë³„ Rate í•©
 
 	bool HasGroup(uint32_t groupID) const { return groups_.count(groupID) > 0; }
 
-	// º¸»ó ±×·ìÀ» ±¼·Á °á°ú¸¦ out¿¡ Ãß°¡ (³­¼ö´Â utilÀÇ Random:: ½º·¹µåº° ¿£Áø »ç¿ë)
+	// ë³´ìƒ ê·¸ë£¹ì„ êµ´ë ¤ ê²°ê³¼ë¥¼ outì— ì¶”ê°€ (ë‚œìˆ˜ëŠ” utilì˜ Random:: ìŠ¤ë ˆë“œë³„ ì—”ì§„ ì‚¬ìš©)
 	void Roll(uint32_t groupID, std::vector<RewardResult>& out) const;
 
 	size_t RewardRowCount() const { return rewardRows_; }

@@ -1,24 +1,24 @@
-#pragma once
+ï»¿#pragma once
 #include "pch.h"
 #include "ServerCore/JobSystem/JobQueue.h"
 #include "ServerCore/JobSystem/WorkStealingThreadPool.h"
 
-// ÇÁ·Î¼¼½º ÀüÃ¼°¡ °øÀ¯ÇÏ´Â ¿öÄ¿ Ç®. inline ÇÔ¼öÀÇ static Áö¿ªº¯¼ö¶ó ÇÁ·Î±×·¥ ÀüÃ¼¿¡¼­ ÇÑ °³¸¸ »ı±ä´Ù.
+// í”„ë¡œì„¸ìŠ¤ ì „ì²´ê°€ ê³µìœ í•˜ëŠ” ì›Œì»¤ í’€. inline í•¨ìˆ˜ì˜ static ì§€ì—­ë³€ìˆ˜ë¼ í”„ë¡œê·¸ë¨ ì „ì²´ì—ì„œ í•œ ê°œë§Œ ìƒê¸´ë‹¤.
 inline WorkStealingThreadPool& GlobalWorkerPool() {
 	static WorkStealingThreadPool pool;
 	return pool;
 }
 
-// "ÇÑ ¹ø¿¡ ÇÑ ½º·¹µå¸¸ ³» »óÅÂ¸¦ ¸¸Áø´Ù"¸¦ º¸ÀåÇØ¾ß ÇÏ´Â °´Ã¼(Zone, ÀÌÈÄ Party µî)°¡ »ó¼ÓÇÑ´Ù.
-// »ç¿ë¹ı: class Zone : public JobSerializer<Zone>
+// "í•œ ë²ˆì— í•œ ìŠ¤ë ˆë“œë§Œ ë‚´ ìƒíƒœë¥¼ ë§Œì§„ë‹¤"ë¥¼ ë³´ì¥í•´ì•¼ í•˜ëŠ” ê°ì²´(Zone, ì´í›„ Party ë“±)ê°€ ìƒì†í•œë‹¤.
+// ì‚¬ìš©ë²•: class Zone : public JobSerializer<Zone>
 template<typename T>
 class JobSerializer : public std::enable_shared_from_this<T> {
 public:
-	// ¾î´À ½º·¹µå¿¡¼­ È£ÃâÇØµµ ¾ÈÀü(DB ½º·¹µå, ³×Æ®¿öÅ© ½º·¹µå µî)
+	// ì–´ëŠ ìŠ¤ë ˆë“œì—ì„œ í˜¸ì¶œí•´ë„ ì•ˆì „(DB ìŠ¤ë ˆë“œ, ë„¤íŠ¸ì›Œí¬ ìŠ¤ë ˆë“œ ë“±)
 	void Post(Job job) {
 		jobQueue_->Push(std::move(job));
 
-		// Å¥¸¦ ºñ¿ì´Â ÀÏÀ» ¿öÄ¿¿¡ ¿¹¾à. ÀÌ¹Ì ´©°¡ µ¹¸®´Â ÁßÀÌ¸é Execute()°¡ ¹Ù·Î returnÇÑ´Ù.
+		// íë¥¼ ë¹„ìš°ëŠ” ì¼ì„ ì›Œì»¤ì— ì˜ˆì•½. ì´ë¯¸ ëˆ„ê°€ ëŒë¦¬ëŠ” ì¤‘ì´ë©´ Execute()ê°€ ë°”ë¡œ returní•œë‹¤.
 		GlobalWorkerPool().Post([self = this->shared_from_this(), queue = jobQueue_]() {
 			queue->Execute();
 			});

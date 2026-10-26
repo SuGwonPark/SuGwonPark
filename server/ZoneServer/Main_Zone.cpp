@@ -1,4 +1,4 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "Network/GatewaySession.h"
 #include "Game/Zone.h"
 #include "ServerCore/DB/GameDB.h"
@@ -8,20 +8,20 @@
 #include "Game/ZoneConstants.h"
 
 int main(int argc, char* argv[]) {
-	// ½ÇÇà È¯°æ ¼³Á¤ (Config/server.ini)
+	// ì‹¤í–‰ í™˜ê²½ ì„¤ì • (Config/server.ini)
 	const ServerConfig cfg = LoadServerConfig();
 
-	// DataTemplate ºÒ·¯¿À±â
+	// DataTemplate ë¶ˆëŸ¬ì˜¤ê¸°
 	if (!Template::LoadTemplate()) {
-		std::cerr << "[Template] ·Îµå ½ÇÆĞ, ¼­¹ö¸¦ Á¾·áÇÕ´Ï´Ù." << std::endl;
+		std::cerr << "[Template] ë¡œë“œ ì‹¤íŒ¨, ì„œë²„ë¥¼ ì¢…ë£Œí•©ë‹ˆë‹¤." << std::endl;
 		return 3;
 	}
 
-	// ÃßÈÄ config·Î Ã³¸®
+	// ì¶”í›„ configë¡œ ì²˜ë¦¬
 	std::map<uint32_t, ZoneData> zoneTemplate = ZoneTemplate::Instance().All();
 
 	try {
-		//	// GameDB ¿¬°á
+		//	// GameDB ì—°ê²°
 		GameDB& gameDB = GameDB::Instance();
 		gameDB.Init(4, "mysqlx://root:gpdlgh1234%21%40%23%24@localhost:33060/game");
 
@@ -31,40 +31,40 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 	catch (const std::exception& err) {
-		// ±âÅ¸ Ç¥ÁØ ¿¹¿Ü °¨Áö
+		// ê¸°íƒ€ í‘œì¤€ ì˜ˆì™¸ ê°ì§€
 		std::cerr << "Standard Exception: " << err.what() << std::endl;
 		return 2;
 	}
 	boost::asio::io_context io;
 
-	// Æ½ / ÀÚµ¿ ÀúÀå µî¿¡¼­ ¾²·Á°í Zone ¸ñ·ÏÀ» µé°í ÀÖ´Â´Ù
+	// í‹± / ìë™ ì €ì¥ ë“±ì—ì„œ ì“°ë ¤ê³  Zone ëª©ë¡ì„ ë“¤ê³  ìˆëŠ”ë‹¤
 	std::vector<ZoneRef> zones;
 
 	for (auto& [zoneID, zone] : zoneTemplate) {
 		for (uint32_t channelID = 1; channelID <= zone.channelCount; ++channelID) {
 			auto z = std::make_shared<Zone>(zoneID, channelID);
-			// ¹Ì¸® ¸ó½ºÅÍ »ı¼º 
+			// ë¯¸ë¦¬ ëª¬ìŠ¤í„° ìƒì„± 
 			z->InitMonster();
 			zones.push_back(z);
-			// Á¸ µî·Ï
+			// ì¡´ ë“±ë¡
 			GatewaySession::GetInstance()->AddZone(z);
 		}
 	}
 
-	// Gateway·Î Á¢¼Ó (GatewayÀÇ InternalServer°¡ µè°í ÀÖ´Â Æ÷Æ®·Î)
+	// Gatewayë¡œ ì ‘ì† (Gatewayì˜ InternalServerê°€ ë“£ê³  ìˆëŠ” í¬íŠ¸ë¡œ)
 	GatewaySession::GetInstance()->Connect(io, cfg.gatewayHost, cfg.internalPort);
 
-	// Á¸ Æ½ Å¸ÀÌ¸Ó: ZONE_TICK_MS¸¶´Ù ¸ğµç Zone¿¡ Æ½ ¿äÃ»
+	// ì¡´ í‹± íƒ€ì´ë¨¸: ZONE_TICK_MSë§ˆë‹¤ ëª¨ë“  Zoneì— í‹± ìš”ì²­
 	boost::asio::steady_timer tickTimer(io);
 	auto nextTick = std::chrono::steady_clock::now();
 	std::function<void()> scheduleTick;
 	scheduleTick = [&]() {
-		// Å¸ÀÌ¸Ó ¼³Á¤
+		// íƒ€ì´ë¨¸ ì„¤ì •
 		nextTick += std::chrono::milliseconds(ZoneConst::ZONE_TICK_MS);
 		tickTimer.expires_at(nextTick);
-		// ½ºÄÉÁì ½ÇÇà
+		// ìŠ¤ì¼€ì¥´ ì‹¤í–‰
 		tickTimer.async_wait([&](const boost::system::error_code& ec) {
-			if (ec) return;                         // cancel() µÇ¸é ¸ØÃã (Á¾·á Ã³¸®¿ë)
+			if (ec) return;                         // cancel() ë˜ë©´ ë©ˆì¶¤ (ì¢…ë£Œ ì²˜ë¦¬ìš©)
 			for (auto& z : zones) z->RequestTick();
 			scheduleTick();
 			});

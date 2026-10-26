@@ -1,11 +1,11 @@
-#pragma once
+ï»¿#pragma once
 #include "Template/MonsterTemplate.h"
 
 enum class MonsterState : uint8_t {
-	Idle,     // ½ºÆù À§Ä¡¿¡¼­ ´ë±â. ¾î±×·Î ¹üÀ§ ¾È ÇÃ·¹ÀÌ¾î¸¦ Ã£´Â´Ù
-	Chase,    // Å¸°Ù ÇÃ·¹ÀÌ¾î ÃßÀû
-	Return,   // ½ºÆù À§Ä¡·Î ±ÍÈ¯ (±ÍÈ¯ Áß¿¡´Â ¾î±×·Î¸¦ ¹ŞÁö ¾ÊÀ½)
-	Dead,	  // »ç¸Á
+	Idle,     // ìŠ¤í° ìœ„ì¹˜ì—ì„œ ëŒ€ê¸°. ì–´ê·¸ë¡œ ë²”ìœ„ ì•ˆ í”Œë ˆì´ì–´ë¥¼ ì°¾ëŠ”ë‹¤
+	Chase,    // íƒ€ê²Ÿ í”Œë ˆì´ì–´ ì¶”ì 
+	Return,   // ìŠ¤í° ìœ„ì¹˜ë¡œ ê·€í™˜ (ê·€í™˜ ì¤‘ì—ëŠ” ì–´ê·¸ë¡œë¥¼ ë°›ì§€ ì•ŠìŒ)
+	Dead,	  // ì‚¬ë§
 };
 
 class Monster {
@@ -31,26 +31,26 @@ public:
 
 	MonsterState GetState() const { return state_; }
 	uint64_t GetTargetID() const { return targetPlayerID_; }
-	// ÇÃ·¹ÀÌ¾î Å¸°Ù ÁöÁ¤
+	// í”Œë ˆì´ì–´ íƒ€ê²Ÿ ì§€ì •
 	void StartChase(uint64_t playerID) { state_ = MonsterState::Chase; targetPlayerID_ = playerID; }
 	void StartReturn() { state_ = MonsterState::Return, targetPlayerID_ = 0; }
-	// ±âº» »óÅÂ
+	// ê¸°ë³¸ ìƒíƒœ
 	void SetIdle() { state_ = MonsterState::Idle; targetPlayerID_ = 0; }
 
-	// ========= ÀüÅõ ===========
-	// °Å¸® Á¦°ö
+	// ========= ì „íˆ¬ ===========
+	// ê±°ë¦¬ ì œê³±
 	float DistSqTo(float x, float y, float z) const;
 	float DistSqFromSpawn() const { return DistSqTo(spawnX_, spawnY_, spawnZ_); }
 
-	// (tx,ty,tz) ÂÊÀ¸·Î ÃÖ´ë step¸¸Å­ ÀÌµ¿. ¸ñÇ¥¿Í stopDist °Å¸®°¡ µÇ¸é ¸ØÃá´Ù. ¿òÁ÷¿´À¸¸é true
+	// (tx,ty,tz) ìª½ìœ¼ë¡œ ìµœëŒ€ stepë§Œí¼ ì´ë™. ëª©í‘œì™€ stopDist ê±°ë¦¬ê°€ ë˜ë©´ ë©ˆì¶˜ë‹¤. ì›€ì§ì˜€ìœ¼ë©´ true
 	bool MoveToward(float tx, float ty, float tz, float step, float stopDist);
 
 	int32_t TakeDamage(int32_t damage);
-	// »ç¸Á Ã³¸®
+	// ì‚¬ë§ ì²˜ë¦¬
 	void Die(Clock::time_point now);
-	// ºÎÈ° °¡´É ¿©ºÎ Ã¼Å©
+	// ë¶€í™œ ê°€ëŠ¥ ì—¬ë¶€ ì²´í¬
 	bool CanRespawn(Clock::time_point now) const { return IsDead() && now >= respawnAt_; }
-	// ¸®½ºÆù
+	// ë¦¬ìŠ¤í°
 	void Respawn();
 	bool ResetHp();
 
@@ -63,7 +63,7 @@ public:
 
 private:
 	uint64_t monsterUID_;
-	const MonsterData* data_;    // Á¤Àû Å×ÀÌºíÀ» °¡¸®Å´ (¼ö¸í °ÆÁ¤ ¾øÀ½)
+	const MonsterData* data_;    // ì •ì  í…Œì´ë¸”ì„ ê°€ë¦¬í‚´ (ìˆ˜ëª… ê±±ì • ì—†ìŒ)
 	float x_, y_, z_;
 	float spawnX_, spawnY_, spawnZ_;
 	int32_t maxHp_;

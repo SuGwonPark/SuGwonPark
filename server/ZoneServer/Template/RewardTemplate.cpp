@@ -1,10 +1,10 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "Template/RewardTemplate.h"
 #include "ServerCore/Utils/CsvReader.h"
 #include "ServerCore/Utils/util.h"       
 
 namespace {
-	// ¼ö·®À» MinCount ~ MaxCount¿¡¼­ ±¼·Á °á°ú¿¡ Ãß°¡
+	// ìˆ˜ëŸ‰ì„ MinCount ~ MaxCountì—ì„œ êµ´ë ¤ ê²°ê³¼ì— ì¶”ê°€
 	void Push(std::vector<RewardResult>& out, const RewardItemData& item) {
 		const uint32_t count = static_cast<uint32_t>(
 			Random::Int(static_cast<int>(item.minCount), static_cast<int>(item.maxCount)));
@@ -26,8 +26,8 @@ bool RewardTemplate::Load()
 		d.type = ParseCsvEnum<RewardType>(r.at(2), "RewardType");
 		d.itemGroupID = Csv::ToU32(r.at(3));
 
-		if (d.groupID == 0) throw std::invalid_argument("RewardGroupID´Â 1 ÀÌ»ó (0Àº 'º¸»ó ¾øÀ½' ¿¹¾à)");
-		if (!rewardIDs.insert(d.id).second) throw std::invalid_argument("Áßº¹ ID " + r.at(0));
+		if (d.groupID == 0) throw std::invalid_argument("RewardGroupIDëŠ” 1 ì´ìƒ (0ì€ 'ë³´ìƒ ì—†ìŒ' ì˜ˆì•½)");
+		if (!rewardIDs.insert(d.id).second) throw std::invalid_argument("ì¤‘ë³µ ID " + r.at(0));
 		groups_[d.groupID].push_back(d);
 		++rewardRows_;
 		});
@@ -45,15 +45,15 @@ bool RewardTemplate::Load()
 		d.maxCount = Csv::ToU32(r.at(6));
 		d.rate = Csv::ToU32(r.at(7));
 
-		if (d.minCount > d.maxCount)  throw std::invalid_argument("MinCount°¡ MaxCountº¸´Ù Å­");
-		if (d.maxCount == 0)          throw std::invalid_argument("MaxCount´Â 1 ÀÌ»ó");
-		if (d.rate > RewardMaxRate)   throw std::invalid_argument("Rate´Â 0 ~ " + std::to_string(RewardMaxRate));
-		if (d.type != RewardItemType::Exp && d.value == 0) throw std::invalid_argument("Asset/ItemÀº Value°¡ ÇÊ¿ä");
-		if (!itemIDs.insert(d.id).second) throw std::invalid_argument("Áßº¹ ID " + r.at(0));
+		if (d.minCount > d.maxCount)  throw std::invalid_argument("MinCountê°€ MaxCountë³´ë‹¤ í¼");
+		if (d.maxCount == 0)          throw std::invalid_argument("MaxCountëŠ” 1 ì´ìƒ");
+		if (d.rate > RewardMaxRate)   throw std::invalid_argument("RateëŠ” 0 ~ " + std::to_string(RewardMaxRate));
+		if (d.type != RewardItemType::Exp && d.value == 0) throw std::invalid_argument("Asset/Itemì€ Valueê°€ í•„ìš”");
+		if (!itemIDs.insert(d.id).second) throw std::invalid_argument("ì¤‘ë³µ ID " + r.at(0));
 
 		RewardItemGroup& group = itemGroups_[d.groupID];
 
-		// ItemGroupData ¼¼ÆÃ
+		// ItemGroupData ì„¸íŒ…
 		group.items.push_back(d);
 		group.pickWeights.push_back(static_cast<int>(d.rate));
 		group.rateSum += d.rate;
@@ -61,11 +61,11 @@ bool RewardTemplate::Load()
 		});
 	if (!ok) return false;
 
-	// Random¿ë °¡ÁßÄ¡: ¾ÆÀÌÅÛ rateµé + ¸Ç µÚ¿¡ "²Î" Ä­ (RewardMaxRate - ÇÕ)
+	// Randomìš© ê°€ì¤‘ì¹˜: ì•„ì´í…œ rateë“¤ + ë§¨ ë’¤ì— "ê½" ì¹¸ (RewardMaxRate - í•©)
 	for (auto& [groupID, group] : itemGroups_) {
 		group.randomWeights = group.pickWeights;
 		const uint64_t miss = group.rateSum < RewardMaxRate ? RewardMaxRate - group.rateSum : 0;
-		// rateSumÀÌ 100¸¸ ¹Ì¸¸ÀÎ °æ¿ì ³ª¸ÓÁø ²ÎÀ¸·Î ´ëÃ¼
+		// rateSumì´ 100ë§Œ ë¯¸ë§Œì¸ ê²½ìš° ë‚˜ë¨¸ì§„ ê½ìœ¼ë¡œ ëŒ€ì²´
 		group.randomWeights.push_back(static_cast<int>(miss));
 	}
 	return true;
@@ -78,15 +78,15 @@ bool RewardTemplate::Validate() const
 		for (const auto& reward : rewards) {
 			auto it = itemGroups_.find(reward.itemGroupID);
 			if (it == itemGroups_.end()) {
-				std::cerr << "[Template] Reward.csv ID " << reward.id << ": RewardItem.csv¿¡ ¾ø´Â RewardItemGroup " << reward.itemGroupID << std::endl;
+				std::cerr << "[Template] Reward.csv ID " << reward.id << ": RewardItem.csvì— ì—†ëŠ” RewardItemGroup " << reward.itemGroupID << std::endl;
 				ok = false;
 				continue;
 			}
 
 			const uint64_t sum = it->second.rateSum;
 			if (reward.type == RewardType::Random && sum > RewardMaxRate) {
-				std::cerr << "[Template] Reward.csv ID " << reward.id << ": RandomÀÎµ¥ ±×·ì " << reward.itemGroupID
-					<< "ÀÇ Rate ÇÕÀÌ " << RewardMaxRate << " ÃÊ°ú (" << sum << ")" << std::endl;
+				std::cerr << "[Template] Reward.csv ID " << reward.id << ": Randomì¸ë° ê·¸ë£¹ " << reward.itemGroupID
+					<< "ì˜ Rate í•©ì´ " << RewardMaxRate << " ì´ˆê³¼ (" << sum << ")" << std::endl;
 				ok = false;
 			}
 		}
@@ -110,24 +110,24 @@ void RewardTemplate::RollItemGroup(const RewardData& reward, std::vector<RewardR
 	const RewardItemGroup& group = it->second;
 
 	switch (reward.type) {
-	case RewardType::All:              // ÀüºÎ Áö±Ş (Rate ¹«½Ã)
+	case RewardType::All:              // ì „ë¶€ ì§€ê¸‰ (Rate ë¬´ì‹œ)
 		for (const auto& item : group.items) Push(out, item);
 		break;
 
-	case RewardType::Independent:      // ¾ÆÀÌÅÛ¸¶´Ù rate / RewardMaxRate È®·ü
+	case RewardType::Independent:      // ì•„ì´í…œë§ˆë‹¤ rate / RewardMaxRate í™•ë¥ 
 		for (const auto& item : group.items)
 			if (Random::ChanceRate(static_cast<int>(item.rate), static_cast<int>(RewardMaxRate))) Push(out, item);
 		break;
 
 	case RewardType::Random:
-	{         // RewardMaxRate ±âÁØ 1°³, ¸Ç µÚ Ä­¿¡ °É¸®¸é ²Î
+	{         // RewardMaxRate ê¸°ì¤€ 1ê°œ, ë§¨ ë’¤ ì¹¸ì— ê±¸ë¦¬ë©´ ê½
 		const int index = Random::WeightedIndex(group.randomWeights);
 		if (index >= 0 && index < static_cast<int>(group.items.size())) Push(out, group.items[index]);
 		break;
 	}
 
-	case RewardType::PickOne: // ³ªÁß¿¡ ¼±ÅÃÇü ³ª¿À¸é »ı°¢ÇØº½
-	case RewardType::None:             // ·Îµå ´Ü°è¿¡¼­ °É·¯Á® ¿©±â ¿ÀÁö ¾ÊÀ½
+	case RewardType::PickOne: // ë‚˜ì¤‘ì— ì„ íƒí˜• ë‚˜ì˜¤ë©´ ìƒê°í•´ë´„
+	case RewardType::None:             // ë¡œë“œ ë‹¨ê³„ì—ì„œ ê±¸ëŸ¬ì ¸ ì—¬ê¸° ì˜¤ì§€ ì•ŠìŒ
 		break;
 	}
 }

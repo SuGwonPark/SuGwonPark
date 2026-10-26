@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <cstdint>
 #include "PacketID.h"
 #include "ProtocolTypes.h"   // ObjectType, PlayerInfo, CharacterSummary, MonsterInfo
@@ -175,6 +175,15 @@ struct RES_SkillFailPacket {
 	PacketHeader header;
 	uint32_t        skillID;
 	SkillFailReason reason;
+};
+
+struct RES_PlayerStatPacket {
+	PacketHeader header;
+	uint64_t playerID;
+	int32_t  hp;
+	int32_t  maxHp;
+	int32_t  mp;
+	int32_t  maxMp;
 };
 
 #pragma pack(pop)

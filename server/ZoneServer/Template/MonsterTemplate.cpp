@@ -5,7 +5,7 @@
 bool MonsterTemplate::Load()
 {
 	data_.clear();
-	return Csv::ForEachRow("Monster.csv", 9, [this](const CsvRow& r) {
+	return Csv::ForEachRow("Monster.csv",  [this](const CsvRow& r) {
 		MonsterData d{};
 		d.monsterID = Csv::ToU32(r[0]);
 		d.name = r[1];
@@ -14,7 +14,7 @@ bool MonsterTemplate::Load()
 		d.moveSpeed = Csv::ToFloat(r[4]);
 		d.aggroRange = Csv::ToFloat(r[5]);
 		d.attackRange = Csv::ToFloat(r[6]);
-		d.rewardID = Csv::ToU32(r[7]);
+		d.rewardGroupID = Csv::ToU32(r[7]);
 		d.respawnSec = Csv::ToI32(r[8]);
 
 		if (d.name.empty())                  throw std::invalid_argument("Name이 비어 있음");

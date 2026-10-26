@@ -37,6 +37,7 @@
     <ClInclude Include="Game\Monster.h" />
     <ClInclude Include="Game\Player.h" />
     <ClInclude Include="Game\Zone.h" />
+    <ClInclude Include="Game\ZoneData.h" />
     <ClInclude Include="Network\GatewaySession.h" />
     <ClInclude Include="Game\ZoneConstants.h" />
     <ClInclude Include="pch.h" />
@@ -107,6 +108,9 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

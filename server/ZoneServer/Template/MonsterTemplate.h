@@ -26,7 +26,6 @@ public:
 	const MonsterData* GetData(uint32_t monsterID) const;   // 없으면 nullptr
 	const std::unordered_map<uint32_t, MonsterData>& All() const { return data_; }
 
-	bool Validate() const;
 
 private:
 	std::unordered_map<uint32_t, MonsterData> data_;

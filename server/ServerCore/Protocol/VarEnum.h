@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <cstdint>
 
 
@@ -12,25 +12,25 @@ enum class ObjectType : uint8_t {
 };
 
 
-// º¸»ó Áö±Ş ¹æ½Ä
+// ë³´ìƒ ì§€ê¸‰ ë°©ì‹
 enum class RewardDeliveryType : uint8_t {
 	None = 0,
-	Direct = 1,   // ¹Ù·Î È¹µæ (ÀÎº¥Åä¸®¿¡ Áï½Ã Áö±Ş)
-	Drop = 2,   // ÇÊµå¿¡ µå¶ø (Áİ±â ÇÊ¿ä)
-	Dice = 3,   // ÁÖ»çÀ§ (ÆÄÆ¼¿ø ±¼·Á¼­ ºĞ¹è)
-	Mail = 4,   // ¿ìÆí Áö±Ş (ÀÎº¥Åä¸® °¡µæ Ã¡À» ¶§ µî)
+	Direct = 1,   // ë°”ë¡œ íšë“ (ì¸ë²¤í† ë¦¬ì— ì¦‰ì‹œ ì§€ê¸‰)
+	Drop = 2,   // í•„ë“œì— ë“œë (ì¤ê¸° í•„ìš”)
+	Dice = 3,   // ì£¼ì‚¬ìœ„ (íŒŒí‹°ì› êµ´ë ¤ì„œ ë¶„ë°°)
+	Mail = 4,   // ìš°í¸ ì§€ê¸‰ (ì¸ë²¤í† ë¦¬ ê°€ë“ ì°¼ì„ ë•Œ ë“±)
 };
 
-// º¸»ó Å¸ÀÔ
+// ë³´ìƒ íƒ€ì…
 enum class RewardType : uint8_t {
 	None = 0,
-	All = 1,           // ÀüºÎ Áö±Ş
-	Independent = 2,   // °¢ ÇàÀ» °³º° È®·ü·Î ±¼¸²
-	PickOne = 3,       // ¿©·¯ °³ Áß 1°³¸¸ ¼±ÅÃ 
-	Random = 4,			// ·£´ıÀ¸·Î 1°³¸¸ Áö±Ş
+	All = 1,           // ì „ë¶€ ì§€ê¸‰
+	Independent = 2,   // ê° í–‰ì„ ê°œë³„ í™•ë¥ ë¡œ êµ´ë¦¼
+	PickOne = 3,       // ì—¬ëŸ¬ ê°œ ì¤‘ 1ê°œë§Œ ì„ íƒ 
+	Random = 4,			// ëœë¤ìœ¼ë¡œ 1ê°œë§Œ ì§€ê¸‰
 };
 
-// º¸»ó ¾ÆÀÌÅÛ Å¸ÀÔ
+// ë³´ìƒ ì•„ì´í…œ íƒ€ì…
 enum class RewardItemType : uint8_t
 {
 	None = 0,
@@ -39,23 +39,23 @@ enum class RewardItemType : uint8_t
 	Item = 3,
 };
 
-// ½ºÅ³ ´ë»ó ¹æ½Ä
+// ìŠ¤í‚¬ ëŒ€ìƒ ë°©ì‹
 enum class SkillTargetType : uint8_t {
 	None = 0,
-	Single = 1,      // ´ë»ó 1¸í (Range ¾È)
-	SelfArea = 2,    // ½ÃÀüÀÚ Áß½É ¿øÇü (Radius)
-	TargetArea = 3,  // ´ë»ó À§Ä¡ Áß½É ¿øÇü (Range ¾È¿¡¼­, Radius)
+	Single = 1,      // ëŒ€ìƒ 1ëª… (Range ì•ˆ)
+	SelfArea = 2,    // ì‹œì „ì ì¤‘ì‹¬ ì›í˜• (Radius)
+	TargetArea = 3,  // ëŒ€ìƒ ìœ„ì¹˜ ì¤‘ì‹¬ ì›í˜• (Range ì•ˆì—ì„œ, Radius)
 };
 
-// ½ºÅ³ ½ÇÆĞ ÀÌÀ¯ (½ÃÀüÀÚ¿¡°Ô¸¸ Àü¼Û)
+// ìŠ¤í‚¬ ì‹¤íŒ¨ ì´ìœ  (ì‹œì „ìì—ê²Œë§Œ ì „ì†¡)
 enum class SkillFailReason : uint8_t {
 	None = 0,
-	InvalidSkill = 1,   // ¾ø´Â ½ºÅ³
-	Cooldown = 2,       // ÄğÅ¸ÀÓ Áß
-	NotEnoughCost = 3,    // MP ºÎÁ·
-	InvalidTarget = 4,  // ´ë»ó ¾øÀ½ / Á×À½ / ±ÍÈ¯ Áß
-	OutOfRange = 5,     // »ç°Å¸® ¹Û
-	Dead = 6,           // ½ÃÀüÀÚ°¡ »ç¸Á »óÅÂ
+	InvalidSkill = 1,   // ì—†ëŠ” ìŠ¤í‚¬
+	Cooldown = 2,       // ì¿¨íƒ€ì„ ì¤‘
+	NotEnoughCost = 3,    // MP ë¶€ì¡±
+	InvalidTarget = 4,  // ëŒ€ìƒ ì—†ìŒ / ì£½ìŒ / ê·€í™˜ ì¤‘
+	OutOfRange = 5,     // ì‚¬ê±°ë¦¬ ë°–
+	Dead = 6,           // ì‹œì „ìê°€ ì‚¬ë§ ìƒíƒœ
 
 };
 

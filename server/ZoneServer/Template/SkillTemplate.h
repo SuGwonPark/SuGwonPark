@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -10,8 +10,8 @@ struct SkillData {
 	std::string     name;
 	SkillTargetType targetType;
 	int32_t         damage;
-	float           range;        // Single: ´ë»ó±îÁö ÃÖ´ë °Å¸®
-	float           radius;       // SelfArea: ½ÃÀüÀÚ Áß½É ¹İ°æ
+	float           range;        // Single: ëŒ€ìƒê¹Œì§€ ìµœëŒ€ ê±°ë¦¬
+	float           radius;       // SelfArea: ì‹œì „ì ì¤‘ì‹¬ ë°˜ê²½
 	int32_t         cooldownMs;
 	SkillCostType	costType;
 	int32_t         cost;
@@ -22,7 +22,7 @@ public:
 	static SkillTemplate& Instance() { static SkillTemplate inst; return inst; }
 
 	bool Load();
-	const SkillData* GetData(uint32_t skillID) const;   // ¾øÀ¸¸é nullptr
+	const SkillData* GetData(uint32_t skillID) const;   // ì—†ìœ¼ë©´ nullptr
 	const std::unordered_map<uint32_t, SkillData>& All() const { return data_; }
 
 private:

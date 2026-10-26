@@ -22,7 +22,6 @@ bool Template::LoadTemplate()
 		if (!PortalTemplate::Instance().Validate()) return false;
 		if (!MonsterSpawnTemplate::Instance().Validate()) return false;
 		if (!RewardTemplate::Instance().Validate()) return false;
-		if (!MonsterTemplate::Instance().Validate()) return false;
 	}
 	catch (const std::exception& e) {
 		std::cerr << "[Template] 로드 중 예외: " << e.what() << std::endl;
