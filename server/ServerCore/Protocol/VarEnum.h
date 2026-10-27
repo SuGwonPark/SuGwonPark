@@ -64,3 +64,23 @@ enum class SkillCostType : uint8_t {
 	Hp = 1,
 	Mp = 2,
 };
+
+enum class ClassType : uint8_t
+{
+    None = 0,
+    Warrior = 1,
+    Archer = 2,
+    Mage = 3,
+};
+
+// 캐릭터 생성 상태값
+enum class CreateCharacterResult : uint8_t
+{
+    None = 0,
+    Success = 1,
+    InvalidName = 2,   // 길이 / 글자 규칙 위반
+    DuplicateName = 3, // 이미 있는 이름
+    SlotFull = 4,      // 슬롯 가득 참
+    ServerError = 5,
+};
+

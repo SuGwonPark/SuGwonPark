@@ -89,7 +89,46 @@ void GatewaySession::ScheduleReconnect() {
 		});
 }
 
-void GatewaySession::DoRead() {
+
+void GatewaySession::MulticastToClients(
+    const std::vector<uint64_t>& sessionIDs, uint32_t zoneID, uint32_t channelID, const void* data, uint16_t size)
+{
+    if (sessionIDs.empty())
+        return;
+
+    // 내부 패킷 한 개의 최대 크기(uint16 = 65535) 안에 들어가도록 나눠서 보냄
+    const size_t room = 0xFFFF - sizeof(InternalMulticastHeader) - size;
+    const size_t perPacket = room / sizeof(uint64_t);
+    if (perPacket == 0)
+        return; // 클라 패킷이 너무 큼 (현실적으로 없음)
+
+    for (size_t start = 0; start < sessionIDs.size(); start += perPacket)
+    {
+        const size_t count = std::min(perPacket, sessionIDs.size() - start);
+        const size_t idsBytes = count * sizeof(uint64_t);
+        const size_t total = sizeof(InternalMulticastHeader) + idsBytes + size;
+
+        InternalMulticastHeader head{};
+        head.header.id = PKT_INTERNAL_MULTICAST;
+        head.header.size = static_cast<uint16_t>(total);
+        head.zoneID = zoneID;
+        head.channelID = channelID;
+        head.sessionCount = static_cast<uint16_t>(count);
+
+        SendBufferRef buf = SendBufferManager::Open(static_cast<uint32_t>(total));
+        uint8_t* p = buf->Buffer();
+        std::memcpy(p, &head, sizeof(head));
+        p += sizeof(head);
+        std::memcpy(p, sessionIDs.data() + start, idsBytes);
+        p += idsBytes;
+        std::memcpy(p, data, size);
+        SendBufferManager::Close(static_cast<uint32_t>(total));
+
+        Send(buf);
+    }
+}
+void GatewaySession::DoRead()
+{
 	if (!isConnected_.load()) return;
 
 	size_t freeSize = recvBuffer_.size() - writePos_;

@@ -1,26 +1,32 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "Network/InternalServer.h"
 #include "Network/ZoneServerSession.h"
 #include "Manager/ZoneManager.h"
 
 InternalServer::InternalServer(net::io_context& io, short port)
 	: io_(io)
-	, acceptor_(io, tcp::endpoint(net::ip::make_address("127.0.0.1"), port)) {
 	Accept();
 }
 
 void InternalServer::Accept() {
-	auto session = std::make_shared<ZoneServerSession>(io_); // zoneId´Â Á¢¼Ó Á÷ÈÄ ÇÚµå¼ÎÀÌÅ©·Î ¹Ş¾Æ¾ß ÇÔ (ÀÓ½Ã 0)
+	auto session = std::make_shared<ZoneServerSession>(io_); // zoneIdëŠ” ì ‘ì† ì§í›„ í•¸ë“œì…°ì´í¬ë¡œ ë°›ì•„ì•¼ í•¨ (ì„ì‹œ 0)
 
 	acceptor_.async_accept(session->Socket(),
 		[this, session](boost::system::error_code ec) {
 			if (!ec) {
-				std::cout << "Zone ¼­¹ö Á¢¼Ó: " << session->Socket().remote_endpoint() << std::endl;
-				session->Start();
-				// TODO: Á¢¼Ó Á÷ÈÄ ZoneÀÌ ÀÚ±â zoneId¸¦ º¸³»´Â ÇÚµå¼ÎÀÌÅ© ÆĞÅ¶À» ¹Ş¾Æ¼­
-				// ZoneManager::GetInstance()->RegisterZone(zoneId, session) È£ÃâÇØ¾ß ÇÔ
-				// (Áö±İÀº zoneId¸¦ ¹Ì¸® ¾Ë ¹æ¹ıÀÌ ¾ø¾î¼­ ÇÚµå¼ÎÀÌÅ© ¼³°è°¡ ÇÊ¿äÇÔ)
-			}
+                boost::system::error_code epEc;
+                const auto remote = session->Socket().remote_endpoint(epEc); // ì˜ˆì™¸ ëŒ€ì‹  ecë¡œ ë°›ìŒ
+                if (!epEc)
+                {
+                    std::cout << "Zone ì„œë²„ ì ‘ì†: " << remote << std::endl;
+                    session->Start(); // ë“±ë¡ì€ í•¸ë“œì…°ì´í¬ ë°›ì€ ë’¤ ZoneManagerì—ì„œ
+                }
+            }
+            else if (ec == boost::asio::error::operation_aborted)
+            {
+                return;
+            }
 			Accept();
 		});
 }
+	, acceptor_(io, tcp::endpoint(net::ip::make_address("127.0.0.1"), port)) {

@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Game\AoiGrid.cpp" />
     <ClCompile Include="Game\Monster.cpp" />
     <ClCompile Include="Main_Zone.cpp" />
     <ClCompile Include="Game\Player.cpp" />
@@ -34,6 +35,7 @@
     <ClCompile Include="Template\ZoneTemplate.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Game\AoiGrid.h" />
     <ClInclude Include="Game\Monster.h" />
     <ClInclude Include="Game\Player.h" />
     <ClInclude Include="Game\Zone.h" />

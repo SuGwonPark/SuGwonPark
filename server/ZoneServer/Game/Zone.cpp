@@ -27,7 +27,10 @@ static PlayerInfo ToInfo(const Player& p)
     info.x = p.GetX();
     info.y = p.GetY();
     info.z = p.GetZ();
+    info.maxhp = p.GetMaxHp();
     info.hp = p.GetHp();
+    info.maxMp = p.GetMaxMp();
+    info.mp = p.GetMp();
     return info;
 }
 
@@ -57,7 +60,8 @@ static RES_PlayerStatPacket MakeStatPacket(const Player& player)
     return pkt;
 }
 
-Zone::Zone(uint32_t zoneID, uint32_t channelID) : zoneID_(zoneID), channelID_(channelID)
+Zone::Zone(uint32_t zoneID, uint32_t channelID)
+    : zoneID_(zoneID), channelID_(channelID), playerGrid_(ZoneConst::AOI_CELL_SIZE)
 {
 }
 
@@ -80,44 +84,29 @@ void Zone::Enter(PlayerRef player)
     enter.zoneID = zoneID_;
     enter.channelID = channelID_;
     enter.me = ToInfo(*player);
-    enter.mp = player->GetMp();
     enter.exp = player->GetExp();
     SendTo(player, &enter, sizeof(enter));
 
-    // 2) 나에게: 이미 있던 플레이어 목록 (아직 등록 전이라 나 자신은 안 들어간다)
-    if (!players_.empty())
-    {
-        std::vector<PlayerInfo> others;
-        others.reserve(players_.size());
-        for (auto& [id, p] : players_)
-            others.push_back(ToInfo(*p));
+    const AoiCell cell = CellOf(*player);
+    std::vector<AoiCell> cells;
+    AoiGrid::NearCells(cell, cells);
 
-        RES_SpawnPacket header{};
-        header.header.id = PKT_S_SPAWN;
-        header.count = static_cast<uint16_t>(others.size());
+    std::vector<PlayerRef> nearby;
+    CollectPlayers(cells, 0, nearby); // 아직 등록 전이라 나는 없음
 
-        // GatewayServer -> 클라이언트
-        if (SendBufferRef buf = SendBufferManager::MakeList(header, others))
-            SendTo(player, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
-    }
+    // 2) 나에게: 주변 플레이어 목록
+    SendSpawns(player, nearby);
 
-    // 나에게 몬스터 목록을 알려준다
+    // 나에게 몬스터 목록 (AOI 2단계에서 주변만으로 바꿈)
     SendMonsterList(player);
 
-    // 3) 기존 플레이어들에게: 새 플레이어 등장
-    {
-        std::vector<PlayerInfo> me{ToInfo(*player)};
-        RES_SpawnPacket header{};
-        header.header.id = PKT_S_SPAWN;
-        header.count = 1;
-        if (SendBufferRef buf = SendBufferManager::MakeList(header, me))
-            BroadCast(buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
-    }
+    // 3) 주변 플레이어에게: 나 등장
+    SpawnPlayerTo(player, nearby);
 
     // 4) 마지막에 내 정보 등록
     players_[player->GetPlayerID()] = player;
     sessionToPlayer_[player->GetSessionID()] = player;
-    // 주변 시야(AOI) 내 유저들에게 입장 알림 브로드캐스트
+    playerGrid_.Add(player->GetPlayerID(), cell);
 }
 
 void Zone::Leave(uint64_t playerID)
@@ -126,7 +115,11 @@ void Zone::Leave(uint64_t playerID)
     if (it == players_.end())
         return;
 
-    sessionToPlayer_.erase(it->second->GetSessionID());
+    PlayerRef player = it->second; // erase 전에 복사
+    const AoiCell cell = CellOf(*player);
+
+    playerGrid_.Remove(playerID, cell);
+    sessionToPlayer_.erase(player->GetSessionID());
     players_.erase(it);
 
     // 이미 지웟으므로 남은 사람에게만 보냄
@@ -134,7 +127,7 @@ void Zone::Leave(uint64_t playerID)
     pkt.header.id = PKT_S_DESPAWN;
     pkt.header.size = sizeof(pkt);
     pkt.playerID = playerID;
-    BroadCast(&pkt, sizeof(pkt));
+    BroadcastNear(cell, &pkt, sizeof(pkt));
 }
 
 void Zone::HandleDisconnect(uint64_t sessionID)
@@ -157,14 +150,9 @@ void Zone::HandleDisconnect(uint64_t sessionID)
         if (self->portalPending_.count(playerID) == 0)
         {
             // 캐릭터 정보 저장
-            GameDB::Instance().SaveCharacterProgressAsync(playerID,
-                                                          player->GetExp(),
-                                                          player->GetX(),
-                                                          player->GetY(),
-                                                          player->GetZ(),
-                                                          player->GetHp(),
-                                                          player->GetMp(),
-                                                          self->GetZoneID());
+            GameDB::Instance().SaveCharacterProgressAsync(
+                playerID, player->GetExp(), player->GetX(), player->GetY(), player->GetZ(), player->GetHp(),
+                player->GetMp(), self->GetZoneID());
         }
         // 퇴장 처리
         self->Leave(player->GetPlayerID());
@@ -180,6 +168,9 @@ void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t siz
 
     auto self = shared_from_this();
     Post([self, sessionID, copied = std::move(copied)]() mutable {
+        if (self->closed_)
+            return; // 존 종료 중이면 무시
+
         PacketHeader* header = reinterpret_cast<PacketHeader*>(copied.data());
 
         switch (header->id)
@@ -265,18 +256,14 @@ void Zone::SaveAllAndClear(std::function<void()> onDone)
         {
             if (self->portalPending_.count(playerID))
                 continue; // 포탈 저장이 최종 상태
-            GameDB::Instance().SaveCharacterProgressAsync(playerID,
-                                                          player->GetExp(),
-                                                          player->GetX(),
-                                                          player->GetY(),
-                                                          player->GetZ(),
-                                                          player->GetHp(),
-                                                          player->GetMp(),
-                                                          self->zoneID_);
+            GameDB::Instance().SaveCharacterProgressAsync(
+                playerID, player->GetExp(), player->GetX(), player->GetY(), player->GetZ(), player->GetHp(),
+                player->GetMp(), self->zoneID_);
         }
         self->players_.clear();
         self->sessionToPlayer_.clear();
         self->spawnPending_.clear();
+        self->playerGrid_.Clear();
 
         if (onDone)
             onDone(); // 저장 "요청"까지 끝났다는 신호
@@ -303,10 +290,11 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
         std::exception_ptr error;
         try
         {
-            auto row = db.sql("SELECT c.name, cs.PosX, cs.PosY, cs.PosZ, cs.hp, cs.mp, cs.exp "
-                              "FROM `character` c JOIN `character_state` cs "
-                              "ON c.playerID = cs.playerID "
-                              "WHERE c.playerID = ? AND c.deleteTime IS NULL")
+            auto row = db.sql(
+                             "SELECT c.name, cs.PosX, cs.PosY, cs.PosZ, cs.hp, cs.mp, cs.exp "
+                             "FROM `character` c JOIN `character_state` cs "
+                             "ON c.playerID = cs.playerID "
+                             "WHERE c.playerID = ? AND c.deleteTime IS NULL")
                            .bind(playerID)
                            .execute()
                            .fetchOne();
@@ -395,8 +383,19 @@ void Zone::RequestTick()
     });
 }
 
+void Zone::Shutdown(std::function<void()> onDone)
+{
+    auto self = shared_from_this();
+    Post([self]() { self->closed_ = true; });
+    SaveAllAndClear(std::move(onDone));
+}
+
 void Zone::Update()
 {
+    // 존 서버 종료 중
+    if (closed_)
+        return;
+
     // 현재 시간
     auto now = std::chrono::steady_clock::now();
     // 경과 시간 (float 형식 = 초 단위)
@@ -422,6 +421,14 @@ void Zone::Update()
     {
         regenTimer_ -= ZoneConst::PLAYER_REGEN_INTERVAL_SEC;
         RegenPlayers();
+    }
+
+    // 자동 저장 (10초마다 플레이어의 1/6씩)
+    autoSaveTimer_ += dt;
+    if (autoSaveTimer_ >= ZoneConst::AUTOSAVE_TICK_SEC)
+    {
+        autoSaveTimer_ -= ZoneConst::AUTOSAVE_TICK_SEC;
+        AutoSaveTick();
     }
 }
 
@@ -658,7 +665,10 @@ void Zone::HandleRevive(const PlayerRef& player)
     if (!zone)
         return;
 
+    const AoiCell from = CellOf(*player);
     player->Revive(zone->spawnX, zone->spawnY, zone->spawnZ, player->GetMaxHp());
+    const AoiCell to = CellOf(*player);
+    OnPlayerCellChanged(player, from, to);
 
     RES_RevivePacket pkt{};
     pkt.header.id = PKT_S_REVIVE;
@@ -668,7 +678,7 @@ void Zone::HandleRevive(const PlayerRef& player)
     pkt.y = player->GetY();
     pkt.z = player->GetZ();
     pkt.hp = player->GetHp();
-    BroadCast(&pkt, sizeof(pkt));
+    BroadcastNear(to, &pkt, sizeof(pkt));
 }
 
 void Zone::GiveRewards(const PlayerRef& player, const std::vector<RewardResult>& rewards)
@@ -861,13 +871,158 @@ void Zone::RegenPlayers()
 void Zone::BroadcastPlayerStat(const PlayerRef& player)
 {
     RES_PlayerStatPacket pkt = MakeStatPacket(*player);
-    BroadCast(&pkt, sizeof(pkt));
+    BroadcastNear(CellOf(*player), &pkt, sizeof(pkt));
 }
 
 void Zone::SendPlayerStat(const PlayerRef& to, const PlayerRef& player)
 {
     RES_PlayerStatPacket pkt = MakeStatPacket(*player);
     SendTo(to, &pkt, sizeof(pkt));
+}
+
+void Zone::AutoSaveTick()
+{
+    const uint32_t slice = autoSaveSlice_;
+    autoSaveSlice_ = (autoSaveSlice_ + 1) % ZoneConst::AUTOSAVE_SLICES;
+
+    for (auto& [playerID, player] : players_)
+    {
+        if (playerID % ZoneConst::AUTOSAVE_SLICES != slice)
+            continue;
+
+        if (portalPending_.count(playerID) || player->IsDead())
+            continue;
+
+        if (!player->ConsumeChanged())
+            continue;
+
+        GameDB::Instance().SaveCharacterProgressAsync(
+            playerID, player->GetExp(), player->GetX(), player->GetY(), player->GetZ(), player->GetHp(),
+            player->GetMp(), zoneID_);
+    }
+}
+
+AoiCell Zone::CellOf(const Player& player) const
+{
+    return playerGrid_.ToCell(player.GetX(), player.GetZ());
+}
+
+void Zone::CollectPlayers(const std::vector<AoiCell>& cells, uint64_t exceptPlayerID, std::vector<PlayerRef>& out) const
+{
+    for (const AoiCell& cell : cells)
+    {
+        playerGrid_.ForEachInCell(cell, [&](uint64_t id) {
+            if (id == exceptPlayerID)
+                return;
+            auto it = players_.find(id);
+            if (it != players_.end())
+                out.push_back(it->second);
+        });
+    }
+}
+
+void Zone::MulticastTo(const std::vector<PlayerRef>& targets, const void* data, uint16_t size)
+{
+    if (targets.empty())
+        return;
+
+    std::vector<uint64_t> sessionIDs;
+    sessionIDs.reserve(targets.size());
+    for (const PlayerRef& player : targets)
+    {
+        sessionIDs.push_back(player->GetSessionID());
+    }
+    GatewaySession::GetInstance()->MulticastToClients(sessionIDs, zoneID_, channelID_, data, size);
+}
+
+// 주변 유저에게만 전달
+void Zone::BroadcastNear(AoiCell center, const void* data, uint16_t size, uint64_t exceptPlayerID)
+{
+    std::vector<AoiCell> cells;
+    AoiGrid::NearCells(center, cells);
+
+    std::vector<PlayerRef> targets;
+    // exceptPlayerID제외 근처 플레이어 수집
+    CollectPlayers(cells, exceptPlayerID, targets);
+
+    MulticastTo(targets, data, size);
+}
+
+void Zone::SendSpawns(const PlayerRef& to, const std::vector<PlayerRef>& list)
+{
+    if (list.empty())
+        return;
+
+    std::vector<PlayerInfo> infos;
+    infos.reserve(list.size());
+    for (const PlayerRef& p : list)
+        infos.push_back(ToInfo(*p));
+
+    RES_SpawnPacket header{};
+    header.header.id = PKT_S_SPAWN;
+    header.count = static_cast<uint16_t>(infos.size());
+    if (SendBufferRef buf = SendBufferManager::MakeList(header, infos))
+        SendTo(to, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+}
+
+void Zone::SpawnPlayerTo(const PlayerRef& player, const std::vector<PlayerRef>& viewers)
+{
+    if (viewers.empty())
+        return;
+
+    std::vector<PlayerInfo> me{ToInfo(*player)};
+    RES_SpawnPacket header{};
+    header.header.id = PKT_S_SPAWN;
+    header.count = 1;
+    if (SendBufferRef buf = SendBufferManager::MakeList(header, me))
+        MulticastTo(viewers, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+}
+
+void Zone::DespawnPlayerTo(uint64_t playerID, const std::vector<PlayerRef>& viewers)
+{
+    RES_DespawnPacket pkt{};
+    pkt.header.id = PKT_S_DESPAWN;
+    pkt.header.size = sizeof(pkt);
+    pkt.playerID = playerID;
+    MulticastTo(viewers, &pkt, sizeof(pkt));
+}
+
+// cell 이동 시 가시 처리 (등장/퇴장)
+void Zone::OnPlayerCellChanged(const PlayerRef& player, AoiCell from, AoiCell to)
+{
+    if (from == to)
+        return;
+
+    const uint64_t playerID = player->GetPlayerID();
+    playerGrid_.Move(playerID, from, to);
+
+    // 새로 보이게 된 칸(enteredCells) / 안 보이게 된 칸(leftCells)
+    std::vector<AoiCell> enteredCells, leftCells;
+    AoiGrid::DiffNear(from, to, enteredCells, leftCells);
+
+    std::vector<PlayerRef> appeared, disappeared;
+    // 새로 보이게 된 사람 <-> 나
+    CollectPlayers(enteredCells, playerID, appeared);
+
+    // 안 보이게 된 사람 <-> 나
+    CollectPlayers(leftCells, playerID, disappeared);
+
+    // 나에게 새로 보이게 된 사람들을 스폰
+    SendSpawns(player, appeared);
+    // 나를 새로 보이게 된 사람들에게 스폰
+    SpawnPlayerTo(player, appeared);
+
+    for (const PlayerRef& other : disappeared)
+    {
+        RES_DespawnPacket pkt{};
+        pkt.header.id = PKT_S_DESPAWN;
+        pkt.header.size = sizeof(pkt);
+        pkt.playerID = other->GetPlayerID();
+        SendTo(player, &pkt, sizeof(pkt));
+    }
+
+    // 나를 안 보이게 된 사람들에게서 퇴장 처리
+    DespawnPlayerTo(playerID, disappeared);
 }
 
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z)
@@ -878,6 +1033,7 @@ void Zone::HandleMove(uint64_t playerID, float x, float y, float z)
     auto it = players_.find(playerID);
     if (it == players_.end())
         return;
+
     PlayerRef& player = it->second;
     if (player->IsDead())
         return;
@@ -886,6 +1042,8 @@ void Zone::HandleMove(uint64_t playerID, float x, float y, float z)
     pkt.header.size = sizeof(MovePacket);
     pkt.header.id = PKT_S_MOVE;
     pkt.playerID = playerID;
+
+    const AoiCell from = CellOf(*player); // 이동 전 칸
 
     if (!player->TryMove(x, y, z, ZoneConst::MAX_MOVE_SPEED))
     {
@@ -901,8 +1059,13 @@ void Zone::HandleMove(uint64_t playerID, float x, float y, float z)
     pkt.y = y;
     pkt.z = z;
 
-    // 존의 모든 유저에 전달
-    BroadCast(&pkt, sizeof(pkt), playerID);
+    // 칸이 바뀌었으면 등장/퇴장 처리
+    const AoiCell to = CellOf(*player);
+    // 플레이어, 이전 칸, 현재 칸 전달하여 시야 등장/퇴장 처리
+    OnPlayerCellChanged(player, from, to);
+
+    // 주변 유저에게만 전달
+    BroadcastNear(to, &pkt, sizeof(pkt), playerID);
 }
 
 void Zone::HandlePortal(uint64_t playerID, uint32_t portalID)
@@ -925,14 +1088,8 @@ void Zone::HandlePortal(uint64_t playerID, uint32_t portalID)
     auto self = shared_from_this();
 
     GameDB::Instance().SaveCharacterProgressAsync(
-        playerID,
-        player->GetExp(),
-        portalData->destX,
-        portalData->destY,
-        portalData->destZ,
-        player->GetHp(),
-        player->GetMp(),
-        portalData->destZoneID,
+        playerID, player->GetExp(), portalData->destX, portalData->destY, portalData->destZ, player->GetHp(),
+        player->GetMp(), portalData->destZoneID,
         // 콜백 DB 스레드에서 실행
         [self, sessionID, playerID, portalData](bool ok) {
             self->Post([=]() {
@@ -982,15 +1139,15 @@ void Zone::HandlePortalRequest(const PlayerRef& player, uint32_t portalID)
 
 void Zone::BroadCast(const void* data, uint16_t size, uint64_t exceptPlayerID)
 {
-    // 현재 존의 모든 플레이어 정보
+    std::vector<uint64_t> sessionIDs;
+    sessionIDs.reserve(players_.size());
     for (auto& [id, p] : players_)
     {
-        // 내 정보는 넘김
         if (id == exceptPlayerID)
             continue;
-
-        SendTo(p, data, size);
+        sessionIDs.push_back(p->GetSessionID());
     }
+    GatewaySession::GetInstance()->MulticastToClients(sessionIDs, zoneID_, channelID_, data, size);
 }
 
 void Zone::SendTo(const PlayerRef& player, const void* data, uint16_t size)

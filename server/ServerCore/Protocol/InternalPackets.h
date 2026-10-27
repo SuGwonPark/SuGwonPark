@@ -1,15 +1,25 @@
-#pragma once
+﻿#pragma once
 #include <cstdint>
 #include "Packets.h"   // PacketHeader
 
 // Gateway <-> Zone 전용 패킷 번호 (클라이언트와 겹치지 않게 9000번대)
-enum InternalPacketID : uint16_t {
-	PKT_ZONE_HANDSHAKE = 9997,
-	PKT_INTERNAL_DISCONNECT = 9998,
-	PKT_INTERNAL_FORWARD = 9999,
+enum InternalPacketID : uint16_t
+{
+    PKT_INTERNAL_MULTICAST = 9996, 
+    PKT_ZONE_HANDSHAKE = 9997,
+    PKT_INTERNAL_DISCONNECT = 9998,
+    PKT_INTERNAL_FORWARD = 9999,
 };
 
 #pragma pack(push, 1)
+
+struct InternalMulticastHeader
+{
+    PacketHeader header;
+    uint32_t zoneID;
+    uint32_t channelID;
+    uint16_t sessionCount;
+};
 
 // 모든 내부 패킷 앞에 붙는 래퍼 헤더
 struct InternalPacketHeader {

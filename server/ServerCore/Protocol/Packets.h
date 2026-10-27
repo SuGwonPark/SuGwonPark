@@ -1,9 +1,9 @@
 ﻿#pragma once
 #include <cstdint>
 #include "PacketID.h"
-#include "ProtocolTypes.h"   // ObjectType, PlayerInfo, CharacterSummary, MonsterInfo
+#include "ProtocolTypes.h"   
 #include "VarEnum.h"
-// 요청(REQ_)/응답(RES_) 패킷만 둔다. 패킷 안에 들어가는 타입은 ProtocolTypes.h
+
 
 #pragma pack(push, 1)
 
@@ -25,6 +25,19 @@ struct RES_LoginPacket {
 	uint64_t userUID;
 	bool success;
 	char message[50];
+};
+
+struct REQ_CreateCharacterPacket
+{
+    PacketHeader header;
+    char name[50]; // UTF-8, 널 종료 보장 안 됨
+};
+
+struct RES_CreateCharacterPacket
+{
+    PacketHeader header;
+    CreateCharacterResult result;
+    CharacterSummary character; // Success일 때만 유효
 };
 
 // ===== 로비 =====
@@ -53,7 +66,6 @@ struct RES_EnterGamePacket {     // 나 자신의 입장 결과
 	uint32_t   zoneID;
 	uint32_t   channelID;
 	PlayerInfo me;
-	int32_t    mp;
 	uint64_t   exp;
 };
 

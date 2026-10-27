@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "GatewayConstants.h"
 #include "pch.h"
 #include "ServerCore/Protocol/Packets.h"
@@ -6,12 +6,14 @@
 #include "ServerCore/Utils/util.h"
 
 // 세션 상태값
-enum class SessionState : uint8_t {
-	Connected,    // 접속만 함
-	LoggingIn,    // 로그인 DB 처리 중
-	Lobby,        // 로그인 완료 (목록/선택 가능)
-	Selecting,    // 캐릭터 선택 DB 처리 중
-	InGame,       // 선택 완료 (Zone으로 패킷 전달)
+enum class SessionState : uint8_t
+{
+    Connected,
+    LoggingIn,
+    Lobby,
+    Creating, 
+    Selecting,
+    InGame,
 };
 
 class ClientProxySession : public std::enable_shared_from_this<ClientProxySession> {
@@ -52,7 +54,8 @@ public:
 	bool TryTransition(SessionState from, SessionState to) {
 		return state_.compare_exchange_strong(from, to);
 	}
-private:
+		
+	private:
 	// 네트워크 I/O 루프
 	void DoRead();
 	void DoWrite();

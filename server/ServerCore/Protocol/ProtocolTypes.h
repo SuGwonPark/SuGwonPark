@@ -31,7 +31,10 @@ struct PlayerInfo {              // 다른 유저에게 보여줄 최소 정보
 	uint64_t playerID;
 	char     name[50];
 	float    x, y, z;
+    int32_t maxhp;
 	int32_t  hp;
+    int32_t maxMp;
+    int32_t mp;
 };
 
 struct MonsterInfo {

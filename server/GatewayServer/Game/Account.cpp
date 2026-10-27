@@ -1,142 +1,316 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "Account.h"
 #include "ServerCore/DB/AccountDB.h"
 #include "ServerCore/DB/GameDB.h"
 #include "ServerCore/Manager/SendBufferManager.h"
 #include "ServerCore/Protocol/Packets.h"
 #include "ServerCore/Protocol/PacketID.h"
-#include "Manager/ZoneManager.h" 
+#include "Manager/ZoneManager.h"
 #include "Manager/SessionManager.h"
+
+namespace
+{
+// UTF-8 í•œ ê¸€ìë¥¼ ì½ì–´ codeì— ë‹´ê³  ë‹¤ìŒ ìœ„ì¹˜ë¥¼ ëŒë ¤ì¤€ë‹¤. ì˜ëª»ëœ ë°”ì´íŠ¸ë©´ npos
+size_t NextCodePoint(const std::string& s, size_t i, char32_t& code)
+{
+    const unsigned char c = static_cast<unsigned char>(s[i]);
+    int len = 0;
+    if (c < 0x80)
+    {
+        code = c;
+        return i + 1;
+    }
+    else if ((c & 0xE0) == 0xC0)
+    {
+        code = c & 0x1F;
+        len = 2;
+    }
+    else if ((c & 0xF0) == 0xE0)
+    {
+        code = c & 0x0F;
+        len = 3;
+    }
+    else if ((c & 0xF8) == 0xF0)
+    {
+        code = c & 0x07;
+        len = 4;
+    }
+    else
+        return std::string::npos;
+
+    if (i + len > s.size())
+        return std::string::npos;
+    for (int k = 1; k < len; ++k)
+    {
+        const unsigned char cc = static_cast<unsigned char>(s[i + k]);
+        if ((cc & 0xC0) != 0x80)
+            return std::string::npos;
+        code = (code << 6) | (cc & 0x3F);
+    }
+    return i + len;
+}
+
+// í—ˆìš© ê¸€ì: ìˆ«ì, ì˜ë¬¸ ëŒ€ì†Œë¬¸ì, í•œê¸€ ì™„ì„±í˜•(ê°€~í£)
+bool IsAllowedChar(char32_t c)
+{
+    return (c >= U'0' && c <= U'9') || (c >= U'a' && c <= U'z') || (c >= U'A' && c <= U'Z') ||
+           (c >= 0xAC00 && c <= 0xD7A3);
+}
+
+// 2~12 ê¸€ì (ë°”ì´íŠ¸ê°€ ì•„ë‹ˆë¼ ê¸€ì ìˆ˜)
+bool IsValidCharacterName(const std::string& name)
+{
+    size_t count = 0;
+    for (size_t i = 0; i < name.size();)
+    {
+        char32_t code = 0;
+        const size_t next = NextCodePoint(name, i, code);
+        if (next == std::string::npos || !IsAllowedChar(code))
+            return false;
+        i = next;
+        ++count;
+    }
+    return count >= 2 && count <= 12;
+}
+} // namespace
 
 void Account::Login(ClientProxySessionRef session, const REQ_LoginPacket* pkt)
 {
-	// ÇöÀç »óÅÂ°¡ Connected°¡ ¾Æ´Ï¸é ¹«½Ã
-	if (!session->TryTransition(SessionState::Connected, SessionState::LoggingIn)) return;
+    // í˜„ì¬ ìƒíƒœê°€ Connectedê°€ ì•„ë‹ˆë©´ ë¬´ì‹œ
+    if (!session->TryTransition(SessionState::Connected, SessionState::LoggingIn))
+        return;
 
-	// Å¬¶óÀÌ¾ğÆ®°¡ º¸³½ char[]´Â ³Î Á¾·á°¡ º¸ÀåµÇÁö ¾ÊÀ¸´Ï ±æÀÌ¸¦ Á¦ÇÑÇØ¼­ º¹»ç
-	std::string userID(pkt->userID, strnlen(pkt->userID, sizeof(pkt->userID)));
-	std::string password(pkt->password, strnlen(pkt->password, sizeof(pkt->password)));
+    // í´ë¼ì´ì–¸íŠ¸ê°€ ë³´ë‚¸ char[]ëŠ” ë„ ì¢…ë£Œê°€ ë³´ì¥ë˜ì§€ ì•Šìœ¼ë‹ˆ ê¸¸ì´ë¥¼ ì œí•œí•´ì„œ ë³µì‚¬
+    std::string userID(pkt->userID, strnlen(pkt->userID, sizeof(pkt->userID)));
+    std::string password(pkt->password, strnlen(pkt->password, sizeof(pkt->password)));
 
-	AccountDB::Instance().PushTask(
-		[session, userID, password](mysqlx::Session& sess) {
-			auto reply = [session](bool ok, int64_t userUID, const char* msg) {
-				RES_LoginPacket res{};
-				res.header.id = PKT_S_LOGIN;
-				res.header.size = sizeof(res);
-				res.success = ok;
-				res.userUID = userUID;
-				strncpy_s(res.message, msg, _TRUNCATE);
-				session->Send(SendBufferManager::Make(&res, sizeof(res)));
-				};
+    AccountDB::Instance().PushTask([session, userID, password](mysqlx::Session& sess) {
+        auto reply = [session](bool ok, int64_t userUID, const char* msg) {
+            RES_LoginPacket res{};
+            res.header.id = PKT_S_LOGIN;
+            res.header.size = sizeof(res);
+            res.success = ok;
+            res.userUID = userUID;
+            strncpy_s(res.message, msg, _TRUNCATE);
+            session->Send(SendBufferManager::Make(&res, sizeof(res)));
+        };
 
-			auto fail = [&](const char* msg) {
-				session->SetState(SessionState::Connected); // ½ÇÆĞ½Ã Ã³À½ºÎÅÍ
-				reply(false, 0, msg);
-				};
+        auto fail = [&](const char* msg) {
+            session->SetState(SessionState::Connected); // ì‹¤íŒ¨ì‹œ ì²˜ìŒë¶€í„°
+            reply(false, 0, msg);
+        };
 
-			try {
-				auto row = sess.sql(
-					"SELECT userUID, passwordHash FROM `account` "
-					"WHERE id = ? AND `remove` = 0")
-					.bind(userID).execute().fetchOne();
+        try
+        {
+            auto row = sess.sql(
+                               "SELECT userUID, passwordHash FROM `account` "
+                               "WHERE id = ? AND `remove` = 0")
+                           .bind(userID)
+                           .execute()
+                           .fetchOne();
 
-				if (!row) { fail("LOGIN_FAILED"); return; }
+            if (!row)
+            {
+                fail("LOGIN_FAILED");
+                return;
+            }
 
-				std::string hash = row[1].get<std::string>();
-				if (crypto_pwhash_str_verify(hash.c_str(), password.c_str(), password.size()) != 0) {
-					fail("LOGIN_PASSWORD_FAILED");
-					return;
-				}
+            std::string hash = row[1].get<std::string>();
+            if (crypto_pwhash_str_verify(hash.c_str(), password.c_str(), password.size()) != 0)
+            {
+                fail("LOGIN_PASSWORD_FAILED");
+                return;
+            }
 
-				uint64_t userUID = row[0].get<int64_t>();
-				// °°Àº °èÁ¤ÀÌ ÀÌ¹Ì Á¢¼Ó ÁßÀÌ¸é: ±âÁ¸ Á¢¼ÓÀ» ²÷°í, ÀÌ¹ø ·Î±×ÀÎÀº °ÅºÎ
-				ClientProxySessionRef existing;
-				if (!SessionManager::GetInstance()->TryBindUser(userUID, session->GetSessionID(), existing)) {
-					if (existing) existing->Close();     // ¡æ ±âÁ¸ Á¢¼Ó À¯Àú Zone¿¡ Á¢¼Ó Á¾·á Åëº¸ ¡æ ÀúÀå ¡æ ¹ÙÀÎµù ÇØÁ¦
-					fail("DUPLICATE_LOGIN");  // ÇöÀç Á¢¼Ó À¯Àúµµ 1È¸ °ÅºÎ
-					return;
-				}
+            uint64_t userUID = row[0].get<int64_t>();
+            // ê°™ì€ ê³„ì •ì´ ì´ë¯¸ ì ‘ì† ì¤‘ì´ë©´: ê¸°ì¡´ ì ‘ì†ì„ ëŠê³ , ì´ë²ˆ ë¡œê·¸ì¸ì€ ê±°ë¶€
+            ClientProxySessionRef existing;
+            if (!SessionManager::GetInstance()->TryBindUser(userUID, session->GetSessionID(), existing))
+            {
+                if (existing)
+                    existing->Close();   // â†’ ê¸°ì¡´ ì ‘ì† ìœ ì € Zoneì— ì ‘ì† ì¢…ë£Œ í†µë³´ â†’ ì €ì¥ â†’ ë°”ì¸ë”© í•´ì œ
+                fail("DUPLICATE_LOGIN"); // í˜„ì¬ ì ‘ì† ìœ ì €ë„ 1íšŒ ê±°ë¶€
+                return;
+            }
 
-				session->SetUserUID(userUID);
-				session->SetState(SessionState::Lobby);
-				reply(true, userUID, "OK");
-			}
-			catch (...) {
-				fail("SERVER_ERROR");
-				throw;
-			}
-		});
+            session->SetUserUID(userUID);
+            session->SetState(SessionState::Lobby);
+            reply(true, userUID, "OK");
+        }
+        catch (...)
+        {
+            fail("SERVER_ERROR");
+            throw;
+        }
+    });
 }
 
-void Account::SendCharacterList(ClientProxySessionRef session) {
-	if (session->GetState() != SessionState::Lobby)return;
+void Account::SendCharacterList(ClientProxySessionRef session)
+{
+    if (session->GetState() != SessionState::Lobby)
+        return;
 
-	uint64_t userUID = session->GetUserUID();
-	if (userUID == 0) return;
+    uint64_t userUID = session->GetUserUID();
+    if (userUID == 0)
+        return;
 
-	GameDB::Instance().PushTask([session, userUID](mysqlx::Session& db) {
+    GameDB::Instance().PushTask([session, userUID](mysqlx::Session& db) {
+        auto result = db.sql(
+                            "SELECT c.playerID, c.name, cs.exp FROM `character` c JOIN `character_state` cs "
+                            "ON c.playerID = cs.playerID "
+                            "WHERE c.userUID = ? AND c.deleteTime IS NULL")
+                          .bind(userUID)
+                          .execute();
 
-		auto result = db.sql(
-			"SELECT c.playerID, c.name, cs.exp FROM `character` c JOIN `character_state` cs "
-			"ON c.playerID = cs.playerID "
-			"WHERE c.userUID = ? AND c.deleteTime IS NULL")
-			.bind(userUID).execute();
+        std::vector<CharacterSummary> list;
+        for (auto row : result.fetchAll())
+        {
+            CharacterSummary c{};
+            c.playerID = row[0].get<uint64_t>();
+            strncpy_s(c.name, row[1].get<std::string>().c_str(), _TRUNCATE);
+            c.exp = row[2].get<uint64_t>();
+            list.push_back(c);
+        }
 
-		std::vector<CharacterSummary> list;
-		for (auto row : result.fetchAll()) {
-			CharacterSummary c{};
-			c.playerID = row[0].get<uint64_t>();
-			strncpy_s(c.name, row[1].get<std::string>().c_str(), _TRUNCATE);
-			c.exp = row[2].get<uint64_t>();
-			list.push_back(c);
-		}
+        // ë©”ëª¨ë¦¬ ê³µê°„ í™•ë³´
+        RES_CharacterListPacket res{};
+        res.header.id = PKT_S_CHARACTER_LIST;
+        res.count = static_cast<uint8_t>(list.size());
 
-		// ¸Ş¸ğ¸® °ø°£ È®º¸
-		RES_CharacterListPacket res{};
-		res.header.id = PKT_S_CHARACTER_LIST;
-		res.count = static_cast<uint8_t> (list.size());
-
-		SendBufferRef buf = SendBufferManager::MakeList(res, list);
-		if (buf) session->Send(buf);
-		});
+        SendBufferRef buf = SendBufferManager::MakeList(res, list);
+        if (buf)
+            session->Send(buf);
+    });
 }
 
-void Account::SelectCharacter(ClientProxySessionRef session, uint64_t playerID) {
-	if (!session->TryTransition(SessionState::Lobby, SessionState::Selecting))return;
-	uint64_t userUID = session->GetUserUID();
+void Account::SelectCharacter(ClientProxySessionRef session, uint64_t playerID)
+{
+    if (!session->TryTransition(SessionState::Lobby, SessionState::Selecting))
+        return;
+    uint64_t userUID = session->GetUserUID();
 
-	GameDB::Instance().PushTask([session, userUID, playerID](mysqlx::Session& db) {
-		RES_SelectCharacterPacket res{};
-		res.header.id = PKT_S_SELECT_CHARACTER;
-		res.header.size = sizeof(res);
+    GameDB::Instance().PushTask([session, userUID, playerID](mysqlx::Session& db) {
+        RES_SelectCharacterPacket res{};
+        res.header.id = PKT_S_SELECT_CHARACTER;
+        res.header.size = sizeof(res);
 
-		try {
-			auto row = db.sql(
-				"SELECT cs.zoneID FROM `character` c "
-				"JOIN `character_state` cs ON cs.playerID = c.playerID "
-				"WHERE c.playerID = ? AND c.userUID = ? AND c.deleteTime IS NULL")
-				.bind(playerID, userUID).execute().fetchOne();
+        try
+        {
+            auto row = db.sql(
+                             "SELECT cs.zoneID FROM `character` c "
+                             "JOIN `character_state` cs ON cs.playerID = c.playerID "
+                             "WHERE c.playerID = ? AND c.userUID = ? AND c.deleteTime IS NULL")
+                           .bind(playerID, userUID)
+                           .execute()
+                           .fetchOne();
 
-			if (row) {
-				uint32_t zoneID = row[0].get<uint32_t>();
+            if (row)
+            {
+                uint32_t zoneID = row[0].get<uint32_t>();
 
-				auto channelID = ZoneManager::GetInstance()->PickChannel(zoneID);
-				if (channelID) {
-					session->SetPlayerID(playerID);
-					session->SetCurrentChannelID(*channelID);
-					session->SetCurrentZoneID(zoneID);
-					res.success = true;
-					res.zoneID = zoneID;
-				}
-			}
-		}
-		catch (...) {
-			session->SetState(SessionState::Lobby);
-			session->Send(SendBufferManager::Make(&res, sizeof(res)));
-			throw;
-		}
+                auto channelID = ZoneManager::GetInstance()->PickChannel(zoneID);
+                if (channelID)
+                {
+                    session->SetPlayerID(playerID);
+                    session->SetCurrentChannelID(*channelID);
+                    session->SetCurrentZoneID(zoneID);
+                    res.success = true;
+                    res.zoneID = zoneID;
+                }
+            }
+        }
+        catch (...)
+        {
+            session->SetState(SessionState::Lobby);
+            session->Send(SendBufferManager::Make(&res, sizeof(res)));
+            throw;
+        }
 
-		session->SetState(res.success ? SessionState::InGame : SessionState::Lobby);
-		session->Send(SendBufferManager::Make(&res, sizeof(res)));
-		});
+        session->SetState(res.success ? SessionState::InGame : SessionState::Lobby);
+        session->Send(SendBufferManager::Make(&res, sizeof(res)));
+    });
+}
+
+void Account::CreateCharacter(ClientProxySessionRef session, const REQ_CreateCharacterPacket* pkt)
+{
+    if (!session->TryTransition(SessionState::Lobby, SessionState::Creating))
+        return;
+
+    const uint64_t userUID = session->GetUserUID();
+    std::string name(pkt->name, strnlen(pkt->name, sizeof(pkt->name)));
+
+    // ì„±ê³µ/ì‹¤íŒ¨ ëª¨ë‘ ë¡œë¹„ë¡œ ëŒë ¤ë†“ê³  ì‘ë‹µ
+    auto reply = [session](CreateCharacterResult result, const CharacterSummary* created) {
+        RES_CreateCharacterPacket res{};
+        res.header.id = PKT_S_CREATE_CHARACTER;
+        res.header.size = sizeof(res);
+        res.result = result;
+        if (created)
+            res.character = *created;
+
+        session->SetState(SessionState::Lobby);
+        session->Send(SendBufferManager::Make(&res, sizeof(res)));
+    };
+
+    if (!IsValidCharacterName(name))
+        return reply(CreateCharacterResult::InvalidName, nullptr);
+
+    GameDB::Instance().PushTask(userUID, [reply, userUID, name](mysqlx::Session& db) {
+        try
+        {
+            // 1) ìŠ¬ë¡¯ ìˆ˜
+            auto count = db.sql("SELECT COUNT(*) FROM `character` WHERE userUID = ? AND deleteTime IS NULL")
+                             .bind(userUID)
+                             .execute()
+                             .fetchOne();
+            if (count[0].get<int64_t>() >= Game::MAX_CHARACTER_SLOT)
+                return reply(CreateCharacterResult::SlotFull, nullptr);
+
+            // 2) ì´ë¦„ ì¤‘ë³µ (ì‚­ì œëœ ìºë¦­í„° ì´ë¦„ë„ UNIQUEì— ê±¸ë¦¬ë¯€ë¡œ deleteTime ì¡°ê±´ ì—†ì´)
+            if (db.sql("SELECT 1 FROM `character` WHERE name = ?").bind(name).execute().fetchOne())
+                return reply(CreateCharacterResult::DuplicateName, nullptr);
+
+            // 3) ë‘ í…Œì´ë¸”ì„ í•œ íŠ¸ëœì­ì…˜ìœ¼ë¡œ (ì¤‘ê°„ì— ì‹¤íŒ¨í•˜ë©´ ë‘˜ ë‹¤ ì·¨ì†Œ)
+            db.startTransaction();
+            try
+            {
+                auto inserted =
+                    db.sql("INSERT INTO `character` (userUID, name) VALUES (?, ?)").bind(userUID, name).execute();
+                const uint64_t playerID = inserted.getAutoIncrementValue();
+
+                db.sql("INSERT INTO `character_state` (playerID, zoneID, posX, posY, posZ) VALUES (?, ?, ?, ?, ?)")
+                    .bind(
+                        playerID, GatewayConst::START_ZONE_ID, GatewayConst::START_X, GatewayConst::START_Y,
+                        GatewayConst::START_Z)
+                    .execute();
+
+                db.commit();
+
+                CharacterSummary created{};
+                created.playerID = playerID;
+                created.exp = 0;
+                strncpy_s(created.name, name.c_str(), _TRUNCATE);
+                reply(CreateCharacterResult::Success, &created);
+            }
+            catch (...)
+            {
+                db.rollback();
+                throw;
+            }
+        }
+        catch (const mysqlx::Error& e)
+        {
+            // 2)ì™€ 3) ì‚¬ì´ì— ë‹¤ë¥¸ ê³„ì •ì´ ê°™ì€ ì´ë¦„ì„ ë¨¼ì € ë§Œë“  ê²½ìš°: UNIQUE ìœ„ë°˜
+            if (std::string(e.what()).find("Duplicate entry") != std::string::npos)
+                return reply(CreateCharacterResult::DuplicateName, nullptr);
+
+            reply(CreateCharacterResult::ServerError, nullptr);
+            throw; // ì—°ê²° ë¬¸ì œì¼ ìˆ˜ ìˆìœ¼ë‹ˆ DB í’€ì— ì•Œë¦¼ (ì¬ì—°ê²° íŒë‹¨)
+        }
+        catch (...)
+        {
+            reply(CreateCharacterResult::ServerError, nullptr);
+            throw;
+        }
+    });
 }

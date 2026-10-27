@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "pch.h"
 #include "GatewayConstants.h"
 #include "ServerCore/Network/SendBuffer.h"
@@ -25,7 +25,9 @@ private:
 	// 유저에게 전달
 	void HandleInternalPacket(uint8_t* buffer, uint16_t size);
 
-private:
+	bool HandleMulticastPacket(uint8_t* buffer, uint16_t size);
+
+  private:
 
 	std::vector<ZoneKeyEntry> zoneKeys_;
 

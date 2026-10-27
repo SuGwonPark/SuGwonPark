@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "Network/Server.h"
 #include "ServerCore/DB/GameDB.h"
 #include "ServerCore/DB/AccountDB.h"
@@ -23,10 +23,10 @@ int main() {
 	try {
 		//	// GameDB 연결
 		GameDB& gameDB = GameDB::Instance();
-		gameDB.Init(4, "mysqlx://root:gpdlgh1234%21%40%23%24@localhost:33060/game");
+		gameDB.Init(4, "mysqlx://root:qkrtnrnjs1234%21%40%23%24@localhost:33060/game");
 
 		AccountDB& accountDB = AccountDB::Instance();
-		accountDB.Init(4, "mysqlx://root:gpdlgh1234%21%40%23%24@localhost:33060/account");
+		accountDB.Init(4, "mysqlx://root:qkrtnrnjs1234%21%40%23%24@localhost:33060/account");
 	}
 	catch (const mysqlx::Error& err) {
 		std::cerr << "MySQL Error: " << err.what() << std::endl;
@@ -45,7 +45,18 @@ int main() {
 
 	InternalServer internalServer(io, cfg.internalPort); // zone서버
 	std::cout << "\n서버 시작 - 포트 " << cfg.internalPort << std::endl;
-	io.run();
 
+    while (true)
+    {
+        try
+        {
+            io.run();
+            break;
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "[Main] io 핸들러 예외: " << e.what() << std::endl;
+        }
+    }
 	return 0;
 }

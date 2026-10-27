@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "Network/ClientProxySession.h"
 #include "Manager/ZoneManager.h"   
 #include "Manager/SessionManager.h"
@@ -42,7 +42,8 @@ void ClientProxySession::Close() {
 }
 
 
-void ClientProxySession::DoRead() {
+void ClientProxySession::DoRead()
+{
 	auto self = shared_from_this();
 
 	// 수신 가능 버퍼 영역 계산
@@ -132,6 +133,14 @@ void ClientProxySession::RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint
 		reinterpret_cast <REQ_ReadyToSpawnPacket*>(packetPtr)->playerID = GetPlayerID();
 		break;
 	}
+    case PKT_C_CREATE_CHARACTER: {
+    
+        if (packetSize < sizeof(REQ_CreateCharacterPacket))
+            return;
+        Account::GetInstance()->CreateCharacter(
+            shared_from_this(), reinterpret_cast<REQ_CreateCharacterPacket*>(packetPtr));
+        return;
+    }
 	default:
 		break;
 	}

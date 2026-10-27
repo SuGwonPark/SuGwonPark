@@ -10,8 +10,9 @@ IncludeBlocks: Preserve
 SortIncludes: Never
 
 # 인자가 길면 한 줄에 하나씩
-BinPackArguments: false
+BinPackArguments: true
 BinPackParameters: false
+AlignAfterOpenBracket: AlwaysBreak
 
 # switch-case 들여쓰기 (패킷 분기에 보기 좋음)
 IndentCaseLabels: true
@@ -22,3 +23,6 @@ FixNamespaceComments: true
 
 # 템플릿 선언 뒤 줄바꿈
 AlwaysBreakTemplateDeclarations: Yes
+
+# 내용이 비어있는 함수/생성자는 한 줄로: Foo() {}
+AllowShortFunctionsOnASingleLine: Empty

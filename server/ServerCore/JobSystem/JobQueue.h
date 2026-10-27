@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "pch.h"
 
 using Job = std::function<void()>;
@@ -41,9 +41,21 @@ public:
 			}
 
 			// 락이 완전히 풀린 상태에서 순서대로(FIFO) 실행
-			for (auto& job : executionList) {
-				job();
-			}
+            for (auto& job : executionList)
+            {
+                try
+                {
+                    job();
+                }
+                catch (const std::exception& e)
+                {
+                    std::cerr << "[JobQueue] 작업 예외: " << e.what() << std::endl;
+                }
+                catch (...)
+                {
+                    std::cerr << "[JobQueue] 알 수 없는 작업 예외" << std::endl;
+                }
+            }
 		}
 	}
 

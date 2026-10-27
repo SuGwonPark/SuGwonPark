@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "ServerCore/JobSystem/JobSerializer.h"
 #include "ServerCore/Protocol/ProtocolTypes.h"
+#include "Game/AoiGrid.h"
 
 class Player;
 using PlayerRef = std::shared_ptr<Player>;
@@ -60,6 +61,7 @@ class Zone : public JobSerializer<Zone>
 
     // 틱 타이머
     void RequestTick();
+    void Shutdown(std::function<void()> onDone);
 
   private:
     void HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t size);
@@ -97,6 +99,17 @@ class Zone : public JobSerializer<Zone>
     void RegenPlayers();
     void BroadcastPlayerStat(const PlayerRef& player);
     void SendPlayerStat(const PlayerRef& to, const PlayerRef& player);
+    void AutoSaveTick(); // 자동 저장 처리
+
+    // AOI (시야)
+    AoiCell CellOf(const Player& player) const;
+    void CollectPlayers(const std::vector<AoiCell>& cells, uint64_t exceptPlayerID, std::vector<PlayerRef>& out) const;
+    void MulticastTo(const std::vector<PlayerRef>& targets, const void* data, uint16_t size);
+    void BroadcastNear(AoiCell center, const void* data, uint16_t size, uint64_t exceptPlayerID = 0);
+    void SendSpawns(const PlayerRef& to, const std::vector<PlayerRef>& list);           // list → to 에게 등장
+    void SpawnPlayerTo(const PlayerRef& player, const std::vector<PlayerRef>& viewers); // player → viewers 에게 등장
+    void DespawnPlayerTo(uint64_t playerID, const std::vector<PlayerRef>& viewers);
+    void OnPlayerCellChanged(const PlayerRef& player, AoiCell from, AoiCell to);
 
   private:
     uint32_t zoneID_;
@@ -113,6 +126,13 @@ class Zone : public JobSerializer<Zone>
     std::atomic<bool> tickPending_{false};
 
     float regenTimer_ = 0.f;
+    float autoSaveTimer_ = 0.f;
+    uint32_t autoSaveSlice_ = 0;
+
+    bool closed_ = false; // 존 종료 중
+    
+    // AOI 시야 범위
+    AoiGrid playerGrid_;
 };
 
 using ZoneRef = std::shared_ptr<Zone>;
