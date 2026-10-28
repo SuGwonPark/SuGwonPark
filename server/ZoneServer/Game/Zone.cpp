@@ -61,7 +61,8 @@ static RES_PlayerStatPacket MakeStatPacket(const Player& player)
 }
 
 Zone::Zone(uint32_t zoneID, uint32_t channelID)
-    : zoneID_(zoneID), channelID_(channelID), playerGrid_(ZoneConst::AOI_CELL_SIZE)
+    : zoneID_(zoneID), channelID_(channelID), playerGrid_(ZoneConst::AOI_CELL_SIZE),
+      monsterGrid_(ZoneConst::AOI_CELL_SIZE)
 {
 }
 
@@ -71,7 +72,9 @@ void Zone::InitMonster()
     {
         const MonsterData* data = MonsterTemplate::Instance().GetData(sp.monsterID);
         const uint64_t monsterUID = ++nextMonsterUID_;
-        monsters_[monsterUID] = std::make_shared<Monster>(monsterUID, data, sp.x, sp.y, sp.z);
+        auto monster = std::make_shared<Monster>(monsterUID, data, sp.x, sp.y, sp.z);
+        monsters_[monsterUID] = monster;
+        monsterGrid_.Add(monsterUID, CellOf(*monster));
     }
 }
 
@@ -98,7 +101,9 @@ void Zone::Enter(PlayerRef player)
     SendSpawns(player, nearby);
 
     // 나에게 몬스터 목록 (AOI 2단계에서 주변만으로 바꿈)
-    SendMonsterList(player);
+    std::vector<Monster*> nearMonsters;
+    CollectMonsters(cells, nearMonsters);
+    SendMonsterSpawns(player, nearMonsters);
 
     // 3) 주변 플레이어에게: 나 등장
     SpawnPlayerTo(player, nearby);
@@ -345,32 +350,6 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
     });
 }
 
-void Zone::SendMonsterList(const PlayerRef& player)
-{
-    if (monsters_.empty())
-        return;
-
-    std::vector<MonsterInfo> list;
-    list.reserve(monsters_.size());
-    for (auto& [uid, m] : monsters_)
-    {
-        if (m->IsDead())
-            continue; // 사망한 몬스터
-        list.push_back(ToInfo(*m));
-    }
-    if (list.empty())
-        return;
-
-    RES_MonsterSpawnPacket pkt{};
-    pkt.header.id = PKT_S_MONSTER_SPAWN;
-    pkt.count = static_cast<uint16_t>(list.size());
-
-    if (SendBufferRef buf = SendBufferManager::MakeList(pkt, list))
-    {
-        SendTo(player, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
-    }
-}
-
 void Zone::RequestTick()
 {
     if (tickPending_.exchange(true))
@@ -477,7 +456,8 @@ void Zone::UpdateMonster(Monster& monster, float dt, std::chrono::steady_clock::
             }
 
             // 공격 범위까지 접근
-            moved = monster.MoveToward(target->GetX(), target->GetY(), target->GetZ(), step, data.attackRange * 0.9f);
+            moved = MoveMonsterToward(
+                monster, target->GetX(), target->GetY(), target->GetZ(), step, data.attackRange * 0.9f);
 
             // 공격 범위 안이면 쿨타임 체크하여 공격
             const float atk = data.attackRange;
@@ -490,7 +470,8 @@ void Zone::UpdateMonster(Monster& monster, float dt, std::chrono::steady_clock::
         }
         case MonsterState::Return: {
             // 스폰 위치 확인
-            moved = monster.MoveToward(monster.GetSpawnX(), monster.GetSpawnY(), monster.GetSpawnZ(), step, 0.f);
+            moved =
+                MoveMonsterToward(monster, monster.GetSpawnX(), monster.GetSpawnY(), monster.GetSpawnZ(), step, 0.f);
 
             const float eps = ZoneConst::MONSTER_ARRIVE_EPSILON;
             if (monster.DistSqFromSpawn() <= eps * eps)
@@ -512,12 +493,17 @@ PlayerRef Zone::FindNearestPlayer(const Monster& monster, float range) const
 
     float bestSq = range * range;
 
-    for (const auto& [playerID, player] : players_)
-    {
+       playerGrid_.ForEachInRange(monster.GetX(), monster.GetZ(), range, [&](uint64_t playerID) {
         if (portalPending_.count(playerID))
-            continue;
+            return;
+
+        auto it = players_.find(playerID);
+        if (it == players_.end())
+            return;
+
+        const PlayerRef& player = it->second;
         if (player->IsDead())
-            continue;
+            return;
 
         // 플레이어 위치 체크
         float dsq = monster.DistSqTo(player->GetX(), player->GetY(), player->GetZ());
@@ -527,7 +513,7 @@ PlayerRef Zone::FindNearestPlayer(const Monster& monster, float range) const
             bestSq = dsq;
             nearest = player;
         }
-    }
+    });
 
     return nearest;
 }
@@ -541,7 +527,7 @@ void Zone::BroadcastMonsterMove(const Monster& monster)
     pkt.x = monster.GetX();
     pkt.y = monster.GetY();
     pkt.z = monster.GetZ();
-    BroadCast(&pkt, sizeof(pkt));
+    BroadcastNear(CellOf(monster), &pkt, sizeof(pkt));
 }
 
 void Zone::HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64_t targetUID)
@@ -593,7 +579,7 @@ void Zone::HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64
     pkt.targetUID = monster.GetMonsterUID();
     pkt.damage = damage;
     pkt.targetHp = monster.GetHp();
-    BroadCast(&pkt, sizeof(pkt));
+    BroadcastNear(CellOf(monster), &pkt, sizeof(pkt));
 
     if (monster.GetHp() <= 0)
     {
@@ -603,13 +589,16 @@ void Zone::HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64
 
 void Zone::OnMonsterDead(Monster& monster, const PlayerRef& killer)
 {
+    const AoiCell cell = CellOf(monster);
     monster.Die(std::chrono::steady_clock::now());
 
-    RES_MonsterDespawnPacket pkt{};
+        RES_MonsterDespawnPacket pkt{};
     pkt.header.id = PKT_S_MONSTER_DESPAWN;
     pkt.header.size = sizeof(pkt);
     pkt.monsterUID = monster.GetMonsterUID();
-    BroadCast(&pkt, sizeof(pkt));
+    BroadcastNear(cell, &pkt, sizeof(pkt));
+
+    monsterGrid_.Remove(monster.GetMonsterUID(), cell);
 
     std::vector<RewardResult> rewards;
     RewardTemplate::Instance().Roll(monster.getData().rewardGroupID, rewards);
@@ -620,6 +609,9 @@ void Zone::RespawnMonster(Monster& monster)
 {
     monster.Respawn();
 
+    const AoiCell cell = CellOf(monster);
+    monsterGrid_.Add(monster.GetMonsterUID(), cell);
+
     RES_MonsterSpawnPacket pkt{};
     pkt.header.id = PKT_S_MONSTER_SPAWN;
     pkt.header.size = sizeof(pkt);
@@ -627,7 +619,7 @@ void Zone::RespawnMonster(Monster& monster)
 
     std::vector<MonsterInfo> one{ToInfo(monster)};
     if (SendBufferRef buf = SendBufferManager::MakeList(pkt, one))
-        BroadCast(buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+        BroadcastNear(cell, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
 }
 
 void Zone::BroadcastMonsterHp(const Monster& monster)
@@ -637,7 +629,7 @@ void Zone::BroadcastMonsterHp(const Monster& monster)
     pkt.header.size = sizeof(pkt);
     pkt.monsterUID = monster.GetMonsterUID();
     pkt.hp = monster.GetHp();
-    BroadCast(&pkt, sizeof(pkt));
+    BroadcastNear(CellOf(monster), &pkt, sizeof(pkt));
 }
 
 void Zone::MonsterAttack(Monster& monster, const PlayerRef& target)
@@ -653,7 +645,7 @@ void Zone::MonsterAttack(Monster& monster, const PlayerRef& target)
     pkt.targetUID = target->GetPlayerID();
     pkt.damage = damage;
     pkt.targetHp = target->GetHp();
-    BroadCast(&pkt, sizeof(pkt));
+    BroadcastNear(CellOf(*target), &pkt, sizeof(pkt));
 }
 
 void Zone::HandleRevive(const PlayerRef& player)
@@ -813,8 +805,11 @@ void Zone::HandleSkillCast(const PlayerRef& caster, uint32_t skillID, ObjectType
     pkt.casterHp = caster->GetHp();
     pkt.casterMp = caster->GetMp();
     pkt.hitCount = static_cast<uint16_t>(hits.size());
+
+    // 타겟이 없으면 caster 기준으로 broadcast
     if (SendBufferRef buf = SendBufferManager::MakeList(pkt, hits))
-        BroadCast(buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+        BroadcastNear(
+            target ? CellOf(*target) : CellOf(*caster), buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
 
     for (Monster* m : targets)
     {
@@ -839,14 +834,20 @@ void Zone::CollectMonstersInRadius(
     std::vector<std::pair<float, Monster*>> found; // <거리 제곱, 몬스터>
     const float rSq = radius * radius;
 
-    for (auto& [uid, m] : monsters_)
-    {
+    // 반경이 걸치는 칸의 몬스터만 검사
+    monsterGrid_.ForEachInRange(cx, cz, radius, [&](uint64_t uid) {
+        auto it = monsters_.find(uid);
+        if (it == monsters_.end())
+            return;
+
+        Monster* m = it->second.get();
         if (m->IsDead() || m->GetState() == MonsterState::Return)
-            continue;
+            return;
+
         const float dSq = m->DistSqTo(cx, cy, cz);
         if (dSq <= rSq)
-            found.emplace_back(dSq, m.get());
-    }
+            found.emplace_back(dSq, m);
+    });
 
     // 앞쪽 n개만 정렬
     const size_t n = std::min(found.size(), maxCount);
@@ -919,33 +920,6 @@ void Zone::CollectPlayers(const std::vector<AoiCell>& cells, uint64_t exceptPlay
                 out.push_back(it->second);
         });
     }
-}
-
-void Zone::MulticastTo(const std::vector<PlayerRef>& targets, const void* data, uint16_t size)
-{
-    if (targets.empty())
-        return;
-
-    std::vector<uint64_t> sessionIDs;
-    sessionIDs.reserve(targets.size());
-    for (const PlayerRef& player : targets)
-    {
-        sessionIDs.push_back(player->GetSessionID());
-    }
-    GatewaySession::GetInstance()->MulticastToClients(sessionIDs, zoneID_, channelID_, data, size);
-}
-
-// 주변 유저에게만 전달
-void Zone::BroadcastNear(AoiCell center, const void* data, uint16_t size, uint64_t exceptPlayerID)
-{
-    std::vector<AoiCell> cells;
-    AoiGrid::NearCells(center, cells);
-
-    std::vector<PlayerRef> targets;
-    // exceptPlayerID제외 근처 플레이어 수집
-    CollectPlayers(cells, exceptPlayerID, targets);
-
-    MulticastTo(targets, data, size);
 }
 
 void Zone::SendSpawns(const PlayerRef& to, const std::vector<PlayerRef>& list)
@@ -1023,6 +997,109 @@ void Zone::OnPlayerCellChanged(const PlayerRef& player, AoiCell from, AoiCell to
 
     // 나를 안 보이게 된 사람들에게서 퇴장 처리
     DespawnPlayerTo(playerID, disappeared);
+
+    // 몬스터: 새로 보이는 칸 → 등장, 안 보이게 된 칸 → 퇴장 (나에게만)
+    std::vector<Monster*> monstersIn, monstersOut;
+    // 범위 안에 몬스터 등장
+    CollectMonsters(enteredCells, monstersIn);
+    SendMonsterSpawns(player, monstersIn);
+
+    //  범위 밖의 몬스터 제거
+    CollectMonsters(leftCells, monstersOut);
+    DespawnMonstersTo(player, monstersOut);
+}
+
+AoiCell Zone::CellOf(const Monster& monster) const
+{
+    return monsterGrid_.ToCell(monster.GetX(), monster.GetZ());
+}
+
+void Zone::CollectMonsters(const std::vector<AoiCell>& cells, std::vector<Monster*>& out) const
+{
+    for (const AoiCell& cell : cells)
+    {
+        monsterGrid_.ForEachInCell(cell, [&](uint64_t id) {
+            auto it = monsters_.find(id);
+            if (it != monsters_.end())
+                out.push_back(it->second.get());
+        });
+    }
+}
+
+void Zone::SendMonsterSpawns(const PlayerRef& to, const std::vector<Monster*>& list)
+{
+    if (list.empty())
+        return;
+
+    std::vector<MonsterInfo> infos;
+    infos.reserve(list.size());
+    for (Monster* monster : list)
+    {
+        infos.push_back(ToInfo(*monster));
+    }
+
+    RES_MonsterSpawnPacket pkt{};
+    pkt.header.id = PKT_S_MONSTER_SPAWN;
+    pkt.header.size = sizeof(pkt);
+    pkt.count = static_cast<uint16_t>(infos.size());
+    if (SendBufferRef buf = SendBufferManager::MakeList(pkt, infos))
+        SendTo(to, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+}
+
+void Zone::DespawnMonstersTo(const PlayerRef& to, const std::vector<Monster*>& list)
+{
+    for (Monster* monster : list)
+    {
+        RES_MonsterDespawnPacket pkt{};
+        pkt.header.id = PKT_S_MONSTER_DESPAWN;
+        pkt.header.size = sizeof(pkt);
+        pkt.monsterUID = monster->GetMonsterUID();
+        SendTo(to, &pkt, sizeof(pkt));
+    }
+}
+
+void Zone::OnMonsterCellChanged(Monster& monster, AoiCell from, AoiCell to)
+{
+    if (from == to)
+        return;
+
+    const uint64_t uid = monster.GetMonsterUID();
+    monsterGrid_.Move(uid, from, to);
+
+    std::vector<AoiCell> enteredCells, leftCells;
+    AoiGrid::DiffNear(from, to, enteredCells, leftCells);
+
+    std::vector<PlayerRef> viewersIn, viewersOut;
+    CollectPlayers(enteredCells, 0, viewersIn);
+    CollectPlayers(leftCells, 0, viewersOut);
+
+    // 새로 보게 된 사람들에게 등장
+    if (!viewersIn.empty())
+    {
+        RES_MonsterSpawnPacket pkt{};
+        pkt.header.id = PKT_S_MONSTER_SPAWN;
+        pkt.count = 1;
+        std::vector<MonsterInfo> one{ToInfo(monster)};
+        if (SendBufferRef buf = SendBufferManager::MakeList(pkt, one))
+            MulticastTo(viewersIn, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+    }
+
+    // 못 보게 된 사람들에게 퇴장
+    RES_MonsterDespawnPacket pkt{};
+    pkt.header.id = PKT_S_MONSTER_DESPAWN;
+    pkt.header.size = sizeof(pkt);
+    pkt.monsterUID = uid;
+    MulticastTo(viewersOut, &pkt, sizeof(pkt));
+}
+
+bool Zone::MoveMonsterToward(Monster& monster, float tx, float ty, float tz, float step, float stopDist)
+{
+    const AoiCell from = CellOf(monster);
+    if (!monster.MoveToward(tx, ty, tz, step, stopDist))
+        return false;
+
+    OnMonsterCellChanged(monster, from, CellOf(monster));
+    return true;
 }
 
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z)
@@ -1137,6 +1214,7 @@ void Zone::HandlePortalRequest(const PlayerRef& player, uint32_t portalID)
     HandlePortal(player->GetPlayerID(), portal->portalID);
 }
 
+// 범위 상관없이 존 전체에서 전달할 사항이 있을시 사용
 void Zone::BroadCast(const void* data, uint16_t size, uint64_t exceptPlayerID)
 {
     std::vector<uint64_t> sessionIDs;
@@ -1153,4 +1231,31 @@ void Zone::BroadCast(const void* data, uint16_t size, uint64_t exceptPlayerID)
 void Zone::SendTo(const PlayerRef& player, const void* data, uint16_t size)
 {
     GatewaySession::GetInstance()->SendToClient(player->GetSessionID(), zoneID_, channelID_, data, size);
+}
+
+// 범위 내 유저에게만 전달
+void Zone::BroadcastNear(AoiCell center, const void* data, uint16_t size, uint64_t exceptPlayerID)
+{
+    std::vector<AoiCell> cells;
+    AoiGrid::NearCells(center, cells);
+
+    std::vector<PlayerRef> targets;
+    // exceptPlayerID제외 근처 플레이어 수집
+    CollectPlayers(cells, exceptPlayerID, targets);
+
+    MulticastTo(targets, data, size);
+}
+
+void Zone::MulticastTo(const std::vector<PlayerRef>& targets, const void* data, uint16_t size)
+{
+    if (targets.empty())
+        return;
+
+    std::vector<uint64_t> sessionIDs;
+    sessionIDs.reserve(targets.size());
+    for (const PlayerRef& player : targets)
+    {
+        sessionIDs.push_back(player->GetSessionID());
+    }
+    GatewaySession::GetInstance()->MulticastToClients(sessionIDs, zoneID_, channelID_, data, size);
 }

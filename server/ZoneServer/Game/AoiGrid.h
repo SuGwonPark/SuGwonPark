@@ -28,6 +28,8 @@ class AoiGrid
   public:
     explicit AoiGrid(float cellSize) : cellSize_(cellSize) {}
 
+    // (x,z) 좌표를 칸으로 변환
+    // 예) cellSize_ = 10 , x =15 , z = -5 → (1, -1)
     AoiCell ToCell(float x, float z) const
     {
         return {static_cast<int32_t>(std::floor(x / cellSize_)), static_cast<int32_t>(std::floor(z / cellSize_))};
@@ -77,6 +79,21 @@ class AoiGrid
             fn(id);
     }
 
+    // (x,z) 중심, 반경 range 원이 걸치는 칸들의 id 순회 (보통 1~4칸)
+    // 콜백 안에서 Add/Remove/Move 하면 안 됨
+    template <typename Fn>
+    void ForEachInRange(float x, float z, float range, Fn&& fn) const
+    {
+        // range 원이 걸치는 칸들의 좌표 범위
+        const AoiCell lo = ToCell(x - range, z - range);
+        const AoiCell hi = ToCell(x + range, z + range);
+
+        // lo ~ hi 범위의 모든 칸 순회
+        for (int32_t cz = lo.z; cz <= hi.z; ++cz)
+            for (int32_t cx = lo.x; cx <= hi.x; ++cx)
+                ForEachInCell({cx, cz}, fn);
+    }
+
     // c 기준 3x3칸
     static void NearCells(AoiCell c, std::vector<AoiCell>& out)
     {
@@ -104,7 +121,7 @@ class AoiGrid
         for (const AoiCell& c : toNear)
             if (!IsNear(c, from))
                 entered.push_back(c);
-        
+
         // 이동 전 칸 근처 중 이동 후 칸 근처에 없는 칸 = 안 보이게 된 칸
         for (const AoiCell& c : fromNear)
             if (!IsNear(c, to))

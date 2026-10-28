@@ -92,8 +92,6 @@ private:
 	// 이만큼 못 보내고 쌓이면 읽지 않는(또는 너무 느린) 클라이언트로 보고 끊는다
 	static constexpr size_t MAX_SEND_QUEUE_BYTES = 1 * 1024 * 1024;   // 1MB
 	size_t sendQueueBytes_ = 0;      // strand 안에서만 접근
-
-
 };
 
 using ClientProxySessionRef = std::shared_ptr<ClientProxySession>;

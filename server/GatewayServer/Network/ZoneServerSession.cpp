@@ -4,9 +4,7 @@
 #include "ServerCore/Manager/SendBufferManager.h"
 #include "Manager/SessionManager.h" // sessionId -> ClientProxySession 찾기용 (신규)
 
-ZoneServerSession::ZoneServerSession(net::io_context& ioc) : socket_(ioc), strand_(net::make_strand(ioc))
-{
-}
+ZoneServerSession::ZoneServerSession(net::io_context& ioc) : socket_(ioc), strand_(net::make_strand(ioc)) {}
 
 ZoneServerSession::~ZoneServerSession()
 {
@@ -127,12 +125,14 @@ void ZoneServerSession::ProcessPackets()
         // 공통 헤더(크기, id)부터
         if (dataSize < sizeof(PacketHeader))
             break;
+
         PacketHeader* ph = reinterpret_cast<PacketHeader*>(&recvBuffer_[readPos_]);
         if (ph->size < sizeof(PacketHeader))
         {
             Close();
             return;
         } // 스트림 깨짐
+
         if (dataSize < ph->size)
             break; // 아직 다 안 옴
 
@@ -211,17 +211,21 @@ bool ZoneServerSession::HandleMulticastPacket(uint8_t* buffer, uint16_t size)
     if (sizeof(InternalMulticastHeader) + idsBytes + sizeof(PacketHeader) > size)
         return false;
 
+    //[ InternalMulticastHeader ][ sessionID × N ][ 클라이언트 패킷 원본 ]
     const uint8_t* ids = buffer + sizeof(InternalMulticastHeader);
     const uint8_t* payload = ids + idsBytes;
     const uint32_t payloadSize = static_cast<uint32_t>(size - sizeof(InternalMulticastHeader) - idsBytes);
 
     // 클라에게 보낼 버퍼는 한 번만 만들어 모두 공유 (보내는 동안 읽기만 하므로 안전)
+    // 실질적으로 클라에 보내질 패킷 데이터
     SendBufferRef sendBuffer = SendBufferManager::Make(payload, payloadSize);
 
+    // 세션 ID를 하나씩 찾아서 보내기 (멀티캐스트)
     for (uint16_t i = 0; i < mh->sessionCount; ++i)
     {
         uint64_t sessionID;
-        std::memcpy(&sessionID, ids + i * sizeof(uint64_t), sizeof(sessionID)); // 정렬 안 맞을 수 있어 memcpy
+        // 한명의 세션 ID를 꺼내서 SessionManager에서 찾아서 보내기 (멀티캐스트)
+        std::memcpy(&sessionID, ids + i * sizeof(uint64_t), sizeof(sessionID)); 
         if (auto target = SessionManager::GetInstance()->FindSession(sessionID))
             target->Send(sendBuffer);
     }

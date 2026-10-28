@@ -66,9 +66,6 @@ class Zone : public JobSerializer<Zone>
   private:
     void HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t size);
 
-    // 입장판 플레이어에 존의 몬스터 정보 전송
-    void SendMonsterList(const PlayerRef& player);
-
     // 실시간 업데이트
     void Update();
 
@@ -103,13 +100,26 @@ class Zone : public JobSerializer<Zone>
 
     // AOI (시야)
     AoiCell CellOf(const Player& player) const;
+    // 범위 내 플레이어 수집
     void CollectPlayers(const std::vector<AoiCell>& cells, uint64_t exceptPlayerID, std::vector<PlayerRef>& out) const;
+    // targets에 있는 플레이어에게 data 전송
     void MulticastTo(const std::vector<PlayerRef>& targets, const void* data, uint16_t size);
+    // 범위 내 모든 유저
     void BroadcastNear(AoiCell center, const void* data, uint16_t size, uint64_t exceptPlayerID = 0);
+    // 범위 내 플레이어에게만 전송
     void SendSpawns(const PlayerRef& to, const std::vector<PlayerRef>& list);           // list → to 에게 등장
     void SpawnPlayerTo(const PlayerRef& player, const std::vector<PlayerRef>& viewers); // player → viewers 에게 등장
     void DespawnPlayerTo(uint64_t playerID, const std::vector<PlayerRef>& viewers);
     void OnPlayerCellChanged(const PlayerRef& player, AoiCell from, AoiCell to);
+
+    // AOI (몬스터)
+    AoiCell CellOf(const Monster& monster) const;
+    void CollectMonsters(const std::vector<AoiCell>& cells, std::vector<Monster*>& out) const;
+    void SendMonsterSpawns(const PlayerRef& to, const std::vector<Monster*>& list);  
+    void DespawnMonstersTo(const PlayerRef& to, const std::vector<Monster*>& list);  // list → to 에게서 퇴장
+    void OnMonsterCellChanged(Monster& monster, AoiCell from, AoiCell to);
+    // 몬스터 위치는 반드시 이 함수로만 바꾼다 (격자 동기화)
+    bool MoveMonsterToward(Monster& monster, float tx, float ty, float tz, float step, float stopDist);
 
   private:
     uint32_t zoneID_;
@@ -133,6 +143,7 @@ class Zone : public JobSerializer<Zone>
     
     // AOI 시야 범위
     AoiGrid playerGrid_;
+    AoiGrid monsterGrid_;
 };
 
 using ZoneRef = std::shared_ptr<Zone>;
