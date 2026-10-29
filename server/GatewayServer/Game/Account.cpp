@@ -74,6 +74,61 @@ bool IsValidCharacterName(const std::string& name)
 }
 } // namespace
 
+void Account::CreateAccount(const std::string& userID, const std::string& password, CreateAccountCallback cb)
+{
+    // 길이 검사 (REQ_LoginPacket의 char[32]에 맞춤)
+    if (userID.empty() || userID.size() >= 32 || password.empty() || password.size() >= 32)
+    {
+        if (cb)
+            cb(false, "INVALID_INPUT");
+        return;
+    }
+
+    // 해시 계산은 느리므로(의도된 것) DB 스레드 안에서 한다
+    AccountDB::Instance().PushTask([userID, password, cb](mysqlx::Session& sess) {
+        try
+        {
+            char hash[crypto_pwhash_STRBYTES];
+            if (crypto_pwhash_str(
+                    hash, password.c_str(), password.size(), crypto_pwhash_OPSLIMIT_INTERACTIVE,
+                    crypto_pwhash_MEMLIMIT_INTERACTIVE) != 0)
+            {
+                if (cb)
+                    cb(false, "HASH_FAILED");
+                return;
+            }
+
+            // 중복 확인 (삭제된 계정의 id도 UNIQUE에 걸리므로 remove 조건 없이)
+            if (sess.sql("SELECT 1 FROM `account` WHERE id = ?").bind(userID).execute().fetchOne())
+            {
+                if (cb)
+                    cb(false, "DUPLICATE_ID");
+                return;
+            }
+
+            sess.sql("INSERT INTO `account` (id, passwordHash) VALUES (?, ?)")
+                .bind(userID, std::string(hash))
+                .execute();
+
+            if (cb)
+                cb(true, "OK");
+        }
+        catch (const mysqlx::Error& e)
+        {
+            // 확인과 INSERT 사이에 같은 id가 먼저 들어온 경우
+            if (std::string(e.what()).find("Duplicate entry") != std::string::npos)
+            {
+                if (cb)
+                    cb(false, "DUPLICATE_ID");
+                return;
+            }
+            if (cb)
+                cb(false, "SERVER_ERROR");
+            throw;
+        }
+    });
+}
+
 void Account::Login(ClientProxySessionRef session, const REQ_LoginPacket* pkt)
 {
     // 현재 상태가 Connected가 아니면 무시
@@ -145,6 +200,7 @@ void Account::Login(ClientProxySessionRef session, const REQ_LoginPacket* pkt)
     });
 }
 
+// 캐릭터 리스트
 void Account::SendCharacterList(ClientProxySessionRef session)
 {
     if (session->GetState() != SessionState::Lobby)
@@ -156,7 +212,7 @@ void Account::SendCharacterList(ClientProxySessionRef session)
 
     GameDB::Instance().PushTask([session, userUID](mysqlx::Session& db) {
         auto result = db.sql(
-                            "SELECT c.playerID, c.name, cs.exp FROM `character` c JOIN `character_state` cs "
+                            "SELECT c.playerID, c.name, cs.classType, cs.exp FROM `character` c JOIN `character_state` cs "
                             "ON c.playerID = cs.playerID "
                             "WHERE c.userUID = ? AND c.deleteTime IS NULL")
                           .bind(userUID)
@@ -168,7 +224,8 @@ void Account::SendCharacterList(ClientProxySessionRef session)
             CharacterSummary c{};
             c.playerID = row[0].get<uint64_t>();
             strncpy_s(c.name, row[1].get<std::string>().c_str(), _TRUNCATE);
-            c.exp = row[2].get<uint64_t>();
+            c.classType = static_cast<uint8_t>(row[2].get<uint32_t>());
+            c.exp = row[3].get<uint64_t>();
             list.push_back(c);
         }
 
@@ -183,6 +240,7 @@ void Account::SendCharacterList(ClientProxySessionRef session)
     });
 }
 
+// 캐릭터 선택
 void Account::SelectCharacter(ClientProxySessionRef session, uint64_t playerID)
 {
     if (!session->TryTransition(SessionState::Lobby, SessionState::Selecting))
@@ -278,9 +336,9 @@ void Account::CreateCharacter(ClientProxySessionRef session, const REQ_CreateCha
                     db.sql("INSERT INTO `character` (userUID, name) VALUES (?, ?)").bind(userUID, name).execute();
                 const uint64_t playerID = inserted.getAutoIncrementValue();
 
-                db.sql("INSERT INTO `character_state` (playerID, zoneID, posX, posY, posZ) VALUES (?, ?, ?, ?, ?)")
+                db.sql("INSERT INTO `character_state` (playerID, classType, zoneID, posX, posY, posZ) VALUES (?, ?, ?, ?, ?, ?)")
                     .bind(
-                        playerID, GatewayConst::START_ZONE_ID, GatewayConst::START_X, GatewayConst::START_Y,
+                        playerID, 1, GatewayConst::START_ZONE_ID, GatewayConst::START_X, GatewayConst::START_Y,
                         GatewayConst::START_Z)
                     .execute();
 

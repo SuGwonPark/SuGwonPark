@@ -23,12 +23,15 @@ namespace Game {
 
 struct CharacterSummary {        // 캐릭터 목록 한 줄
 	uint64_t playerID;
+	uint8_t  classType;
 	uint64_t exp;
 	char     name[50];
 };
 
 struct PlayerInfo {              // 다른 유저에게 보여줄 최소 정보
 	uint64_t playerID;
+    uint8_t classType;
+    uint16_t levle;
 	char     name[50];
 	float    x, y, z;
     int32_t maxhp;

@@ -380,6 +380,10 @@ void Zone::Update()
     // 경과 시간 (float 형식 = 초 단위)
     float dt = std::chrono::duration<float>(now - lastTick_).count();
     lastTick_ = now;
+
+    // 틱 통계 측정 (부하 테스트용)
+    const double gapMs = dt * 1000.0;
+
     dt = std::min(dt, ZoneConst::MAX_TICK_DT);
 
     for (auto& [uid, monster] : monsters_)
@@ -409,6 +413,9 @@ void Zone::Update()
         autoSaveTimer_ -= ZoneConst::AUTOSAVE_TICK_SEC;
         AutoSaveTick();
     }
+
+    // 부하 테스트용
+    RecordTickStat(now, gapMs, dt);
 }
 
 void Zone::UpdateMonster(Monster& monster, float dt, std::chrono::steady_clock::time_point now)
@@ -493,7 +500,7 @@ PlayerRef Zone::FindNearestPlayer(const Monster& monster, float range) const
 
     float bestSq = range * range;
 
-       playerGrid_.ForEachInRange(monster.GetX(), monster.GetZ(), range, [&](uint64_t playerID) {
+    playerGrid_.ForEachInRange(monster.GetX(), monster.GetZ(), range, [&](uint64_t playerID) {
         if (portalPending_.count(playerID))
             return;
 
@@ -592,7 +599,7 @@ void Zone::OnMonsterDead(Monster& monster, const PlayerRef& killer)
     const AoiCell cell = CellOf(monster);
     monster.Die(std::chrono::steady_clock::now());
 
-        RES_MonsterDespawnPacket pkt{};
+    RES_MonsterDespawnPacket pkt{};
     pkt.header.id = PKT_S_MONSTER_DESPAWN;
     pkt.header.size = sizeof(pkt);
     pkt.monsterUID = monster.GetMonsterUID();
@@ -901,6 +908,40 @@ void Zone::AutoSaveTick()
             playerID, player->GetExp(), player->GetX(), player->GetY(), player->GetZ(), player->GetHp(),
             player->GetMp(), zoneID_);
     }
+}
+
+void Zone::RecordTickStat(std::chrono::steady_clock::time_point tickStart, double gapMs, float dt)
+{
+    using namespace std::chrono;
+    const int64_t workUs = duration_cast<microseconds>(steady_clock::now() - tickStart).count();
+
+    ++tickStatCount_;
+    tickWorkSumUs_ += workUs;
+    tickWorkMaxUs_ = std::max(tickWorkMaxUs_, workUs);
+    tickGapMaxMs_ = std::max(tickGapMaxMs_, gapMs);
+
+    tickStatTimer_ += dt;
+    if (tickStatTimer_ < ZoneConst::TICK_STAT_INTERVAL_SEC)
+        return;
+
+    size_t aliveMonsters = 0;
+    for (const auto& [uid, m] : monsters_)
+        if (!m->IsDead())
+            ++aliveMonsters;
+
+    // 여러 존 스레드가 동시에 찍으므로 한 줄로 만들어 한 번에 출력
+    std::string line = "[Tick] zone " + std::to_string(zoneID_) + "-" + std::to_string(channelID_) + " | 플레이어 " +
+                       std::to_string(players_.size()) + ", 몬스터 " + std::to_string(aliveMonsters) + "/" +
+                       std::to_string(monsters_.size()) + " | 처리 평균 " +
+                       std::to_string(tickWorkSumUs_ / tickStatCount_) + "us, 최대 " + std::to_string(tickWorkMaxUs_) +
+                       "us | 틱 간격 최대 " + std::to_string(static_cast<int>(tickGapMaxMs_)) + "ms\n";
+    std::cout << line;
+
+    tickStatTimer_ = 0.f;
+    tickStatCount_ = 0;
+    tickWorkSumUs_ = 0;
+    tickWorkMaxUs_ = 0;
+    tickGapMaxMs_ = 0.0;
 }
 
 AoiCell Zone::CellOf(const Player& player) const

@@ -9,6 +9,9 @@
 
 int main(int argc, char* argv[])
 {
+    SetConsoleOutputCP(CP_UTF8); // ← 추가: 콘솔 출력을 UTF-8로
+    SetConsoleCP(CP_UTF8);       // ← 추가: 콘솔 입력도 UTF-8로
+
     // 실행 환경 설정 (Config/server.ini)
     const ServerConfig cfg = LoadServerConfig();
 
@@ -125,7 +128,7 @@ int main(int argc, char* argv[])
         {
             std::cerr << "[Main] io 핸들러 예외: " << e.what() << std::endl;
         }
-    }
+    } 
 
     return 0;
 }

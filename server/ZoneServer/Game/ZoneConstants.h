@@ -28,4 +28,9 @@ namespace ZoneConst {
 	inline constexpr int32_t PLAYER_ATTACK_DAMAGE = 10; // 캐릭터 데미지			(임시)
 	inline constexpr float   PLAYER_ATTACK_RANGE = 2.5f; // 캐릭터 공격 범위		(임시)
 	inline constexpr int     PLAYER_ATTACK_COOLDOWN_MS = 500;					//(임시)
-}
+
+
+
+		inline constexpr float TICK_STAT_INTERVAL_SEC = 5.f; // 틱 측정 출력 주기 (부하 테스트용)
+
+    }

@@ -26,11 +26,13 @@
     <ClCompile Include="Game\Zone.cpp" />
     <ClCompile Include="Network\GatewaySession.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="Template\LevelTemplate.cpp" />
     <ClCompile Include="Template\MonsterSpawnTemplate.cpp" />
     <ClCompile Include="Template\MonsterTemplate.cpp" />
     <ClCompile Include="Template\PortalTemplate.cpp" />
     <ClCompile Include="Template\RewardTemplate.cpp" />
     <ClCompile Include="Template\SkillTemplate.cpp" />
+    <ClCompile Include="Template\StatTemplate.cpp" />
     <ClCompile Include="Template\Template.cpp" />
     <ClCompile Include="Template\ZoneTemplate.cpp" />
   </ItemGroup>
@@ -43,11 +45,13 @@
     <ClInclude Include="Network\GatewaySession.h" />
     <ClInclude Include="Game\ZoneConstants.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Template\LevelTemplate.h" />
     <ClInclude Include="Template\MonsterSpawnTemplate.h" />
     <ClInclude Include="Template\MonsterTemplate.h" />
     <ClInclude Include="Template\PortalTemplate.h" />
     <ClInclude Include="Template\RewardTemplate.h" />
     <ClInclude Include="Template\SkillTemplate.h" />
+    <ClInclude Include="Template\StatTemplate.h" />
     <ClInclude Include="Template\Template.h" />
     <ClInclude Include="Template\ZoneTemplate.h" />
   </ItemGroup>
@@ -169,6 +173,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

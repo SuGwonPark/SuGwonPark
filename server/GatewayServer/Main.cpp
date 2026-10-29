@@ -6,6 +6,8 @@
 #include "GatewayConstants.h"
 #include "ServerCore/Utils/Config.h"
 
+#include "Game/Account.h"
+
 
 int main() {
 	SetConsoleOutputCP(CP_UTF8);
@@ -37,6 +39,15 @@ int main() {
 		std::cerr << "Standard Exception: " << err.what() << std::endl;
 		return 3;
 	}
+
+
+	//Account::GetInstance()->CreateAccount("testuser", "testpassword", [](bool success, const std::string& message) {
+	//	if (success) {
+	//		std::cout << "계정 생성 성공" << std::endl;
+	//	} else {
+	//		std::cerr << "계정 생성 실패: " << message << std::endl;
+	//	}
+	//});
 
 	// 서버 시작
 	boost::asio::io_context io;

@@ -5,14 +5,17 @@ class Player
   private:
     uint64_t userUID = 0; // 임시
     uint64_t playerID_;
+    ClassType classType_ = ClassType::None;
+    uint16_t level_ = 1;
     std::string name_;
     float x_;
     float y_;
     float z_;
-    int maxHp_ = 10000; // 임시
+    int maxHp_ = 1; // 임시
     int hp_;
-    int maxMp_ = 5000; // 임시
+    int maxMp_ = 0; // 임시
     int mp_;
+    int damage_ = 0;
     uint64_t exp_;
 
     uint64_t sessionID_ = 0;

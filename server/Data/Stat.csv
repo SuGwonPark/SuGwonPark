@@ -1,4 +1,4 @@
-﻿ID,Class,Level,Hp,Mp,Damage
+﻿ID,ClassType,Level,Hp,Mp,Damage
 1001,Warrior,1,150,40,12
 1002,Warrior,2,180,44,15
 1003,Warrior,3,210,48,18

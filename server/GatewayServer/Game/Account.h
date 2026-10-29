@@ -9,6 +9,10 @@ public:
 		return &instance;
 	}
 
+	// 계정 생성
+    using CreateAccountCallback = std::function<void(bool success, const std::string& message)>;
+    void CreateAccount(const std::string& userID, const std::string& password, CreateAccountCallback cb);
+	
 	// 로그인
 	void Login(ClientProxySessionRef session, const REQ_LoginPacket* pkt);
 	// 캐릭터 리스트

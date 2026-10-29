@@ -98,6 +98,10 @@ class Zone : public JobSerializer<Zone>
     void SendPlayerStat(const PlayerRef& to, const PlayerRef& player);
     void AutoSaveTick(); // 자동 저장 처리
 
+    // 부하 테스트용
+    void RecordTickStat(std::chrono::steady_clock::time_point tickStart, double gapMs, float dt);
+
+
     // AOI (시야)
     AoiCell CellOf(const Player& player) const;
     // 범위 내 플레이어 수집
@@ -144,6 +148,15 @@ class Zone : public JobSerializer<Zone>
     // AOI 시야 범위
     AoiGrid playerGrid_;
     AoiGrid monsterGrid_;
+
+
+
+        // 틱 측정 (부하 테스트용)
+    float tickStatTimer_ = 0.f;
+    uint32_t tickStatCount_ = 0;
+    int64_t tickWorkSumUs_ = 0; // Update 처리 시간 합 (마이크로초)
+    int64_t tickWorkMaxUs_ = 0;
+    double tickGapMaxMs_ = 0.0; // 틱 사이 실제 간격 최대 (100ms보다 많이 크면 존이 밀리는 중)
 };
 
 using ZoneRef = std::shared_ptr<Zone>;

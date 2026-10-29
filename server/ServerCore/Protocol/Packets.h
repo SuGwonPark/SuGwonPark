@@ -198,4 +198,15 @@ struct RES_PlayerStatPacket {
 	int32_t  maxMp;
 };
 
+struct RES_LevelUpPacket
+{
+    PacketHeader header;
+    uint64_t playerID;
+    uint16_t level;
+    int32_t maxHp;
+    int32_t hp; // 레벨업 시 가득 참
+    int32_t maxMp;
+    int32_t mp;
+};
+
 #pragma pack(pop)

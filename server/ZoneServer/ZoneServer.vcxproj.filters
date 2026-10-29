@@ -61,6 +61,10 @@
       <Filter>Template</Filter>
     </ClCompile>
     <ClCompile Include="Game\AoiGrid.cpp" />
+    <ClCompile Include="Template\LevelTemplate.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="Template\StatTemplate.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Game\Player.h">
@@ -102,5 +106,9 @@
       <Filter>Template</Filter>
     </ClInclude>
     <ClInclude Include="Game\AoiGrid.h" />
+    <ClInclude Include="Template\LevelTemplate.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="Template\StatTemplate.h" />
   </ItemGroup>
 </Project>

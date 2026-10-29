@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "ServerCore/DB/DBThreadPool.h"
 
 class AccountDB
@@ -19,6 +19,8 @@ public:
 			pool_->PushTask(std::move(task));
 		}
 	}
+
+	
 
 private:
 	AccountDB() = default;

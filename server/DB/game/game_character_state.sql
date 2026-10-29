@@ -4,7 +4,7 @@ DROP TABLE IF EXISTS `character_state`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `character_state` (
   `playerID` bigint unsigned NOT NULL,
-  `class` tinyint unsigned NOT NULL,
+  `classType` tinyint unsigned NOT NULL,
   `gold` bigint unsigned NOT NULL DEFAULT '0',
   `exp` bigint NOT NULL DEFAULT '0',
   `hp` int NOT NULL DEFAULT '100',
