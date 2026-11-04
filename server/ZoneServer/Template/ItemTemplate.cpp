@@ -12,7 +12,7 @@ bool ItemTemplate::Load()
     data_.clear();
     return Csv::ForEachRow("Item.csv", [this](const CsvRowView& r) {
         ItemData d{};
-        d.itemID = r.U32("ID");
+        d.itemID = r.U32("ItemID");
         d.itemType = ParseCsvEnum<ItemType>(r.Str("ItemType"), "ItemType", d.itemID);
         d.equipSlot = ParseCsvEnum2<EquipSlot>(r.Str("EquipSlot"), "EquipSlot", d.itemID); // None 허용
         d.grade = ParseCsvEnum<GradeType>(r.Str("Grade"), "Grade", d.itemID);
