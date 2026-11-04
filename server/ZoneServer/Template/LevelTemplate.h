@@ -21,6 +21,12 @@ class LevelTemplate
         return static_cast<uint16_t>(requiredExp_.size());
     }
 
+    // Max 경험치
+    uint64_t MaxExp() const
+    {
+        return requiredExp_.empty() ? 0 : requiredExp_.back();
+    }
+
   private:
     // requiredExp_[i] = (i+1)레벨이 되기 위한 누적 경험치. [0]은 항상 0
     std::vector<uint64_t> requiredExp_;

@@ -13,6 +13,10 @@
 #include "Template/RewardTemplate.h"
 #include "Template/ZoneTemplate.h"
 #include "Template/SkillTemplate.h"
+#include "Template/StatTemplate.h"
+#include "Template/LevelTemplate.h"
+#include "ServerCore/Template/CharacterTemplate.h"
+#include "Template/SkillEffectTemplate.h"
 
 #include "ServerCore/Manager/SendBufferManager.h"
 #include "ServerCore/Utils/util.h"
@@ -23,6 +27,9 @@ static PlayerInfo ToInfo(const Player& p)
 {
     PlayerInfo info{};
     info.playerID = p.GetPlayerID();
+    info.classType = p.GetClassType();
+    info.gender = p.GetGender();
+    info.level = p.GetLevel();
     strncpy_s(info.name, p.GetName().c_str(), _TRUNCATE);
     info.x = p.GetX();
     info.y = p.GetY();
@@ -45,6 +52,14 @@ static MonsterInfo ToInfo(const Monster& m)
     info.y = m.GetY();
     info.z = m.GetZ();
     return info;
+}
+
+// Flat = 값 그대로, Percent = 시전자 공격력의 만분율
+static float CalcEffectValue(const Player& caster, const SkillEffectData& e)
+{
+    if (e.valueType == ValueType::Percent)
+        return static_cast<float>(caster.GetDamage()) * e.value / BuffMaxPercent;
+    return static_cast<float>(e.value);
 }
 
 static RES_PlayerStatPacket MakeStatPacket(const Player& player)
@@ -279,6 +294,7 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
 {
     if (size < sizeof(REQ_ReadyToSpawnPacket))
         return;
+
     uint64_t playerID = reinterpret_cast<REQ_ReadyToSpawnPacket*>(payload)->playerID;
 
     // 중복 스폰 방지
@@ -296,7 +312,7 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
         try
         {
             auto row = db.sql(
-                             "SELECT c.name, cs.PosX, cs.PosY, cs.PosZ, cs.hp, cs.mp, cs.exp "
+                             "SELECT c.charID, c.name, cs.PosX, cs.PosY, cs.PosZ, cs.hp, cs.mp, cs.exp "
                              "FROM `character` c JOIN `character_state` cs "
                              "ON c.playerID = cs.playerID "
                              "WHERE c.playerID = ? AND c.deleteTime IS NULL")
@@ -305,14 +321,34 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
                            .fetchOne();
             if (row)
             {
+                uint32_t charID = row[0].get<uint32_t>();
+                std::string name = row[1].get<std::string>();
+                float x = row[2].get<float>(), y = row[3].get<float>(), z = row[4].get<float>();
+                int hp = row[5].get<int>();
+                int mp = row[6].get<int>();
+                uint64_t exp = row[7].get<uint64_t>();
 
-                std::string name = row[0].get<std::string>();
-                float x = row[1].get<float>(), y = row[2].get<float>(), z = row[3].get<float>();
-                int hp = row[4].get<int>();
-                int mp = row[5].get<int>();
-                uint64_t exp = row[6].get<uint64_t>();
+                uint32_t level = LevelTemplate::Instance().LevelFromExp(exp);
 
-                player = std::make_shared<Player>(playerID, name, x, y, z, hp, mp, exp);
+                const CharData* charData = CharacterTemplate::Instance().GetData(charID);
+                if (!charData)
+                {
+                    std::cerr << "[Spawn] 알 수 없는 캐릭터 ID: " << charID << std::endl;
+                    return;
+                }
+
+                GenderType gender = charData->gender;
+                ClassType classType = charData->classType;
+
+                if (!StatTemplate::Instance().Get(classType, level))
+                {
+                    std::cerr << "[Spawn] 알 수 없는 classType " << static_cast<int>(classType) << ", playerID "
+                              << playerID << std::endl;
+                    return;
+                }
+
+                player =
+                    std::make_shared<Player>(playerID, name, charID, classType, gender, x, y, z, hp, mp, exp, level);
                 player->SetSessionID(sessionID);
 
                 // 죽은 플레이어 재접속시 살릴지 말지
@@ -395,6 +431,11 @@ void Zone::Update()
                 RespawnMonster(*monster);
             continue;
         }
+
+        // 지속 효과 먼저 체크 (도트로 죽으면 틱 행동 없음)
+        if (UpdateMonsterEffects(*monster, now))
+            continue;
+
         UpdateMonster(*monster, dt, now);
     }
 
@@ -423,8 +464,8 @@ void Zone::UpdateMonster(Monster& monster, float dt, std::chrono::steady_clock::
     if (monster.IsDead())
         return;
 
-    const MonsterData& data = monster.getData();
-    const float step = data.moveSpeed * dt; // 틱에 따른 갈 수 있는 거리
+    const MonsterData& data = monster.GetData();
+    const float step = monster.GetMoveSpeed() * dt; // 틱에 따른 갈 수 있는 거리
     bool moved = false;
 
     // 몬스터 상태에 따른 행동
@@ -451,7 +492,7 @@ void Zone::UpdateMonster(Monster& monster, float dt, std::chrono::steady_clock::
             PlayerRef target;
             auto it = players_.find(monster.GetTargetID());
             // 타겟이 없거나 죽으면 새로운 타깃 찾기
-            if (it != players_.end() && !it->second->IsDead())
+            if (it != players_.end() && !it->second->IsDead() && !portalPending_.count(it->first))
                 target = it->second;
             else
                 target = FindNearestPlayer(monster, data.aggroRange);
@@ -569,8 +610,7 @@ void Zone::HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64
     if (!attacker->TryUseAttack(now, std::chrono::milliseconds(ZoneConst::PLAYER_ATTACK_COOLDOWN_MS)))
         return;
 
-    // 데미지
-    const int32_t damage = monster.TakeDamage(ZoneConst::PLAYER_ATTACK_DAMAGE);
+    const int32_t damage = monster.TakeDamage(attacker->GetDamage(), attackerUID);
 
     if (monster.GetState() == MonsterState::Idle)
     {
@@ -590,11 +630,11 @@ void Zone::HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64
 
     if (monster.GetHp() <= 0)
     {
-        OnMonsterDead(monster, attacker);
+        OnMonsterDead(monster);
     }
 }
 
-void Zone::OnMonsterDead(Monster& monster, const PlayerRef& killer)
+void Zone::OnMonsterDead(Monster& monster)
 {
     const AoiCell cell = CellOf(monster);
     monster.Die(std::chrono::steady_clock::now());
@@ -607,9 +647,8 @@ void Zone::OnMonsterDead(Monster& monster, const PlayerRef& killer)
 
     monsterGrid_.Remove(monster.GetMonsterUID(), cell);
 
-    std::vector<RewardResult> rewards;
-    RewardTemplate::Instance().Roll(monster.getData().rewardGroupID, rewards);
-    GiveRewards(killer, rewards);
+    // 기여도 체크 및 보상 지급
+    DistributeRewards(monster);
 }
 
 void Zone::RespawnMonster(Monster& monster)
@@ -641,7 +680,7 @@ void Zone::BroadcastMonsterHp(const Monster& monster)
 
 void Zone::MonsterAttack(Monster& monster, const PlayerRef& target)
 {
-    const int32_t damage = target->TakeDamage(monster.getData().attack);
+    const int32_t damage = target->TakeDamage(monster.GetData().attack);
 
     RES_AttackPacket pkt{};
     pkt.header.id = PKT_S_ATTACK;
@@ -696,14 +735,70 @@ void Zone::GiveRewards(const PlayerRef& player, const std::vector<RewardResult>&
 
     if (gainedExp > 0)
     {
-        player->AddExp(gainedExp);
+        const uint64_t maxExp = LevelTemplate::Instance().MaxExp();
+        const uint64_t curExp = player->GetExp();
+        // 이미 최대치 이상이면 0, 아니면 남은 만큼만
+        gainedExp = (curExp >= maxExp) ? 0 : std::min(gainedExp, maxExp - curExp);
 
-        RES_ExpPacket pkt{};
-        pkt.header.id = PKT_S_EXP;
-        pkt.header.size = sizeof(pkt);
-        pkt.gainedExp = gainedExp;
-        pkt.totalExp = player->GetExp();
-        SendTo(player, &pkt, sizeof(pkt));
+        if (gainedExp > 0)
+        {
+            const bool leveledUp = player->AddExp(gainedExp);
+
+            RES_ExpPacket pkt{};
+            pkt.header.id = PKT_S_EXP;
+            pkt.header.size = sizeof(pkt);
+            pkt.gainedExp = gainedExp;
+            pkt.totalExp = player->GetExp();
+            SendTo(player, &pkt, sizeof(pkt));
+
+            if (leveledUp)
+            {
+                RES_LevelUpPacket pkt{};
+                pkt.header.id = PKT_S_LEVEL_UP;
+                pkt.header.size = sizeof(pkt);
+                pkt.playerID = player->GetPlayerID();
+                pkt.level = player->GetLevel();
+                pkt.maxHp = player->GetMaxHp();
+                pkt.hp = player->GetHp();
+                pkt.maxMp = player->GetMaxMp();
+                pkt.mp = player->GetMp();
+                BroadcastNear(CellOf(*player), &pkt, sizeof(pkt)); // 나 포함
+            }
+        }
+    }
+}
+
+void Zone::DistributeRewards(const Monster& monster)
+{
+    std::vector<Monster::Contribution> ranking = monster.GetContributions();
+    if (ranking.empty())
+    {
+        return;
+    }
+    std::stable_sort(
+        ranking.begin(), ranking.end(),
+        [](const Monster::Contribution& a, const Monster::Contribution& b) { return a.damage > b.damage; });
+
+    const AoiCell MonsterCell = CellOf(monster);
+
+    for (const auto& c : ranking)
+    {
+        auto it = players_.find(c.playerID);
+        if (it == players_.end())
+            continue;
+
+        const PlayerRef& player = it->second;
+        if (player->IsDead() || portalPending_.count(c.playerID))
+            continue;
+
+        // AOI 범위 밖이면 보상 지급 안함
+        if (!AoiGrid::IsNear(CellOf(*player), MonsterCell))
+            continue;
+
+        std::vector<RewardResult> rewards;
+        RewardTemplate::Instance().Roll(monster.GetData().rewardGroupID, rewards);
+        GiveRewards(player, rewards);
+        return;
     }
 }
 
@@ -718,16 +813,25 @@ void Zone::HandleSkillCast(const PlayerRef& caster, uint32_t skillID, ObjectType
     if (caster->IsDead())
         return fail(SkillFailReason::Dead);
 
-    const SkillData* skill = SkillTemplate::Instance().GetData(skillID);
+    const SkillData* skill = SkillTemplate::Instance().GetData(caster->GetClassType(), skillID);
     if (!skill)
         return fail(SkillFailReason::InvalidSkill);
 
+    // 아군/본인 대상 스킬(회복, 버프 등)은 아직 구현 전: 몬스터에게 쓰이지 않도록 막아 둔다
+    if (skill->targetType != TargetType::Enemy)
+        return fail(SkillFailReason::InvalidSkill);
+
+    // 스킬 효과 그룹
+    const std::vector<SkillEffectData>* effects = SkillEffectTemplate::Instance().GetGroup(skill->effectGroupID);
+    if (!effects)
+        return fail(SkillFailReason::InvalidSkill);
+
     const auto now = std::chrono::steady_clock::now();
-    // 스킬 쿨타임 확이
+    // 스킬 쿨타임 확인
     if (!caster->IsSkillReady(skillID, now))
         return fail(SkillFailReason::Cooldown);
     // 스킬 코스트 확인
-    if (!caster->CheckSKillCost(skill->costType, skill->cost))
+    if (!caster->CheckSkillCost(skill->costType, skill->cost))
         return fail(SkillFailReason::NotEnoughCost);
 
     // 지정 대상 1마리 (Single / TargetArea 공용): 타입 → 존재/상태 → 사거리 순으로 검사
@@ -757,21 +861,21 @@ void Zone::HandleSkillCast(const PlayerRef& caster, uint32_t skillID, ObjectType
     std::vector<Monster*> targets;
     SkillFailReason reason = SkillFailReason::None;
     Monster* target{};
-    switch (skill->targetType)
+    switch (skill->rangeType)
     {
-        case SkillTargetType::Single: {
+        case RangeType::Single: {
             target = findTarget(reason);
             if (!target)
                 return fail(reason);
             targets.push_back(target);
             break;
         }
-        case SkillTargetType::SelfArea: {
+        case RangeType::SelfArea: {
             CollectMonstersInRadius(
                 caster->GetX(), caster->GetY(), caster->GetZ(), skill->radius, ZoneConst::SKILL_MAX_TARGETS, targets);
             break;
         }
-        case SkillTargetType::TargetArea: {
+        case RangeType::TargetArea: {
             target = findTarget(reason);
             if (!target)
                 return fail(reason);
@@ -780,7 +884,7 @@ void Zone::HandleSkillCast(const PlayerRef& caster, uint32_t skillID, ObjectType
                 target->GetX(), target->GetY(), target->GetZ(), skill->radius, ZoneConst::SKILL_MAX_TARGETS, targets);
             break;
         }
-        case SkillTargetType::None: {
+        case RangeType::None: {
             return fail(SkillFailReason::InvalidSkill);
         }
     }
@@ -793,14 +897,10 @@ void Zone::HandleSkillCast(const PlayerRef& caster, uint32_t skillID, ObjectType
     hits.reserve(targets.size());
     for (Monster* m : targets)
     {
-        const int32_t damage = m->TakeDamage(skill->damage);
-        if (m->GetState() == MonsterState::Idle)
-            m->StartChase(casterID);
-
         SkillHit hit{};
         hit.targetType = ObjectType::Monster;
         hit.targetUID = m->GetMonsterUID();
-        hit.damage = damage;
+        hit.damage = ApplySkillEffect(caster, *effects, *m, now);
         hit.targetHp = m->GetHp();
 
         hits.push_back(hit);
@@ -821,7 +921,7 @@ void Zone::HandleSkillCast(const PlayerRef& caster, uint32_t skillID, ObjectType
     for (Monster* m : targets)
     {
         if (m->GetHp() <= 0)
-            OnMonsterDead(*m, caster);
+            OnMonsterDead(*m);
     }
 }
 
@@ -833,6 +933,61 @@ void Zone::SendSkillFail(const PlayerRef& caster, uint32_t skillID, SkillFailRea
     pkt.skillID = skillID;
     pkt.reason = reason;
     SendTo(caster, &pkt, sizeof(pkt));
+}
+
+int32_t Zone::ApplySkillEffect(
+    const PlayerRef& caster,
+    const std::vector<SkillEffectData>& effects,
+    Monster& monster,
+    std::chrono::steady_clock::time_point now)
+{
+    int32_t totalDamage = 0;
+    for (const SkillEffectData& effect : effects)
+    {
+        switch (effect.effectType)
+        {
+            case SkillEffectType::Damage: {
+                totalDamage += monster.TakeDamage(CalcEffectValue(*caster, effect), caster->GetPlayerID());
+            }
+            break;
+
+            case SkillEffectType::Debuff: {
+                monster.AddDebuff(
+                    effect.statType, effect.valueType, effect.value,
+                    now + std::chrono::milliseconds(effect.durationMs));
+            }
+            break;
+            case SkillEffectType::DotDamage: {
+                monster.AddDot(
+                    caster->GetPlayerID(), effect.dotType, effect.value, now,
+                    now + std::chrono::milliseconds(effect.durationMs));
+            }
+        }
+    }
+
+    // 몬스터가 idle 상태면 공격한 플레이어를 타깃으로 chase 시작
+    if (monster.GetState() == MonsterState::Idle)
+        monster.StartChase(caster->GetPlayerID());
+
+    return totalDamage;
+}
+
+// 몬스터 도트 데미지 처리
+bool Zone::UpdateMonsterEffects(Monster& monster, std::chrono::steady_clock::time_point now)
+{
+    // 몬스터 디버프 및 도트 업데이트 (반환 도트 총 데미지)
+    const int32_t dotDamage = monster.UpdateEffects(now);
+
+    if (dotDamage <= 0)
+        return false;
+        
+    BroadcastMonsterHp(monster);
+
+    if (monster.GetHp() > 0)
+        return false;
+
+    OnMonsterDead(monster);
+    return true;
 }
 
 void Zone::CollectMonstersInRadius(
@@ -872,14 +1027,11 @@ void Zone::RegenPlayers()
         if (portalPending_.count(pid))
             continue;
         if (player->Regen(ZoneConst::PLAYER_HP_REGEN, ZoneConst::PLAYER_MP_REGEN))
-            BroadcastPlayerStat(player);
+        {
+            RES_PlayerStatPacket pkt = MakeStatPacket(*player);
+            BroadcastNear(CellOf(*player), &pkt, sizeof(pkt));
+        }
     }
-}
-
-void Zone::BroadcastPlayerStat(const PlayerRef& player)
-{
-    RES_PlayerStatPacket pkt = MakeStatPacket(*player);
-    BroadcastNear(CellOf(*player), &pkt, sizeof(pkt));
 }
 
 void Zone::SendPlayerStat(const PlayerRef& to, const PlayerRef& player)
@@ -944,9 +1096,16 @@ void Zone::RecordTickStat(std::chrono::steady_clock::time_point tickStart, doubl
     tickGapMaxMs_ = 0.0;
 }
 
+// 플레이어 칸 반환
 AoiCell Zone::CellOf(const Player& player) const
 {
     return playerGrid_.ToCell(player.GetX(), player.GetZ());
+}
+
+// 몬스터가 있는 칸을 반환
+AoiCell Zone::CellOf(const Monster& monster) const
+{
+    return monsterGrid_.ToCell(monster.GetX(), monster.GetZ());
 }
 
 void Zone::CollectPlayers(const std::vector<AoiCell>& cells, uint64_t exceptPlayerID, std::vector<PlayerRef>& out) const
@@ -1048,11 +1207,6 @@ void Zone::OnPlayerCellChanged(const PlayerRef& player, AoiCell from, AoiCell to
     //  범위 밖의 몬스터 제거
     CollectMonsters(leftCells, monstersOut);
     DespawnMonstersTo(player, monstersOut);
-}
-
-AoiCell Zone::CellOf(const Monster& monster) const
-{
-    return monsterGrid_.ToCell(monster.GetX(), monster.GetZ());
 }
 
 void Zone::CollectMonsters(const std::vector<AoiCell>& cells, std::vector<Monster*>& out) const

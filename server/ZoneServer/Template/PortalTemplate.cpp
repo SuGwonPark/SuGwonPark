@@ -6,17 +6,17 @@
 bool PortalTemplate::Load()
 {
 	data_.clear();
-	return Csv::ForEachRow("Portal.csv", [this](const CsvRow& r) {
+	return Csv::ForEachRow("Portal.csv", [this](const CsvRowView& r) {
 		PortalData d{};
-		d.portalID = Csv::ToU32(r.at(0));
-		d.zoneID = Csv::ToU32(r.at(1));
-		Csv::ToVec3(r.at(2), d.x, d.y, d.z);
-		d.radius = Csv::ToFloat(r.at(3));
-		d.destZoneID = Csv::ToU32(r.at(4));
-		Csv::ToVec3(r.at(5), d.destX, d.destY, d.destZ);
+		d.portalID = r.U32("ID");
+		d.zoneID = r.U32("ZoneID");
+		r.Vec3("Position", d.x, d.y, d.z);
+		d.radius = r.Float("Radius");
+		d.destZoneID = r.U32("DestZoneID");
+		r.Vec3("DestSpawnPosition", d.destX, d.destY, d.destZ);
 
 		if (d.radius <= 0.f) throw std::invalid_argument("Radius는 0보다 커야 함");
-		if (!data_.emplace(d.portalID, d).second) throw std::invalid_argument("중복 ID " + r[0]);
+		if (!data_.emplace(d.portalID, d).second) throw std::invalid_argument("중복 ID " + r.Str("ID"));
 		});
 }
 

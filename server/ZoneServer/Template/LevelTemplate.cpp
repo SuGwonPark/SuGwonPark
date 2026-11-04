@@ -5,9 +5,9 @@
 bool LevelTemplate::Load()
 {
     requiredExp_.clear();
-    return Csv::ForEachRow("Level.csv", [this](const CsvRow& r) {
-        const uint32_t level = Csv::ToU32(r.at(1));
-        const uint64_t exp = Csv::ToU64(r.at(2));
+    return Csv::ForEachRow("Level.csv", [this](const CsvRowView& r) {
+        const uint32_t level = r.U32("Level");
+        const uint64_t exp = r.U64("Exp");
 
         // 1레벨부터 빠짐없이 순서대로, 누적 경험치는 계속 커져야 한다
         if (level != requiredExp_.size() + 1)

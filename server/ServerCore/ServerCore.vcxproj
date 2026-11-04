@@ -28,6 +28,7 @@
     <ClCompile Include="DB\RedisDB.cpp" />
     <ClCompile Include="Manager\SendBufferManager.cpp" />
     <ClCompile Include="Network\SendBuffer.cpp" />
+    <ClCompile Include="Template\CharacterTemplate.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -49,6 +50,7 @@
     <ClInclude Include="Protocol\ProtocolTypes.h" />
     <ClInclude Include="Protocol\VarEnum.h" />
     <ClInclude Include="Utils\Config.h" />
+    <ClInclude Include="Template\CharacterTemplate.h" />
     <ClInclude Include="Utils\util.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

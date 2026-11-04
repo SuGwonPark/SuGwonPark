@@ -378,6 +378,7 @@ void Bot::SelectCharacter(uint64_t playerID)
 void Bot::CreateCharacter()
 {
     REQ_CreateCharacterPacket req{};
+    req.classType = ClassType::Warrior; 
     CopyStr(req.name, accountID_); // 이름 = 계정 id (2~12자 영문/숫자)
     SendPacket(req, PKT_C_CREATE_CHARACTER);
 }

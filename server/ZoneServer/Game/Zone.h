@@ -3,6 +3,7 @@
 #include "ServerCore/Protocol/ProtocolTypes.h"
 #include "Game/AoiGrid.h"
 
+
 class Player;
 using PlayerRef = std::shared_ptr<Player>;
 
@@ -10,6 +11,7 @@ class Monster;
 using MonsterRef = std::shared_ptr<Monster>;
 
 struct RewardResult;
+struct SkillEffectData;
 
 class Zone : public JobSerializer<Zone>
 {
@@ -78,23 +80,34 @@ class Zone : public JobSerializer<Zone>
 
     // 전투
     void HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64_t targetUID);
-    void OnMonsterDead(Monster& monster, const PlayerRef& killer);
+    void OnMonsterDead(Monster& monster);
     void RespawnMonster(Monster& monster);
     void BroadcastMonsterHp(const Monster& monster);
 
     void MonsterAttack(Monster& monster, const PlayerRef& target);
     void HandleRevive(const PlayerRef& player);
+
+    // 보상 지급
     void GiveRewards(const PlayerRef& player, const std::vector<RewardResult>& rewards);
+    void DistributeRewards(const Monster& monster);
 
     // 스킬 캐스팅
     void HandleSkillCast(const PlayerRef& caster, uint32_t skillID, ObjectType TargetType, uint64_t targetUID);
     // 스킬 실패
     void SendSkillFail(const PlayerRef& caster, uint32_t skillID, SkillFailReason reason);
+
+    // 몬스터 1마리 효과 적용 (데미지, 회복, 버프, 디버프 등)
+    int32_t ApplySkillEffect(const PlayerRef& caster, const std::vector<SkillEffectData>& effects, Monster& monster, std::chrono::steady_clock::time_point now);
+    // 몬스터 지속 효과 (디버프 도트) 처리
+    bool UpdateMonsterEffects(Monster& monster, std::chrono::steady_clock::time_point now);
+
+
+
     void CollectMonstersInRadius(
         float cx, float cy, float cz, float radius, size_t maxCount, std::vector<Monster*>& out) const;
 
     void RegenPlayers();
-    void BroadcastPlayerStat(const PlayerRef& player);
+
     void SendPlayerStat(const PlayerRef& to, const PlayerRef& player);
     void AutoSaveTick(); // 자동 저장 처리
 

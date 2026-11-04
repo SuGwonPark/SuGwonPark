@@ -5,16 +5,16 @@
 bool ZoneTemplate::Load()
 {
 	data_.clear();
-	return Csv::ForEachRow("Zone.csv", [this](const CsvRow& r) {
+	return Csv::ForEachRow("Zone.csv", [this](const CsvRowView& r) {
 		ZoneData d{};
-		d.zoneID = Csv::ToU32(r.at(0));
-		d.channelCount = Csv::ToU32(r.at(1));
-		d.maxPlayer = Csv::ToU32(r.at(2));
-		Csv::ToVec3(r.at(3), d.spawnX, d.spawnY, d.spawnZ);
+		d.zoneID = r.U32("ID");
+		d.channelCount = r.U32("ChannelCount");
+		d.maxPlayer = r.U32("MaxPlayer");
+		r.Vec3("SpawnPosition", d.spawnX, d.spawnY, d.spawnZ);
 
 		if (d.channelCount == 0) throw std::invalid_argument("ChannelCount는 1 이상");
 		if (d.maxPlayer == 0)    throw std::invalid_argument("MaxPlayer는 1 이상");
-		if (!data_.emplace(d.zoneID, d).second) throw std::invalid_argument("중복 ID " + r.at(0));
+		if (!data_.emplace(d.zoneID, d).second) throw std::invalid_argument("중복 ID " + r.Str("ID"));
 		});
 }
 

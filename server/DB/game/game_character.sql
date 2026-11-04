@@ -5,6 +5,7 @@ DROP TABLE IF EXISTS `character`;
 CREATE TABLE `character` (
   `playerID` bigint unsigned NOT NULL AUTO_INCREMENT,
   `userUID` bigint unsigned NOT NULL,
+  `charID` INT	unsigned NOT NULL,
   `name` varchar(50) NOT NULL,
   `createTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `deleteTime` datetime DEFAULT NULL,

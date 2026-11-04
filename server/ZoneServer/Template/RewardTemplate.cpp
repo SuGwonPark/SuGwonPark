@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "Template/RewardTemplate.h"
+#include "Template/ItemTemplate.h"
 #include "ServerCore/Utils/CsvReader.h"
 #include "ServerCore/Utils/util.h"       
 
@@ -19,37 +20,37 @@ bool RewardTemplate::Load()
 	rewardRows_ = itemRows_ = 0;
 
 	std::unordered_set<uint32_t> rewardIDs;
-	bool ok = Csv::ForEachRow("Reward.csv", [&](const CsvRow& r) {
+	bool ok = Csv::ForEachRow("Reward.csv", [&](const CsvRowView& r) {
 		RewardData d{};
-		d.id = Csv::ToU32(r.at(0));
-		d.groupID = Csv::ToU32(r.at(1));
-		d.type = ParseCsvEnum<RewardType>(r.at(2), "RewardType");
-		d.itemGroupID = Csv::ToU32(r.at(3));
+		d.id = r.U32("ID");
+		d.groupID = r.U32("RewardGroupID");
+		d.type = ParseCsvEnum<RewardType>(r.Str("RewardType"), "RewardType", d.id);
+		d.itemGroupID = r.U32("RewardItemGroup");
 
 		if (d.groupID == 0) throw std::invalid_argument("RewardGroupID는 1 이상 (0은 '보상 없음' 예약)");
-		if (!rewardIDs.insert(d.id).second) throw std::invalid_argument("중복 ID " + r.at(0));
+		if (!rewardIDs.insert(d.id).second) throw std::invalid_argument("중복 ID " + r.Str("ID"));
 		groups_[d.groupID].push_back(d);
 		++rewardRows_;
 		});
 	if (!ok) return false;
 
 	std::unordered_set<uint32_t> itemIDs;
-	ok = Csv::ForEachRow("RewardItem.csv", [&](const CsvRow& r) {
+	ok = Csv::ForEachRow("RewardItem.csv", [&](const CsvRowView& r) {
 		RewardItemData d{};
-		d.id = Csv::ToU32(r.at(0));
-		d.groupID = Csv::ToU32(r.at(1));
-		d.delivery = ParseCsvEnum<RewardDeliveryType>(r.at(2), "DeliveryType");
-		d.type = ParseCsvEnum<RewardItemType>(r.at(3), "Type");
-		d.value = Csv::ToU32(r.at(4));
-		d.minCount = Csv::ToU32(r.at(5));
-		d.maxCount = Csv::ToU32(r.at(6));
-		d.rate = Csv::ToU32(r.at(7));
+		d.id = r.U32("ID");
+		d.groupID = r.U32("GroupID");
+		d.delivery = ParseCsvEnum<RewardDeliveryType>(r.Str("DeliveryType"), "DeliveryType", d.id);
+		d.type = ParseCsvEnum<RewardItemType>(r.Str("Type"), "Type", d.id);
+		d.value = r.U32("Value");
+		d.minCount = r.U32("MinCount");
+		d.maxCount = r.U32("MaxCount");
+		d.rate = r.U32("Rate");
 
 		if (d.minCount > d.maxCount)  throw std::invalid_argument("MinCount가 MaxCount보다 큼");
 		if (d.maxCount == 0)          throw std::invalid_argument("MaxCount는 1 이상");
 		if (d.rate > RewardMaxRate)   throw std::invalid_argument("Rate는 0 ~ " + std::to_string(RewardMaxRate));
 		if (d.type != RewardItemType::Exp && d.value == 0) throw std::invalid_argument("Asset/Item은 Value가 필요");
-		if (!itemIDs.insert(d.id).second) throw std::invalid_argument("중복 ID " + r.at(0));
+		if (!itemIDs.insert(d.id).second) throw std::invalid_argument("중복 ID " + r.Str("ID"));
 
 		RewardItemGroup& group = itemGroups_[d.groupID];
 
@@ -91,6 +92,21 @@ bool RewardTemplate::Validate() const
 			}
 		}
 	}
+
+    // Item 보상이 Item.csv에 있는지
+    for (const auto& [itemGroupID, group] : itemGroups_)
+    {
+        for (const auto& item : group.items)
+        {
+            if (item.type == RewardItemType::Item && !ItemTemplate::Instance().GetData(item.value))
+            {
+                std::cerr << "[Template] RewardItem.csv ID " << item.id << ": Item.csv에 없는 ItemID " << item.value
+                          << std::endl;
+                ok = false;
+            }
+        }
+    }
+
 	return ok;
 }
 

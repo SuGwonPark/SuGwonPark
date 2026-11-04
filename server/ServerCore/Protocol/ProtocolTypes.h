@@ -23,15 +23,16 @@ namespace Game {
 
 struct CharacterSummary {        // 캐릭터 목록 한 줄
 	uint64_t playerID;
-	uint8_t  classType;
+	uint32_t charID;
 	uint64_t exp;
 	char     name[50];
 };
 
 struct PlayerInfo {              // 다른 유저에게 보여줄 최소 정보
 	uint64_t playerID;
-    uint8_t classType;
-    uint16_t levle;
+    ClassType classType;
+    GenderType gender;
+    uint16_t level;
 	char     name[50];
 	float    x, y, z;
     int32_t maxhp;
@@ -51,7 +52,7 @@ struct MonsterInfo {
 struct SkillHit {                // 스킬에 맞은 대상 1건
 	ObjectType targetType;
 	uint64_t   targetUID;
-	int32_t    damage;
+    int32_t		damage;
 	int32_t    targetHp;         // 맞은 뒤 남은 HP
 };
 

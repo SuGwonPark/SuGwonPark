@@ -57,17 +57,16 @@ int main() {
 	InternalServer internalServer(io, cfg.internalPort); // zone서버
 	std::cout << "\n서버 시작 - 포트 " << cfg.internalPort << std::endl;
 
-    while (true)
+    try
     {
-        try
-        {
-            io.run();
-            break;
-        }
-        catch (const std::exception& e)
-        {
-            std::cerr << "[Main] io 핸들러 예외: " << e.what() << std::endl;
-        }
+        io.run();
     }
-	return 0;
+    catch (const std::exception& e)
+    {
+        // 처리 못 한 예외 = 버그. 상태가 꼬였을 수 있으니 계속 돌리지 않고 종료
+        std::cerr << "[Main] io 핸들러 예외로 종료: " << e.what() << std::endl;
+        return 4;
+    }
+
+    return 0;
 }

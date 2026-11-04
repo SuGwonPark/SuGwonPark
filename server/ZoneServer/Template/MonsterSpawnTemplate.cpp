@@ -8,17 +8,17 @@ bool MonsterSpawnTemplate::Load()
 {
 	data_.clear();
 	byZone_.clear();
-	return Csv::ForEachRow("MonsterSpawn.csv",  [this](const CsvRow& r) {
+	return Csv::ForEachRow("MonsterSpawn.csv",  [this](const CsvRowView& r) {
 		MonsterSpawnData d{};
-		d.spawnID   = Csv::ToU32(r[0]);
-		d.zoneID    = Csv::ToU32(r[1]);
-		d.monsterID = Csv::ToU32(r[2]);
-		Csv::ToVec3(r[3], d.x, d.y, d.z);
+		d.spawnID   = r.U32("ID");
+		d.zoneID    = r.U32("ZoneID");
+		d.monsterID = r.U32("MonsterID");
+		r.Vec3("Position", d.x, d.y, d.z);
 
 		if (d.spawnID == 0)   throw std::invalid_argument("ID는 1 이상");
 		if (d.zoneID == 0)    throw std::invalid_argument("ZoneID는 1 이상");
 		if (d.monsterID == 0) throw std::invalid_argument("MonsterID는 1 이상");
-		if (!data_.emplace(d.spawnID, d).second) throw std::invalid_argument("중복 ID " + r[0]);
+		if (!data_.emplace(d.spawnID, d).second) throw std::invalid_argument("중복 ID " + r.Str("ID"));
 
 		byZone_[d.zoneID].push_back(d);
 		});

@@ -1,10 +1,30 @@
 ﻿#include "pch.h"
 #include "Player.h"
 
-// ... 기존 생성자에 z_(0) 추가
-Player::Player(uint64_t playerID, std::string name, float x, float y, float z, int hp, int mp, uint64_t exp)
-    : playerID_(playerID), name_(name), x_(x), y_(y), z_(z), hp_(hp), mp_(mp), exp_(exp)
+#include "Template/LevelTemplate.h"
+#include "Template/StatTemplate.h"
+#include "ServerCore/Template/CharacterTemplate.h"
+
+Player::Player(
+    uint64_t playerID,
+    std::string name,
+    uint32_t charID,
+    ClassType classType,
+    GenderType gender,
+    float x,
+    float y,
+    float z,
+    int hp,
+    int mp,
+    uint64_t exp,
+    uint16_t level)
+    : playerID_(playerID), name_(name), charID_(charID), classType_(classType), gender_(gender), x_(x), y_(y), z_(z), hp_(hp), mp_(mp), exp_(exp),
+      level_(level)
 {
+    ApplyStat();
+    hp_ = std::min(hp_, maxHp_);
+    mp_ = std::min(mp_, maxMp_);
+
     lastSaved_ = CurrentState();
 }
 
@@ -38,7 +58,7 @@ bool Player::TryMove(float x, float y, float z, float maxSpeed)
     return true;
 }
 
-bool Player::CheckSKillCost(SkillCostType type, int32_t cost) const
+bool Player::CheckSkillCost(SkillCostType type, int32_t cost) const
 {
     switch (type)
     {
@@ -66,6 +86,22 @@ bool Player::Regen(int32_t hpAmount, int32_t mpAmount)
     return hp_ != oldHp || mp_ != oldMp;
 }
 
+bool Player::AddExp(uint64_t exp)
+{
+    exp_ += exp;
+
+    // 누적값으로 계산. 최대 레벨이면 LevelFromExp가 MaxLevel에서 멈추므로 아래에서 false
+    const uint16_t newLevel = LevelTemplate::Instance().LevelFromExp(exp_);
+    if (newLevel <= level_)
+        return false;
+
+    level_ = newLevel;
+    ApplyStat();
+    hp_ = maxHp_;
+    mp_ = maxMp_;
+    return true;
+}
+
 void Player::SpendSkillCost(SkillCostType type, int32_t cost)
 {
     switch (type)
@@ -80,10 +116,21 @@ void Player::SpendSkillCost(SkillCostType type, int32_t cost)
     }
 }
 
+void Player::ApplyStat()
+{
+    const StatData* s = StatTemplate::Instance().Get(classType_, level_);
+    if (!s)
+        return;
+
+    maxHp_ = s->maxHp;
+    maxMp_ = s->maxMp;
+    damage_ = s->damage;
+}
+
 bool Player::TrySpendSkill(SkillCostType type, int32_t cost)
 {
     // 차감 가능 여부 체크
-    if (!CheckSKillCost(type, cost))
+    if (!CheckSkillCost(type, cost))
         return false;
 
     // 차감 처리

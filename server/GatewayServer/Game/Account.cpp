@@ -1,10 +1,12 @@
 ﻿#include "pch.h"
 #include "Account.h"
+
 #include "ServerCore/DB/AccountDB.h"
 #include "ServerCore/DB/GameDB.h"
 #include "ServerCore/Manager/SendBufferManager.h"
 #include "ServerCore/Protocol/Packets.h"
 #include "ServerCore/Protocol/PacketID.h"
+
 #include "Manager/ZoneManager.h"
 #include "Manager/SessionManager.h"
 
@@ -212,7 +214,7 @@ void Account::SendCharacterList(ClientProxySessionRef session)
 
     GameDB::Instance().PushTask([session, userUID](mysqlx::Session& db) {
         auto result = db.sql(
-                            "SELECT c.playerID, c.name, cs.classType, cs.exp FROM `character` c JOIN `character_state` cs "
+                            "SELECT c.playerID, c.charID, c.name, cs.exp FROM `character` c JOIN `character_state` cs "
                             "ON c.playerID = cs.playerID "
                             "WHERE c.userUID = ? AND c.deleteTime IS NULL")
                           .bind(userUID)
@@ -223,8 +225,8 @@ void Account::SendCharacterList(ClientProxySessionRef session)
         {
             CharacterSummary c{};
             c.playerID = row[0].get<uint64_t>();
-            strncpy_s(c.name, row[1].get<std::string>().c_str(), _TRUNCATE);
-            c.classType = static_cast<uint8_t>(row[2].get<uint32_t>());
+            c.charID = row[1].get<uint32_t>();
+            strncpy_s(c.name, row[2].get<std::string>().c_str(), _TRUNCATE);
             c.exp = row[3].get<uint64_t>();
             list.push_back(c);
         }
@@ -296,6 +298,7 @@ void Account::CreateCharacter(ClientProxySessionRef session, const REQ_CreateCha
 
     const uint64_t userUID = session->GetUserUID();
     std::string name(pkt->name, strnlen(pkt->name, sizeof(pkt->name)));
+    uint32_t charID = pkt->charID;
 
     // 성공/실패 모두 로비로 돌려놓고 응답
     auto reply = [session](CreateCharacterResult result, const CharacterSummary* created) {
@@ -310,10 +313,12 @@ void Account::CreateCharacter(ClientProxySessionRef session, const REQ_CreateCha
         session->Send(SendBufferManager::Make(&res, sizeof(res)));
     };
 
+
+      
     if (!IsValidCharacterName(name))
         return reply(CreateCharacterResult::InvalidName, nullptr);
 
-    GameDB::Instance().PushTask(userUID, [reply, userUID, name](mysqlx::Session& db) {
+    GameDB::Instance().PushTask(userUID, [reply, userUID, name, charID](mysqlx::Session& db) {
         try
         {
             // 1) 슬롯 수
@@ -333,12 +338,12 @@ void Account::CreateCharacter(ClientProxySessionRef session, const REQ_CreateCha
             try
             {
                 auto inserted =
-                    db.sql("INSERT INTO `character` (userUID, name) VALUES (?, ?)").bind(userUID, name).execute();
+                    db.sql("INSERT INTO `character` (userUID, charID, name) VALUES (?, ?, ?)").bind(userUID, charID, name).execute();
                 const uint64_t playerID = inserted.getAutoIncrementValue();
 
-                db.sql("INSERT INTO `character_state` (playerID, classType, zoneID, posX, posY, posZ) VALUES (?, ?, ?, ?, ?, ?)")
+                db.sql("INSERT INTO `character_state` (playerID, zoneID, posX, posY, posZ) VALUES (?, ?, ?, ?, ?)")
                     .bind(
-                        playerID, 1, GatewayConst::START_ZONE_ID, GatewayConst::START_X, GatewayConst::START_Y,
+                        playerID, GatewayConst::START_ZONE_ID, GatewayConst::START_X, GatewayConst::START_Y,
                         GatewayConst::START_Z)
                     .execute();
 
@@ -346,6 +351,7 @@ void Account::CreateCharacter(ClientProxySessionRef session, const REQ_CreateCha
 
                 CharacterSummary created{};
                 created.playerID = playerID;
+                created.charID = charID;
                 created.exp = 0;
                 strncpy_s(created.name, name.c_str(), _TRUNCATE);
                 reply(CreateCharacterResult::Success, &created);

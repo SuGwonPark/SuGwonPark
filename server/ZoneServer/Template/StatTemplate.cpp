@@ -2,18 +2,18 @@
 #include "Template/StatTemplate.h"
 #include "Template/LevelTemplate.h"
 #include "ServerCore/Utils/CsvReader.h"
-#include "ServerCore/Utils/util.h" // ParseCsvEnum, TypeToString, magic_enum
+#include "ServerCore/Utils/util.h" 
 
 bool StatTemplate::Load()
 {
     data_.clear();
-    return Csv::ForEachRow("Stat.csv", [this](const CsvRow& r) {
+    return Csv::ForEachRow("Stat.csv", [this](const CsvRowView& r) {
         StatData d{};
-        d.classType = ParseCsvEnum<ClassType>(r.at(1), "ClassType");
-        const uint32_t level = Csv::ToU32(r.at(2));
-        d.maxHp = Csv::ToI32(r.at(3));
-        d.maxMp = Csv::ToI32(r.at(4));
-        d.damage = Csv::ToI32(r.at(5));
+        d.classType = ParseCsvEnum<ClassType>(r.Str("ClassType"), "ClassType", r.U32("ID"));
+        const uint32_t level = r.U32("Level");
+        d.maxHp = r.I32("Hp");
+        d.maxMp = r.I32("Mp");
+        d.damage = r.I32("Damage");
 
         if (level == 0 || level > 0xFFFF)
             throw std::invalid_argument("Level은 1 ~ 65535");
@@ -26,7 +26,7 @@ bool StatTemplate::Load()
             throw std::invalid_argument("Damage는 1 이상");
 
         if (!data_.emplace(Key(d.classType, d.level), d).second)
-            throw std::invalid_argument("중복 (ClassType, Level): " + r.at(1) + ", " + r.at(2));
+            throw std::invalid_argument("중복 (ClassType, Level): " + r.Str("ClassType") + ", " + r.Str("Level"));
     });
 }
 

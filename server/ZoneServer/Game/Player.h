@@ -1,21 +1,24 @@
 ﻿#pragma once
 #include "ServerCore/Protocol/VarEnum.h"
+
 class Player
 {
   private:
     uint64_t userUID = 0; // 임시
     uint64_t playerID_;
+    uint32_t charID_ = 0;
     ClassType classType_ = ClassType::None;
+    GenderType gender_ = GenderType::None;
     uint16_t level_ = 1;
     std::string name_;
     float x_;
     float y_;
     float z_;
-    int maxHp_ = 1; // 임시
+    int maxHp_ = 1;
     int hp_;
-    int maxMp_ = 0; // 임시
+    int maxMp_ = 0;
     int mp_;
-    int damage_ = 0;
+    uint32_t damage_ = 0;
     uint64_t exp_;
 
     uint64_t sessionID_ = 0;
@@ -50,8 +53,23 @@ class Player
     // 스킬 사용 처리
     void SpendSkillCost(SkillCostType type, int32_t cost);
 
+    // 직업 / 레벨의 스탯 적용
+    void ApplyStat();
+
   public:
-    Player(uint64_t playerID, std::string name, float x, float y, float z, int hp, int mp, uint64_t exp);
+    Player(
+        uint64_t playerID,
+        std::string name,
+        uint32_t charID,
+        ClassType classType,
+        GenderType gender,
+        float x,
+        float y,
+        float z,
+        int hp,
+        int mp,
+        uint64_t exp,
+        uint16_t level);
 
     void SetPosition(float x, float y, float z);
     bool TryMove(float x, float y, float z, float maxSpeed);
@@ -59,27 +77,26 @@ class Player
     // 스킬 사용
     bool TrySpendSkill(SkillCostType type, int32_t cost);
     // 스킬 사용 가능 여부 체크
-    bool CheckSKillCost(SkillCostType type, int32_t cost) const;
+    bool CheckSkillCost(SkillCostType type, int32_t cost) const;
 
     // 자동 회복
     bool Regen(int32_t hpAmount, int32_t mpAmount);
 
+    bool AddExp(uint64_t exp);
+
     uint64_t GetExp() const
     {
         return exp_;
-    }
-    void AddExp(uint64_t exp)
-    {
-        exp_ += exp;
     }
 
     uint64_t GetPlayerID() const
     {
         return playerID_;
     }
-    void SetPlayerID(uint64_t playerId)
+
+    GenderType GetGender() const
     {
-        playerID_ = playerId;
+        return gender_;
     }
 
     uint64_t GetSessionID() const
@@ -129,6 +146,21 @@ class Player
     bool IsDead() const
     {
         return hp_ <= 0;
+    }
+
+    ClassType GetClassType() const
+    {
+        return classType_;
+    }
+
+    uint16_t GetLevel() const
+    {
+        return level_;
+    }
+
+    uint32_t GetDamage() const
+    {
+        return damage_;
     }
 
     int32_t TakeDamage(int32_t damage)

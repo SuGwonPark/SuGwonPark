@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Template/MonsterTemplate.h"
+#include "ServerCore/Protocol/VarEnum.h"
 
 enum class MonsterState : uint8_t
 {
@@ -19,7 +20,7 @@ class Monster
     {
         return monsterUID_;
     }
-    const MonsterData& getData() const
+    const MonsterData& GetData() const
     {
         return *data_;
     }
@@ -83,8 +84,14 @@ class Monster
     }
     void StartReturn()
     {
-        state_ = MonsterState::Return, targetPlayerID_ = 0;
+        state_ = MonsterState::Return;
+        targetPlayerID_ = 0;
+        // 효과 초기화
+        ClearEffects();
+        // 기여도 초기화
+        contributions_.clear();
     }
+
     // 기본 상태
     void SetIdle()
     {
@@ -100,6 +107,18 @@ class Monster
         return true;
     }
 
+    // 몬스터에게 실제로 깎은 HP 기록 (보상 우선권 계산용)
+    struct Contribution
+    {
+        uint64_t playerID;
+        int64_t damage;
+    };
+
+    const std::vector<Contribution>& GetContributions() const
+    {
+        return contributions_;
+    }
+
     // ========= 전투 ===========
     // 거리 제곱
     float DistSqTo(float x, float y, float z) const;
@@ -111,7 +130,8 @@ class Monster
     // (tx,ty,tz) 쪽으로 최대 step만큼 이동. 목표와 stopDist 거리가 되면 멈춘다. 움직였으면 true
     bool MoveToward(float tx, float ty, float tz, float step, float stopDist);
 
-    int32_t TakeDamage(int32_t damage);
+    int32_t TakeDamage(int32_t damage, uint64_t attackerID = 0);
+
     // 사망 처리
     void Die(Clock::time_point now);
     // 부활 가능 여부 체크
@@ -123,12 +143,45 @@ class Monster
     void Respawn();
     bool ResetHp();
 
+    // ====== 지속 효과 ======
+    // 같은 스탯 디버프는 중첩하지 않음: 더 강하면 교체, 같으면 시간 갱신, 약하면 무시
+    void AddDebuff(StatType stat, ValueType valueType, int32_t value, Clock::time_point endAt);
+
+    // 같은 시전자의 같은 종류(DotType) 도트: 더 강하면 교체, 같으면 시간 갱신, 약하면 무시 (틱 주기 유지)
+    void AddDot(
+        uint64_t casterID, DotType dotType, int32_t damagePerTick, Clock::time_point now, Clock::time_point endAt);
+
+    // 끝난 효과 제거 + 이번에 들어갈 도트 데미지 합 반환.
+    int32_t UpdateEffects(Clock::time_point now);
+    void ClearEffects();
+
+    // 디버프가 반영된 이동 속도
+    float GetMoveSpeed() const;
+    // ====== 지속 효과 End ======
+
+  private:
+    struct Debuff
+    {
+        StatType stat;
+        ValueType valueType;
+        int32_t value;
+        Clock::time_point endAt;
+    };
+
+    struct Dot
+    {
+        uint64_t casterID;
+        DotType dotType;
+        int32_t damagePerTick;
+        Clock::time_point nextTickAt;
+        Clock::time_point endAt;
+    };
+
   private:
     uint64_t monsterUID_;
     const MonsterData* data_; // 정적 테이블을 가리킴 (수명 걱정 없음)
     float x_, y_, z_;
     float spawnX_, spawnY_, spawnZ_;
-    int32_t maxHp_;
     int32_t hp_;
 
     MonsterState state_ = MonsterState::Idle;
@@ -136,6 +189,11 @@ class Monster
 
     Clock::time_point respawnAt_{};
     Clock::time_point lastAttackTime_{};
+    std::vector<Debuff> debuffs_;
+    std::vector<Dot> dots_;
+
+    // 데미지 기여도
+    std::vector<Contribution> contributions_{};
 };
 
 using MonsterRef = std::shared_ptr<Monster>;

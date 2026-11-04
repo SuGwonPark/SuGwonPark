@@ -1,4 +1,4 @@
-﻿ID,Name,MaxHp,Attack,MoveSpeed,AggroRange,AttackRange,RewardGroupID,ResponSec
+﻿ID,Name,MaxHp,Attack,MoveSpeed,AggroRange,AttackRange,RewardID,ResponSec
 1,Slime,50,5,2,6,1.5,1001,10
 2,Mushroom,80,8,2.5,7,1.5,1002,12
 3,Goblin,150,15,3.5,10,2,1003,20

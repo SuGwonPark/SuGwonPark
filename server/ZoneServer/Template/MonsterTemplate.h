@@ -2,9 +2,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
-#include "RewardTemplate.h"
 
-// Data/Monster.csv : ID,Name,MaxHp,Attack,MoveSpeed,AggroRange,AttackRange,RewardID,ResponSec
 struct MonsterData {
 	uint32_t    monsterID;
 	std::string name;

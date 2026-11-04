@@ -8,8 +8,8 @@
 
 
 ClientProxySession::ClientProxySession(uint64_t sessionID, net::io_context& ioc)
-	: sessionID_(sessionID)
-	, socket_(ioc)
+	: sessionID_(sessionID) 
+	, socket_(ioc) 
 	, strand_(net::make_strand(ioc)) {
 }
 

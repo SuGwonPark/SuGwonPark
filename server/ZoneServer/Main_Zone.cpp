@@ -46,8 +46,7 @@ int main(int argc, char* argv[])
 
     // 틱 / 자동 저장 등에서 쓰려고 Zone 목록을 들고 있는다
     std::vector<ZoneRef> zones;
-
-    for (auto& [zoneID, zone] : zoneTemplate)
+        for (auto& [zoneID, zone] : zoneTemplate)
     {
         for (uint32_t channelID = 1; channelID <= zone.channelCount; ++channelID)
         {
@@ -117,18 +116,16 @@ int main(int argc, char* argv[])
         }
     });
 
-	while (true)
+    try
     {
-        try
-        {
-            io.run();
-            break;
-        }
-        catch (const std::exception& e)
-        {
-            std::cerr << "[Main] io 핸들러 예외: " << e.what() << std::endl;
-        }
-    } 
+        io.run();
+    }
+    catch (const std::exception& e)
+    {
+        // 처리 못 한 예외 = 버그. 상태가 꼬였을 수 있으니 계속 돌리지 않고 종료
+        std::cerr << "[Main] io 핸들러 예외로 종료: " << e.what() << std::endl;
+        return 4;
+    }
 
     return 0;
 }

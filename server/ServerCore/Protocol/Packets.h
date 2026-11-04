@@ -30,7 +30,9 @@ struct RES_LoginPacket {
 struct REQ_CreateCharacterPacket
 {
     PacketHeader header;
+    uint32_t charID;
     char name[50]; // UTF-8, 널 종료 보장 안 됨
+	
 };
 
 struct RES_CreateCharacterPacket

@@ -32,19 +32,19 @@ inline std::string_view TypeToString(T value) {
 
 // CSV 문자열 → enum 으로 변환
 template<typename T>
-inline T ParseCsvEnum(const std::string& text, const char* column) {
+inline T ParseCsvEnum(const std::string& text, const char* column, uint64_t ID) {
 	std::optional<T> value = magic_enum::enum_cast<T>(text);
 	if (!value || *value == T::None)
-		throw std::invalid_argument(std::string("알 수 없는 ") + column + ": '" + text + "'");
+		throw std::invalid_argument(std::string("알 수 없는 ") + column + ": '" + text + "' (ID: " + std::to_string(ID) + ")");
 	return *value;
 }
 
 // None 허용
 template<typename T>
-inline T ParseCsvEnum2(const std::string& text, const char* column) {
+inline T ParseCsvEnum2(const std::string& text, const char* column, uint64_t ID) {
 	std::optional<T> value = magic_enum::enum_cast<T>(text);
 	if (!value)
-		throw std::invalid_argument(std::string("알 수 없는 ") + column + ": '" + text + "'");
+		throw std::invalid_argument(std::string("알 수 없는 ") + column + ": '" + text + "' (ID: " + std::to_string(ID) + ")");
 	return *value;
 }
 

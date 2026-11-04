@@ -64,7 +64,21 @@
     <ClCompile Include="Template\LevelTemplate.cpp">
       <Filter>Template</Filter>
     </ClCompile>
-    <ClCompile Include="Template\StatTemplate.cpp" />
+    <ClCompile Include="Template\StatTemplate.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="Template\SkillEffectTemplate.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="Template\ItemTemplate.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="Template\ItemOptionTemplate.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="Template\ItemSubOptionTemplate.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Game\Player.h">
@@ -109,6 +123,20 @@
     <ClInclude Include="Template\LevelTemplate.h">
       <Filter>Template</Filter>
     </ClInclude>
-    <ClInclude Include="Template\StatTemplate.h" />
+    <ClInclude Include="Template\StatTemplate.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="Template\SkillEffectTemplate.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="Template\ItemTemplate.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="Template\ItemOptionTemplate.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="Template\ItemSubOptionTemplate.h">
+      <Filter>Template</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
