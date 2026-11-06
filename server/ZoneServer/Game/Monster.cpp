@@ -121,7 +121,7 @@ void Monster::AddDot(
     if (damagePerTick <= 0)
         return;
 
-    dots_.push_back({casterID, dotType, damagePerTick, now, endAt});
+    dots_.push_back({casterID, dotType, damagePerTick, now + std::chrono::milliseconds(ZoneConst::DOT_TICK_MS), endAt});
 }
 
 int32_t Monster::UpdateEffects(Clock::time_point now)

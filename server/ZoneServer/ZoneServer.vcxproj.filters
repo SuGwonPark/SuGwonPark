@@ -60,7 +60,6 @@
     <ClCompile Include="Template\SkillTemplate.cpp">
       <Filter>Template</Filter>
     </ClCompile>
-    <ClCompile Include="Game\AoiGrid.cpp" />
     <ClCompile Include="Template\LevelTemplate.cpp">
       <Filter>Template</Filter>
     </ClCompile>
@@ -78,6 +77,12 @@
     </ClCompile>
     <ClCompile Include="Template\ItemSubOptionTemplate.cpp">
       <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\AoiGrid.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Inventory.cpp">
+      <Filter>Game</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -119,7 +124,6 @@
     <ClInclude Include="Template\SkillTemplate.h">
       <Filter>Template</Filter>
     </ClInclude>
-    <ClInclude Include="Game\AoiGrid.h" />
     <ClInclude Include="Template\LevelTemplate.h">
       <Filter>Template</Filter>
     </ClInclude>
@@ -137,6 +141,15 @@
     </ClInclude>
     <ClInclude Include="Template\ItemSubOptionTemplate.h">
       <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\ItemUID.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\AoiGrid.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Inventory.h">
+      <Filter>Game</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

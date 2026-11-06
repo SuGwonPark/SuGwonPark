@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "ServerCore/Protocol/VarEnum.h"
+#include "Game/Inventory.h"
 
 class Player
 {
@@ -20,6 +21,8 @@ class Player
     int mp_;
     uint32_t damage_ = 0;
     uint64_t exp_;
+    uint64_t gold_ = 0;
+    Inventory inventory_;
 
     uint64_t sessionID_ = 0;
 
@@ -36,17 +39,18 @@ class Player
     struct SavedState
     {
         uint64_t exp;
+        uint64_t gold;
         float x, y, z;
         int hp, mp;
         bool operator==(const SavedState& o) const
         {
-            return exp == o.exp && x == o.x && y == o.y && z == o.z && hp == o.hp && mp == o.mp;
+            return exp == o.exp && gold == o.gold && x == o.x && y == o.y && z == o.z && hp == o.hp && mp == o.mp;
         }
     };
     SavedState lastSaved_{};
     SavedState CurrentState() const
     {
-        return {exp_, x_, y_, z_, hp_, mp_};
+        return {exp_, gold_, x_, y_, z_, hp_, mp_};
     }
 
   private:
@@ -69,6 +73,7 @@ class Player
         int hp,
         int mp,
         uint64_t exp,
+        uint64_t gold,
         uint16_t level);
 
     void SetPosition(float x, float y, float z);
@@ -84,9 +89,26 @@ class Player
 
     bool AddExp(uint64_t exp);
 
+    uint64_t AddGold(uint64_t amount);
+
     uint64_t GetExp() const
     {
         return exp_;
+    }
+
+    uint64_t GetGold() const
+    {
+        return gold_;
+    }
+
+    Inventory& GetInventory()
+    {
+        return inventory_;
+    }
+    
+    const Inventory& GetInventory() const
+    {
+        return inventory_;
     }
 
     uint64_t GetPlayerID() const

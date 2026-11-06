@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Game\AoiGrid.cpp" />
+    <ClCompile Include="Game\Inventory.cpp" />
     <ClCompile Include="Game\Monster.cpp" />
     <ClCompile Include="Main_Zone.cpp" />
     <ClCompile Include="Game\Player.cpp" />
@@ -42,6 +43,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Game\AoiGrid.h" />
+    <ClInclude Include="Game\Inventory.h" />
+    <ClInclude Include="Game\ItemUID.h" />
     <ClInclude Include="Game\Monster.h" />
     <ClInclude Include="Game\Player.h" />
     <ClInclude Include="Game\Zone.h" />

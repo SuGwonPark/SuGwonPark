@@ -177,3 +177,9 @@ enum class GenderType : uint8_t
     Male = 1,
     Female = 2,
 };
+
+enum class AssetType : uint8_t
+{
+    None = 0,
+    Gold = 1,
+};

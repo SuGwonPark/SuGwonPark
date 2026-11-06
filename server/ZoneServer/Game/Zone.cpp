@@ -105,6 +105,21 @@ void Zone::Enter(PlayerRef player)
     enter.exp = player->GetExp();
     SendTo(player, &enter, sizeof(enter));
 
+    // 1-1) 나에게: 골드 + 인벤토리 정보
+    std::vector<InventorySlotInfo> slots;
+    // slots 정보 불러옴
+    player->GetInventory().CollectAll(slots);
+
+    RES_InventoryPacket inven{};
+    inven.header.id = PKT_S_INVENTORY;
+    inven.header.size = sizeof(inven);
+    inven.gold = player->GetGold();
+    inven.count = static_cast<uint16_t>(slots.size());
+
+    if (SendBufferRef buf = SendBufferManager::MakeList(inven, slots))
+        SendTo(player, buf->Buffer(), static_cast<uint16_t>(sizeof(buf->AllocSize())));
+
+    // 2) 나에게: 주변 플레이어 목록
     const AoiCell cell = CellOf(*player);
     std::vector<AoiCell> cells;
     AoiGrid::NearCells(cell, cells);
@@ -112,7 +127,6 @@ void Zone::Enter(PlayerRef player)
     std::vector<PlayerRef> nearby;
     CollectPlayers(cells, 0, nearby); // 아직 등록 전이라 나는 없음
 
-    // 2) 나에게: 주변 플레이어 목록
     SendSpawns(player, nearby);
 
     // 나에게 몬스터 목록 (AOI 2단계에서 주변만으로 바꿈)
@@ -171,8 +185,8 @@ void Zone::HandleDisconnect(uint64_t sessionID)
         {
             // 캐릭터 정보 저장
             GameDB::Instance().SaveCharacterProgressAsync(
-                playerID, player->GetExp(), player->GetX(), player->GetY(), player->GetZ(), player->GetHp(),
-                player->GetMp(), self->GetZoneID());
+                playerID, player->GetGold(), player->GetExp(), player->GetX(), player->GetY(), player->GetZ(),
+                player->GetHp(), player->GetMp(), self->GetZoneID());
         }
         // 퇴장 처리
         self->Leave(player->GetPlayerID());
@@ -277,8 +291,8 @@ void Zone::SaveAllAndClear(std::function<void()> onDone)
             if (self->portalPending_.count(playerID))
                 continue; // 포탈 저장이 최종 상태
             GameDB::Instance().SaveCharacterProgressAsync(
-                playerID, player->GetExp(), player->GetX(), player->GetY(), player->GetZ(), player->GetHp(),
-                player->GetMp(), self->zoneID_);
+                playerID, player->GetGold(), player->GetExp(), player->GetX(), player->GetY(), player->GetZ(),
+                player->GetHp(), player->GetMp(), self->zoneID_);
         }
         self->players_.clear();
         self->sessionToPlayer_.clear();
@@ -312,7 +326,7 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
         try
         {
             auto row = db.sql(
-                             "SELECT c.charID, c.name, cs.PosX, cs.PosY, cs.PosZ, cs.hp, cs.mp, cs.exp "
+                             "SELECT c.charID, c.name, cs.PosX, cs.PosY, cs.PosZ, cs.hp, cs.mp, cs.exp, cs.gold "
                              "FROM `character` c JOIN `character_state` cs "
                              "ON c.playerID = cs.playerID "
                              "WHERE c.playerID = ? AND c.deleteTime IS NULL")
@@ -327,6 +341,7 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
                 int hp = row[5].get<int>();
                 int mp = row[6].get<int>();
                 uint64_t exp = row[7].get<uint64_t>();
+                uint64_t gold = row[8].get<uint64_t>();
 
                 uint32_t level = LevelTemplate::Instance().LevelFromExp(exp);
 
@@ -334,28 +349,41 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
                 if (!charData)
                 {
                     std::cerr << "[Spawn] 알 수 없는 캐릭터 ID: " << charID << std::endl;
-                    return;
                 }
-
-                GenderType gender = charData->gender;
-                ClassType classType = charData->classType;
-
-                if (!StatTemplate::Instance().Get(classType, level))
+                else if (!StatTemplate::Instance().Get(charData->classType, level))
                 {
-                    std::cerr << "[Spawn] 알 수 없는 classType " << static_cast<int>(classType) << ", playerID "
-                              << playerID << std::endl;
-                    return;
+                    std::cerr << "[Spawn] 알 수 없는 classType " << static_cast<int>(charData->classType)
+                              << ", playerID " << playerID << std::endl;
                 }
+                else
+                {
+                    auto loaded = std::make_shared<Player>(
+                        playerID, name, charID, charData->classType, charData->gender, x, y, z, hp, mp, exp, gold,
+                        level);
+                    loaded->SetSessionID(sessionID);
 
-                player =
-                    std::make_shared<Player>(playerID, name, charID, classType, gender, x, y, z, hp, mp, exp, level);
-                player->SetSessionID(sessionID);
+                    // 인벤토리 (아직 Zone에 넣기 전이라 이 스레드에서 채워도 안전)
+                    mysqlx::SqlResult items =
+                        db.sql("SELECT itemUID, itemID, `count`, slot FROM `item` WHERE playerID = ?")
+                            .bind(playerID)
+                            .execute();
 
-                // 죽은 플레이어 재접속시 살릴지 말지
-                // if (player->IsDead()) {
-                //	if (const ZoneData* zone = ZoneTemplate::Instance().GetData(self->GetZoneID()))
-                // player->Revive(zone->spawnX, zone->spawnY, zone->spawnZ, player->GetMaxHp());
-                //}
+                    for (mysqlx::Row r : items)
+                    {
+                        const uint64_t itemUID = r[0].get<uint64_t>();
+                        const uint32_t itemID = r[1].get<uint32_t>();
+                        const uint32_t count = r[2].get<uint32_t>();
+                        const uint32_t slot = r[3].get<uint32_t>();
+
+                        if (slot > UINT16_MAX ||
+                            !loaded->GetInventory().LoadSlot(static_cast<uint16_t>(slot), itemUID, itemID, count))
+                        {
+                            std::cerr << "[Spawn] 인벤토리 로드 제외 playerID " << playerID << ", itemUID " << itemUID
+                                      << ", itemID " << itemID << ", slot " << slot << ", count " << count << std::endl;
+                        }
+                    }
+                    player = loaded; // 인벤토리까지 다 읽었을 때만 넘김
+                }
             }
         }
         catch (const mysqlx::Error& e)
@@ -722,15 +750,41 @@ void Zone::HandleRevive(const PlayerRef& player)
 void Zone::GiveRewards(const PlayerRef& player, const std::vector<RewardResult>& rewards)
 {
     uint64_t gainedExp = 0;
+    uint64_t gainedGold = 0;
+    std::vector<uint16_t> changedSlots;
+
     for (const auto& r : rewards)
     {
-        if (r.delivery == RewardDeliveryType::Direct && r.type == RewardItemType::Exp)
-        {
-            gainedExp += r.count;
-            continue;
-        }
+        // TODO(4단계 필드 드랍): Drop은 지금은 바로 지급. 필드 드랍이 생기면 바닥에 떨군다
+        const bool giveNow = r.delivery == RewardDeliveryType::Direct || r.delivery == RewardDeliveryType::Drop;
+        if (!giveNow)
+            continue; // Dice / Mail: 파티 / 우편 시스템 생기면
 
-        // 나머지 보상도 추가 해야함
+        switch (r.type)
+        {
+            case RewardItemType::Exp:
+                gainedExp += r.count;
+                break;
+
+            case RewardItemType::Asset:
+                if (static_cast<AssetType>(r.value) == AssetType::Gold)
+                    gainedGold += r.count;
+                else
+                    std::cerr << "[Reward] 아직 처리하지 않는 Asset " << r.value << std::endl;
+                break;
+
+            case RewardItemType::Item: {
+                const uint32_t left = player->GetInventory().Add(r.value, r.value, changedSlots);
+                if (left > 0)
+                {
+                    std::cerr << "[Reward] 인벤토리 가득 참 playerID " << player->GetPlayerID() << ", itemID "
+                              << r.value << ", 못 받은 수량 " << left << std::endl;
+                }
+                break;
+            }
+            default:
+                break;
+        }
     }
 
     if (gainedExp > 0)
@@ -764,6 +818,44 @@ void Zone::GiveRewards(const PlayerRef& player, const std::vector<RewardResult>&
                 pkt.mp = player->GetMp();
                 BroadcastNear(CellOf(*player), &pkt, sizeof(pkt)); // 나 포함
             }
+        }
+
+        if (gainedGold > 0)
+        {
+            const uint64_t addgold = player->AddGold(gainedGold);
+            if (addgold > 0)
+            {
+                RES_GoldPakcet pkt{};
+                pkt.header.id = PKT_S_GOLD;
+                pkt.header.size = sizeof(pkt);
+                pkt.delta = addgold;
+                pkt.totalGold = player->GetGold();
+                SendTo(player, &pkt, sizeof(pkt));
+            }
+        }
+
+        if (!changedSlots.empty())
+        {
+            // 같은 칸이 여러 번 바뀔 수 있음 - 동일 슬롯의 경우 1개만 남기고 삭제
+            std::sort(changedSlots.begin(), changedSlots.end());
+            changedSlots.erase(std::unique(changedSlots.begin(), changedSlots.end()), changedSlots.end());
+
+            const Inventory& inven = player->GetInventory();
+            for (uint16_t slot : changedSlots)
+            {
+                const InventoryItemData& data = inven.GetSlot(slot);
+                GameDB::Instance().SaveItemAsync(player->GetPlayerID(), data.itemUID, data.itemID, data.count, slot);
+            }
+
+            std::vector<InventorySlotInfo> infos;
+            inven.Collect(changedSlots, infos);
+
+            RES_InventoryUpdatePacket pkt{};
+            pkt.header.id = PKT_S_INVENTORY_UPDATE;
+            pkt.header.size = sizeof(pkt);
+            pkt.count = static_cast<uint16_t>(infos.size());
+            if (SendBufferRef buf = SendBufferManager::GetInstance()->MakeList(pkt, infos))
+                SendTo(player, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
         }
     }
 }
@@ -980,7 +1072,7 @@ bool Zone::UpdateMonsterEffects(Monster& monster, std::chrono::steady_clock::tim
 
     if (dotDamage <= 0)
         return false;
-        
+
     BroadcastMonsterHp(monster);
 
     if (monster.GetHp() > 0)
@@ -1057,8 +1149,8 @@ void Zone::AutoSaveTick()
             continue;
 
         GameDB::Instance().SaveCharacterProgressAsync(
-            playerID, player->GetExp(), player->GetX(), player->GetY(), player->GetZ(), player->GetHp(),
-            player->GetMp(), zoneID_);
+            playerID, player->GetGold(), player->GetExp(), player->GetX(), player->GetY(), player->GetZ(),
+            player->GetHp(), player->GetMp(), zoneID_);
     }
 }
 
@@ -1360,8 +1452,8 @@ void Zone::HandlePortal(uint64_t playerID, uint32_t portalID)
     auto self = shared_from_this();
 
     GameDB::Instance().SaveCharacterProgressAsync(
-        playerID, player->GetExp(), portalData->destX, portalData->destY, portalData->destZ, player->GetHp(),
-        player->GetMp(), portalData->destZoneID,
+        playerID, player->GetGold(), player->GetExp(), portalData->destX, portalData->destY, portalData->destZ,
+        player->GetHp(), player->GetMp(), portalData->destZoneID,
         // 콜백 DB 스레드에서 실행
         [self, sessionID, playerID, portalData](bool ok) {
             self->Post([=]() {

@@ -17,9 +17,10 @@ Player::Player(
     int hp,
     int mp,
     uint64_t exp,
+    uint64_t gold,
     uint16_t level)
-    : playerID_(playerID), name_(name), charID_(charID), classType_(classType), gender_(gender), x_(x), y_(y), z_(z), hp_(hp), mp_(mp), exp_(exp),
-      level_(level)
+    : playerID_(playerID), name_(name), charID_(charID), classType_(classType), gender_(gender), x_(x), y_(y), z_(z),
+      hp_(hp), mp_(mp), exp_(exp), gold_(gold), level_(level)
 {
     ApplyStat();
     hp_ = std::min(hp_, maxHp_);
@@ -100,6 +101,15 @@ bool Player::AddExp(uint64_t exp)
     hp_ = maxHp_;
     mp_ = maxMp_;
     return true;
+}
+
+uint64_t Player::AddGold(uint64_t amount)
+{
+    uint64_t space = gold_ >= Game::MAX_GOLD ? 0 : Game::MAX_GOLD - gold_;
+    // min(획득량, 최대 획득 가능량)
+    uint64_t addGold = std::min(amount, space);
+    gold_ += addGold;
+    return addGold;
 }
 
 void Player::SpendSkillCost(SkillCostType type, int32_t cost)

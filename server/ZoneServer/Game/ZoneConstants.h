@@ -34,4 +34,6 @@ inline constexpr int PLAYER_ATTACK_COOLDOWN_MS = 500; //(임시)
 
 inline constexpr float TICK_STAT_INTERVAL_SEC = 5.f; // 틱 측정 출력 주기 (부하 테스트용)
 
+inline constexpr uint8_t ZONE_SERVER_ID = 1; // 존 서버 프로세스 번호 (itemUID용). 여러 대 띄우면 Config로 옮겨야 함
+
 } // namespace ZoneConst
