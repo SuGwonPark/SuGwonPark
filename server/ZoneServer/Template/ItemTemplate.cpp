@@ -117,6 +117,15 @@ bool ItemTemplate::Validate() const
                 ok = false;
             }
         }
+
+        // 장비 1개 옵션 수 = 기본 그룹 줄 수 + 추가 옵션 수 ≤ MAX_ITEM_OPTIONS (패킷 고정 배열 크기)
+        const size_t optionTotal = ItemOptionTemplate::Instance().GroupSize(d.optionGroupID) + d.subOptionCount;
+        if (optionTotal > Game::MAX_ITEM_OPTIONS)
+        {
+            std::cerr << "[Template] Item.csv ItemID " << id << ": 옵션 " << optionTotal << "개가 최대 "
+                      << static_cast<int>(Game::MAX_ITEM_OPTIONS) << "개 초과" << std::endl;
+            ok = false;
+        }
     }
     return ok;
 }

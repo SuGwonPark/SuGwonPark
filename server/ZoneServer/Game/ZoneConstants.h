@@ -16,6 +16,13 @@ inline constexpr float ATTACK_RANGE_TOLERANCE = 1.0f; // 지연으로 인한 위
 inline constexpr float PLAYER_REGEN_INTERVAL_SEC = 1.0f; // 자동 회복 시 간격
 inline constexpr float AOI_CELL_SIZE = 20.f;             // AOI 셀 크기 (20m)
 
+// 아이템 드랍
+inline constexpr int DROP_OWNER_SEC = 30;    // 기여도 1등이 주울 수 있는 시간
+inline constexpr int DROP_DESPAWN_SEC = 120; // 바닥 아이템이 사라지는 시간
+inline constexpr float PICKUP_RANGE = 3.f;   // 줍기 거리
+inline constexpr float DROP_SCATTER = 1.5f;  // 드랍 위치 흩뿌림 반경
+// 아이템 드랍 End
+
 // 자동 저장 플레이어 1/AutoSave_SLICES 만큼 나눠서 저장.
 inline constexpr float AUTOSAVE_TICK_SEC = 10.f;
 inline constexpr uint32_t AUTOSAVE_SLICES = 6;

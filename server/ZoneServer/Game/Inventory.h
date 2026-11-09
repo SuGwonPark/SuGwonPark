@@ -10,6 +10,7 @@ struct InventoryItemData
     uint64_t itemUID = 0;
     uint32_t itemID = 0;
     uint32_t count = 0;
+    std::vector<ItemOptionInfo> options; // 장비만
 
     bool IsEmpty() const
     {
@@ -23,7 +24,8 @@ class Inventory
     static constexpr uint16_t SLOT_COUNT = Game::INVENTORY_SIZE;
 
     // 인벤토리 슬롯 정보 요청
-    bool LoadSlot(uint16_t slot, uint64_t itemUID, uint32_t itemID, uint32_t count);
+    bool LoadSlot(
+        uint16_t slot, uint64_t itemUID, uint32_t itemID, uint32_t count, std::vector<ItemOptionInfo> options);
 
     // 슬롯에 아이템 저장 가능 여부 확인
     bool CanAdd(uint32_t itemID, uint32_t count) const;

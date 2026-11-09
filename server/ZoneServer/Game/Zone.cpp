@@ -54,12 +54,30 @@ static MonsterInfo ToInfo(const Monster& m)
     return info;
 }
 
+static DropInfo ToInfo(const DropItem& d, std::chrono::steady_clock::time_point now)
+{
+    DropInfo info{};
+    info.dropUID = d.dropUID;
+    info.itemID = d.itemID;
+    info.count = d.count;
+    info.x = d.x;
+    info.y = d.y;
+    info.z = d.z;
+    info.ownerID = d.ownerID;
+    info.ownerRemainMs =
+        now < d.ownerUntil
+            ? static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(d.ownerUntil - now).count())
+            : 0;
+
+    return info;
+}
+
 // Flat = 값 그대로, Percent = 시전자 공격력의 만분율
-static float CalcEffectValue(const Player& caster, const SkillEffectData& e)
+static int32_t CalcEffectValue(const Player& caster, const SkillEffectData& e)
 {
     if (e.valueType == ValueType::Percent)
-        return static_cast<float>(caster.GetDamage()) * e.value / BuffMaxPercent;
-    return static_cast<float>(e.value);
+        return static_cast<int32_t>(std::lround(static_cast<double>(caster.GetDamage()) * e.value / BuffMaxPercent));
+    return e.value;
 }
 
 static RES_PlayerStatPacket MakeStatPacket(const Player& player)
@@ -77,7 +95,7 @@ static RES_PlayerStatPacket MakeStatPacket(const Player& player)
 
 Zone::Zone(uint32_t zoneID, uint32_t channelID)
     : zoneID_(zoneID), channelID_(channelID), playerGrid_(ZoneConst::AOI_CELL_SIZE),
-      monsterGrid_(ZoneConst::AOI_CELL_SIZE)
+      monsterGrid_(ZoneConst::AOI_CELL_SIZE), dropGrid_(ZoneConst::AOI_CELL_SIZE)
 {
 }
 
@@ -117,7 +135,7 @@ void Zone::Enter(PlayerRef player)
     inven.count = static_cast<uint16_t>(slots.size());
 
     if (SendBufferRef buf = SendBufferManager::MakeList(inven, slots))
-        SendTo(player, buf->Buffer(), static_cast<uint16_t>(sizeof(buf->AllocSize())));
+        SendTo(player, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
 
     // 2) 나에게: 주변 플레이어 목록
     const AoiCell cell = CellOf(*player);
@@ -131,8 +149,12 @@ void Zone::Enter(PlayerRef player)
 
     // 나에게 몬스터 목록 (AOI 2단계에서 주변만으로 바꿈)
     std::vector<Monster*> nearMonsters;
+    // 주변 몬스터 목록 리스트
     CollectMonsters(cells, nearMonsters);
+    // 주변 몬스터 목록 나에게 전달
     SendMonsterSpawns(player, nearMonsters);
+    // 주변 드롭 아이템 목록 나에게 전달
+    SendDropSpawns(player, cells, std::chrono::steady_clock::now());
 
     // 3) 주변 플레이어에게: 나 등장
     SpawnPlayerTo(player, nearby);
@@ -276,6 +298,18 @@ void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t siz
                 self->HandleSkillCast(it->second, req->skillID, req->targetType, req->targetUID);
                 break;
             }
+            case PKT_C_PICKUP: {
+                if (copied.size() < sizeof(REQ_PickupPacket))
+                    return;
+
+                auto it = self->sessionToPlayer_.find(sessionID);
+                if (it == self->sessionToPlayer_.end())
+                    return;
+
+                auto* req = reinterpret_cast<REQ_PickupPacket*>(copied.data());
+                self->HandlePickup(it->second, req->dropUID);
+                break;
+            }
             default:
                 break;
         }
@@ -362,7 +396,27 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
                         level);
                     loaded->SetSessionID(sessionID);
 
-                    // 인벤토리 (아직 Zone에 넣기 전이라 이 스레드에서 채워도 안전)
+                    // 아이템 옵션 정보
+                    std::unordered_map<uint64_t, std::vector<ItemOptionInfo>> optionsByItem;
+                    mysqlx::SqlResult optRows =
+                        db.sql(
+                              "SELECT o.itemUID, o.statType, o.valueType, o.`value` FROM `item_option` o "
+                              "JOIN `item` i ON i.itemUID = o.itemUID "
+                              "WHERE i.playerID = ? ORDER BY o.itemUID, o.idx")
+                            .bind(playerID)
+                            .execute();
+
+                    for (mysqlx::Row r : optRows)
+                    {
+                        uint64_t itemUID = r[0].get<uint64_t>();
+                        StatType statType = static_cast<StatType>(r[1].get<uint32_t>());
+                        ValueType valueType = static_cast<ValueType>(r[2].get<uint32_t>());
+                        int32_t value = r[3].get<int32_t>();
+
+                        optionsByItem[itemUID].push_back({statType, valueType, value});
+                    }
+
+                    // 2) 아이템
                     mysqlx::SqlResult items =
                         db.sql("SELECT itemUID, itemID, `count`, slot FROM `item` WHERE playerID = ?")
                             .bind(playerID)
@@ -373,15 +427,22 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
                         const uint64_t itemUID = r[0].get<uint64_t>();
                         const uint32_t itemID = r[1].get<uint32_t>();
                         const uint32_t count = r[2].get<uint32_t>();
-                        const uint32_t slot = r[3].get<uint32_t>();
+                        const uint16_t slot = static_cast<uint16_t>(r[3].get<uint32_t>());
 
-                        if (slot > UINT16_MAX ||
-                            !loaded->GetInventory().LoadSlot(static_cast<uint16_t>(slot), itemUID, itemID, count))
+                        std::vector<ItemOptionInfo> itemOptions;
+                        auto it = optionsByItem.find(itemUID);
+                        if (it != optionsByItem.end())
+                            itemOptions = std::move(it->second);
+
+                        // 인벤토리 슬롯에 아이템 저장
+                        if (!loaded->GetInventory().LoadSlot(slot, itemUID, itemID, count, std::move(itemOptions)))
                         {
+
                             std::cerr << "[Spawn] 인벤토리 로드 제외 playerID " << playerID << ", itemUID " << itemUID
                                       << ", itemID " << itemID << ", slot " << slot << ", count " << count << std::endl;
                         }
                     }
+
                     player = loaded; // 인벤토리까지 다 읽었을 때만 넘김
                 }
             }
@@ -466,6 +527,9 @@ void Zone::Update()
 
         UpdateMonster(*monster, dt, now);
     }
+
+    // 드롭 아이템 소멸
+    UpdateDrops(now);
 
     // 플레이어 자동 회복 (1초마다 진행)
     regenTimer_ += dt;
@@ -755,9 +819,8 @@ void Zone::GiveRewards(const PlayerRef& player, const std::vector<RewardResult>&
 
     for (const auto& r : rewards)
     {
-        // TODO(4단계 필드 드랍): Drop은 지금은 바로 지급. 필드 드랍이 생기면 바닥에 떨군다
-        const bool giveNow = r.delivery == RewardDeliveryType::Direct || r.delivery == RewardDeliveryType::Drop;
-        if (!giveNow)
+        // Drop 아이템은 DistributeRewards에서 바닥에 떨굼. 여기 오는 Drop은 골드/경험치 → 바로 지급
+        if (r.delivery != RewardDeliveryType::Direct && r.delivery != RewardDeliveryType::Drop)
             continue; // Dice / Mail: 파티 / 우편 시스템 생기면
 
         switch (r.type)
@@ -767,14 +830,14 @@ void Zone::GiveRewards(const PlayerRef& player, const std::vector<RewardResult>&
                 break;
 
             case RewardItemType::Asset:
-                if (static_cast<AssetType>(r.value) == AssetType::Gold)
+                if (r.value == static_cast<uint32_t>(AssetType::Gold))
                     gainedGold += r.count;
                 else
                     std::cerr << "[Reward] 아직 처리하지 않는 Asset " << r.value << std::endl;
                 break;
 
             case RewardItemType::Item: {
-                const uint32_t left = player->GetInventory().Add(r.value, r.value, changedSlots);
+                const uint32_t left = player->GetInventory().Add(r.value, r.count, changedSlots);
                 if (left > 0)
                 {
                     std::cerr << "[Reward] 인벤토리 가득 참 playerID " << player->GetPlayerID() << ", itemID "
@@ -819,45 +882,24 @@ void Zone::GiveRewards(const PlayerRef& player, const std::vector<RewardResult>&
                 BroadcastNear(CellOf(*player), &pkt, sizeof(pkt)); // 나 포함
             }
         }
+    }
 
-        if (gainedGold > 0)
+    if (gainedGold > 0)
+    {
+        const uint64_t addgold = player->AddGold(gainedGold);
+        if (addgold > 0)
         {
-            const uint64_t addgold = player->AddGold(gainedGold);
-            if (addgold > 0)
-            {
-                RES_GoldPakcet pkt{};
-                pkt.header.id = PKT_S_GOLD;
-                pkt.header.size = sizeof(pkt);
-                pkt.delta = addgold;
-                pkt.totalGold = player->GetGold();
-                SendTo(player, &pkt, sizeof(pkt));
-            }
-        }
-
-        if (!changedSlots.empty())
-        {
-            // 같은 칸이 여러 번 바뀔 수 있음 - 동일 슬롯의 경우 1개만 남기고 삭제
-            std::sort(changedSlots.begin(), changedSlots.end());
-            changedSlots.erase(std::unique(changedSlots.begin(), changedSlots.end()), changedSlots.end());
-
-            const Inventory& inven = player->GetInventory();
-            for (uint16_t slot : changedSlots)
-            {
-                const InventoryItemData& data = inven.GetSlot(slot);
-                GameDB::Instance().SaveItemAsync(player->GetPlayerID(), data.itemUID, data.itemID, data.count, slot);
-            }
-
-            std::vector<InventorySlotInfo> infos;
-            inven.Collect(changedSlots, infos);
-
-            RES_InventoryUpdatePacket pkt{};
-            pkt.header.id = PKT_S_INVENTORY_UPDATE;
+            RES_GoldPacket pkt{};
+            pkt.header.id = PKT_S_GOLD;
             pkt.header.size = sizeof(pkt);
-            pkt.count = static_cast<uint16_t>(infos.size());
-            if (SendBufferRef buf = SendBufferManager::GetInstance()->MakeList(pkt, infos))
-                SendTo(player, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+            pkt.delta = static_cast<int64_t>(addgold);
+            pkt.totalGold = player->GetGold();
+            SendTo(player, &pkt, sizeof(pkt));
         }
     }
+
+    // 아이템 지급
+    CommitInventoryChange(player, changedSlots);
 }
 
 void Zone::DistributeRewards(const Monster& monster)
@@ -889,7 +931,18 @@ void Zone::DistributeRewards(const Monster& monster)
 
         std::vector<RewardResult> rewards;
         RewardTemplate::Instance().Roll(monster.GetData().rewardGroupID, rewards);
-        GiveRewards(player, rewards);
+
+        const auto now = std::chrono::steady_clock::now();
+        std::vector<RewardResult> direct;
+        for (const RewardResult& r : rewards)
+        {
+            if (r.delivery == RewardDeliveryType::Drop && r.type == RewardItemType::Item)
+                SpawnDrop(r.value, r.count, monster.GetX(), monster.GetY(), monster.GetZ(), player->GetPlayerID(), now);
+            else
+                direct.push_back(r);
+        }
+
+        GiveRewards(player, direct);
         return;
     }
 }
@@ -1051,7 +1104,7 @@ int32_t Zone::ApplySkillEffect(
             break;
             case SkillEffectType::DotDamage: {
                 monster.AddDot(
-                    caster->GetPlayerID(), effect.dotType, effect.value, now,
+                    caster->GetPlayerID(), effect.dotType, CalcEffectValue(*caster, effect), now,
                     now + std::chrono::milliseconds(effect.durationMs));
             }
         }
@@ -1253,7 +1306,7 @@ void Zone::DespawnPlayerTo(uint64_t playerID, const std::vector<PlayerRef>& view
     MulticastTo(viewers, &pkt, sizeof(pkt));
 }
 
-// cell 이동 시 가시 처리 (등장/퇴장)
+// cell 이동 시 가시 처리 (등장/퇴장) move:이동 전 위치, to : 이동 후 위치
 void Zone::OnPlayerCellChanged(const PlayerRef& player, AoiCell from, AoiCell to)
 {
     if (from == to)
@@ -1299,6 +1352,10 @@ void Zone::OnPlayerCellChanged(const PlayerRef& player, AoiCell from, AoiCell to
     //  범위 밖의 몬스터 제거
     CollectMonsters(leftCells, monstersOut);
     DespawnMonstersTo(player, monstersOut);
+
+    // 드롭 아이템 :: 새로 보이는 칸 등장, 안보이게 된 칸 제거
+    SendDropSpawns(player, enteredCells, std::chrono::steady_clock::now());
+    SendDropDespawns(player, leftCells);
 }
 
 void Zone::CollectMonsters(const std::vector<AoiCell>& cells, std::vector<Monster*>& out) const
@@ -1387,6 +1444,185 @@ bool Zone::MoveMonsterToward(Monster& monster, float tx, float ty, float tz, flo
 
     OnMonsterCellChanged(monster, from, CellOf(monster));
     return true;
+}
+
+void Zone::SpawnDrop(
+    uint32_t itemID,
+    uint32_t count,
+    float x,
+    float y,
+    float z,
+    uint64_t ownerID,
+    std::chrono::steady_clock::time_point now)
+{
+    DropItem d{};
+    d.dropUID = ++nextDropUID_;
+    d.itemID = itemID;
+    d.count = count;
+    d.x = x + Random::Float(-ZoneConst::DROP_SCATTER, ZoneConst::DROP_SCATTER);
+    d.y = y;
+    d.z = z + Random::Float(-ZoneConst::DROP_SCATTER, ZoneConst::DROP_SCATTER);
+    d.ownerID = ownerID;
+    d.ownerUntil = now + std::chrono::seconds(ZoneConst::DROP_OWNER_SEC);
+    d.despawnAt = now + std::chrono::seconds(ZoneConst::DROP_DESPAWN_SEC);
+
+    const AoiCell cell = dropGrid_.ToCell(d.x, d.z);
+    // 드롭 정보 저장
+    dropGrid_.Add(d.dropUID, cell);
+    drops_.emplace(d.dropUID, d);
+
+    RES_DropSpawnPacket pkt{};
+    pkt.header.id = PKT_S_DROP_SPAWN;
+    pkt.count = 1;
+    std::vector<DropInfo> one{ToInfo(d, now)};
+
+    // 범위내 모든 유저에 전달
+    if (SendBufferRef buf = SendBufferManager::MakeList(pkt, one))
+        BroadcastNear(cell, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+}
+
+// 드롭 아이템 삭제 정보 근처 유저들에게 전달
+void Zone::RemoveDrop(uint64_t dropUID)
+{
+    auto it = drops_.find(dropUID);
+    if (it == drops_.end())
+        return;
+
+    const AoiCell cell = dropGrid_.ToCell(it->second.x, it->second.z);
+    // 실제로 데이터에서 삭제
+    dropGrid_.Remove(dropUID, cell);
+    drops_.erase(dropUID);
+
+    // 아이템 근처 유저에 디스폰 알리기 위해
+    RES_DropDespawnPacket pkt{};
+    pkt.header.id = PKT_S_DROP_DESPAWN;
+    pkt.header.size = sizeof(pkt);
+    pkt.dropUID = dropUID;
+    BroadcastNear(cell, &pkt, sizeof(pkt));
+}
+
+void Zone::UpdateDrops(std::chrono::steady_clock::time_point now)
+{
+    std::vector<uint64_t> expired;
+    for (const auto& [uid, d] : drops_)
+    {
+        if (now >= d.despawnAt)
+            expired.push_back(uid);
+    }
+
+    for (uint64_t uid : expired)
+    {
+        RemoveDrop(uid);
+    }
+}
+
+// 드롭 아이템 정보 전달
+void Zone::SendDropSpawns(
+    const PlayerRef& to, const std::vector<AoiCell>& cells, std::chrono::steady_clock::time_point now)
+{
+    std::vector<DropInfo> infos;
+    for (const AoiCell& c : cells)
+    {
+        dropGrid_.ForEachInCell(c, [&](uint64_t uid) {
+            auto it = drops_.find(uid);
+            if (it != drops_.end())
+                infos.push_back(ToInfo(it->second, now));
+        });
+    }
+
+    if (infos.empty())
+        return;
+
+    RES_DropSpawnPacket pkt{};
+    pkt.header.id = PKT_S_DROP_SPAWN;
+    pkt.count = static_cast<uint16_t>(infos.size());
+    if (SendBufferRef buf = SendBufferManager::MakeList(pkt, infos))
+        SendTo(to, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+}
+
+void Zone::SendDropDespawns(const PlayerRef& to, const std::vector<AoiCell>& cells)
+{
+    for (const AoiCell c : cells)
+    {
+        dropGrid_.ForEachInCell(c, [&](uint64_t uid) {
+            RES_DropDespawnPacket pkt{};
+            pkt.header.id = PKT_S_DROP_DESPAWN;
+            pkt.header.size = sizeof(pkt);
+            pkt.dropUID = uid;
+            SendTo(to, &pkt, sizeof(pkt));
+        });
+    }
+}
+
+// 드롭된 아이템 획득
+void Zone::HandlePickup(const PlayerRef& player, uint64_t dropUID)
+{
+    auto fail = [&](PickupFailReason reason) {
+        RES_PickupFailPacket pkt{};
+        pkt.header.id = PKT_S_PICKUP_FAIL;
+        pkt.header.size = sizeof(pkt);
+        pkt.dropUID = dropUID;
+        pkt.reason = reason;
+        SendTo(player, &pkt, sizeof(pkt));
+    };
+
+    if (portalPending_.count(player->GetPlayerID()))
+        return;
+    if (player->IsDead())
+        return fail(PickupFailReason::Dead);
+
+    auto it = drops_.find(dropUID);
+    if (it == drops_.end())
+        return fail(PickupFailReason::NotFound);
+
+    const DropItem& d = it->second;
+
+    const float range = ZoneConst::PICKUP_RANGE + ZoneConst::ATTACK_RANGE_TOLERANCE;
+    const float dx = d.x - player->GetX(), dy = d.y - player->GetY(), dz = d.z - player->GetZ();
+    if (IsOutOfRange(dx, dy, dz, range))
+        return fail(PickupFailReason::TooFar);
+
+    const auto now = std::chrono::steady_clock::now();
+    // 본인만 주울수 있는 시간
+    if (d.ownerID != 0 && d.ownerID != player->GetPlayerID() && now < d.ownerUntil)
+        return fail(PickupFailReason::NotOwner);
+
+    // 아이템 획득 공간 부족
+    if (!player->GetInventory().CanAdd(d.itemID, d.count))
+        return fail(PickupFailReason::InventoryFull);
+
+    std::vector<uint16_t> changedSlots;
+    player->GetInventory().Add(d.itemID, d.count, changedSlots);
+    CommitInventoryChange(player, changedSlots);
+
+    RemoveDrop(dropUID);
+}
+
+void Zone::CommitInventoryChange(const PlayerRef& player, std::vector<uint16_t>& changedSlots)
+{
+    if (changedSlots.empty())
+        return;
+    // 같은 칸이 여러 번 바뀔 수 있음 - 동일 슬롯의 경우 1개만 남기고 삭제
+    std::sort(changedSlots.begin(), changedSlots.end());
+    changedSlots.erase(std::unique(changedSlots.begin(), changedSlots.end()), changedSlots.end());
+
+    const Inventory& inven = player->GetInventory();
+    for (uint16_t slot : changedSlots)
+    {
+        const InventoryItemData& data = inven.GetSlot(slot);
+        GameDB::Instance().SaveItemAsync(
+            player->GetPlayerID(), data.itemUID, data.itemID, data.count, slot, data.options);
+    }
+
+    std::vector<InventorySlotInfo> infos;
+    inven.Collect(changedSlots, infos);
+
+    RES_InventoryUpdatePacket pkt{};
+    pkt.header.id = PKT_S_INVENTORY_UPDATE;
+    pkt.header.size = sizeof(pkt);
+    pkt.count = static_cast<uint16_t>(infos.size());
+    if (SendBufferRef buf = SendBufferManager::GetInstance()->MakeList(pkt, infos))
+        SendTo(player, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
 }
 
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z)

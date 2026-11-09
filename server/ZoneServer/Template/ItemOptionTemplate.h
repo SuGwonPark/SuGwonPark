@@ -3,14 +3,7 @@
 #include <unordered_map>
 #include <vector>
 #include "ServerCore/Protocol/VarEnum.h"
-
-// 굴린 옵션 1줄 = 장비 1개에 실제로 붙는 값 (나중에 DB item_option에 저장)
-struct RolledOption
-{
-    StatType statType;
-    ValueType valueType;
-    int32_t value;
-};
+#include "ServerCore/Protocol/ProtocolTypes.h"
 
 //  - 장비 기본 옵션. 그룹의 모든 줄이 붙고 값만 Min~Max에서 굴린다
 struct ItemOptionData
@@ -39,8 +32,13 @@ class ItemOptionTemplate
         return groups_.count(groupID) > 0;
     }
 
+    size_t GroupSize(uint32_t groupID) const {
+        auto it = groups_.find(groupID);
+        return it == groups_.end() ? 0 : it->second.size();
+    }
+
     // 그룹의 모든 옵션을 굴려서 out 뒤에 추가
-    void GetGroup(uint32_t groupID, std::vector<RolledOption>& out) const;
+    void GetGroup(uint32_t groupID, std::vector<ItemOptionInfo>& out) const;
 
   private:
     std::unordered_map<uint32_t, std::vector<ItemOptionData>> groups_; 

@@ -2,8 +2,36 @@
 #include "Game/Inventory.h"
 #include "Game/ItemUID.h"
 #include "Template/ItemTemplate.h"
+#include "Template/ItemOptionTemplate.h"
+#include "Template/ItemSubOptionTemplate.h"
 
-bool Inventory::LoadSlot(uint16_t slot, uint64_t itemUID, uint32_t itemID, uint32_t count)
+// 새 장비 옵션 굴리기: 기본 옵션(그룹 전체) + 추가 옵션 (subOptionCount) 랜덤
+static void RollOptions(const ItemData& data, std::vector<ItemOptionInfo>& out)
+{
+    if (data.optionGroupID != 0)
+        ItemOptionTemplate::Instance().GetGroup(data.optionGroupID, out);
+    if (data.subOptionGroupID != 0)
+        ItemSubOptionTemplate::Instance().Roll(data.subOptionGroupID, data.subOptionCount, out);
+}
+
+static InventorySlotInfo ToSlotInfo(uint16_t slot, const InventoryItemData& s)
+{
+    InventorySlotInfo info{};
+    info.itemUID = s.itemUID;
+    info.itemID = s.itemID;
+    info.slot = slot;
+    info.count = s.count;
+    info.optionCount = static_cast<uint8_t>(std::min<size_t>(s.options.size(), Game::MAX_ITEM_OPTIONS));
+    for (uint8_t i = 0; i < info.optionCount; ++i)
+    {
+        info.options[i] = s.options[i];
+    }
+
+    return info;
+}
+
+bool Inventory::LoadSlot(
+    uint16_t slot, uint64_t itemUID, uint32_t itemID, uint32_t count, std::vector<ItemOptionInfo> options)
 {
     if (slot >= SLOT_COUNT || !slots_[slot].IsEmpty())
         return false;
@@ -12,7 +40,10 @@ bool Inventory::LoadSlot(uint16_t slot, uint64_t itemUID, uint32_t itemID, uint3
     if (!data || count == 0 || count > data->maxStack)
         return false;
 
-    slots_[slot] = {itemUID, itemID, count};
+    if (options.size() > Game::MAX_ITEM_OPTIONS)
+        return false;
+
+    slots_[slot] = {itemUID, itemID, count, std::move(options)};
     return true;
 }
 
@@ -66,7 +97,12 @@ uint32_t Inventory::Add(uint32_t itemID, uint32_t count, std::vector<uint16_t>& 
             continue;
 
         const uint32_t put = std::min(count, data->maxStack);
-        s = {ItemUID::Next(), itemID, put};
+        s = {ItemUID::Next(), itemID, put, {}};
+
+        // 장비 아이템만
+        if (data->itemType == ItemType::Equip)
+            RollOptions(*data, s.options);
+
         count -= put;
         changed.push_back(i);
     }
@@ -81,7 +117,7 @@ void Inventory::CollectAll(std::vector<InventorySlotInfo>& out) const
         const InventoryItemData& s = slots_[i];
         if (!s.IsEmpty())
         {
-            out.push_back({i, s.itemUID, s.itemID, s.count});
+            out.push_back(ToSlotInfo(i, s));
         }
     }
 }
@@ -89,9 +125,9 @@ void Inventory::CollectAll(std::vector<InventorySlotInfo>& out) const
 // 원하는 인벤 슬롯 정보만 받아옴
 void Inventory::Collect(const std::vector<uint16_t>& slots, std::vector<InventorySlotInfo>& out) const
 {
-    for (uint16_t i :slots)
+    for (uint16_t i : slots)
     {
         const InventoryItemData& s = slots_[i];
-        out.push_back({i, s.itemUID, s.itemID, s.count});
+        out.push_back(ToSlotInfo(i, s));
     }
 }

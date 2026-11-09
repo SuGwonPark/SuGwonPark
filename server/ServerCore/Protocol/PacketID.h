@@ -59,4 +59,8 @@ enum PacketID : uint16_t
     PKT_S_INVENTORY = 7003,         // 인벤토리
     PKT_S_INVENTORY_UPDATE = 7004,  // 바뀐 칸
     PKT_S_GOLD = 7005, // 골드 변화
+    PKT_S_DROP_SPAWN = 7006,        // 바닥 아이템 등장 (목록)
+    PKT_S_DROP_DESPAWN = 7007,      // 바닥 아이템 사라짐 (주움 / 시간 지남 / 시야 밖)
+    PKT_C_PICKUP = 7008,            // 줍기 요청
+    PKT_S_PICKUP_FAIL = 7009,       // 줍기 실패 (나에게만)
 };

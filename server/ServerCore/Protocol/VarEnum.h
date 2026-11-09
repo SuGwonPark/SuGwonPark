@@ -80,18 +80,6 @@ enum class RangeType : uint8_t
     TargetArea = 3, // 대상 위치 중심 원형 (Range 안에서, Radius)
 };
 
-// 스킬 실패 이유 (시전자에게만 전송)
-enum class SkillFailReason : uint8_t
-{
-    None = 0,
-    InvalidSkill = 1,  // 없는 스킬
-    Cooldown = 2,      // 쿨타임 중
-    NotEnoughCost = 3, // MP 부족
-    InvalidTarget = 4, // 대상 없음 / 죽음 / 귀환 중
-    OutOfRange = 5,    // 사거리 밖
-    Dead = 6,          // 시전자가 사망 상태
-};
-
 enum class SkillCostType : uint8_t
 {
     None = 0,
@@ -182,4 +170,43 @@ enum class AssetType : uint8_t
 {
     None = 0,
     Gold = 1,
+};
+
+
+// ==================== Fail Enum =============================
+// 스킬 실패 이유 (시전자에게만 전송)
+enum class SkillFailReason : uint8_t
+{
+    None = 0,
+    InvalidSkill = 1,  // 없는 스킬
+    Cooldown = 2,      // 쿨타임 중
+    NotEnoughCost = 3, // MP 부족
+    InvalidTarget = 4, // 대상 없음 / 죽음 / 귀환 중
+    OutOfRange = 5,    // 사거리 밖
+    Dead = 6,          // 시전자가 사망 상태
+};
+
+// 줍기 실패 이유 (주운 사람에게만)
+enum class PickupFailReason : uint8_t
+{
+    None = 0,
+    NotFound = 1,      // 없음 (이미 누가 주웠거나 사라짐)
+    TooFar = 2,        // 거리 밖
+    NotOwner = 3,      // 우선권 시간 중 다른 사람 것
+    InventoryFull = 4, // 인벤토리에 다 안 들어감
+    Dead = 5,          // 죽은 상태
+};
+
+
+// 아이템 사용 실패 이유 (사용한 사람에게만)
+enum class UseItemFailReason : uint8_t
+{
+    None = 0,
+    InvalidItem = 1, // 빈 칸 / itemUID 불일치 / 소모품 아님
+    Cooldown = 2,
+    LevelTooLow = 3,
+    WrongClass = 4,
+    Dead = 5,      // 죽은 상태에서 회복 아이템
+    NotDead = 6,   // 살아 있는데 부활 아이템
+    NotUsable = 7, // 아직 처리하지 않는 효과 (Buff 등)
 };

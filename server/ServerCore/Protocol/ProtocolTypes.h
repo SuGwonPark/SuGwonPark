@@ -19,6 +19,8 @@ namespace Game
 inline constexpr int MAX_CHARACTER_SLOT = 6;    // 계정당 캐릭터 슬롯 수
 inline constexpr uint16_t INVENTORY_SIZE = 100; // 인벤토리 칸 수
 inline constexpr uint64_t MAX_GOLD = 9'999'999'999;
+
+inline constexpr uint8_t MAX_ITEM_OPTIONS = 6; // 장비 1개 옵션 최대 수 (기본 + 추가)
 } // namespace Game
 
 // 아래 구조체는 패킷 바이트에 그대로 복사되므로 반드시 1바이트 정렬
@@ -63,12 +65,31 @@ struct SkillHit
     int32_t targetHp; // 맞은 뒤 남은 HP
 };
 
+struct DropInfo
+{ 
+    uint64_t dropUID;
+    uint32_t itemID;
+    uint32_t count;
+    float x, y, z;
+    uint64_t ownerID;       // 우선권 가진 플레이어 (0 = 누구나)
+    uint32_t ownerRemainMs; // 우선권 남은 시간 (0이면 누구나 주울 수 있음)
+};
+
+struct ItemOptionInfo
+{
+    StatType statType;
+    ValueType valueType;
+    int32_t value;
+};
+
 struct InventorySlotInfo
 {
     uint16_t slot;
     uint64_t itemUID;
     uint32_t itemID;
     uint32_t count;
+    uint8_t optionCount;                            // 장비만 1 이상
+    ItemOptionInfo options[Game::MAX_ITEM_OPTIONS]; // 앞에서 optionCount개만 유효
 };
 
 #pragma pack(pop)

@@ -37,22 +37,54 @@ void GameDB::SaveCharacterProgressAsync(
         });
 }
 
-void GameDB::SaveItemAsync(uint64_t playerID, uint64_t itemUID, uint32_t itemID, uint32_t count, uint16_t slot)
+void GameDB::SaveItemAsync(
+    uint64_t playerID,
+    uint64_t itemUID,
+    uint32_t itemID,
+    uint32_t count,
+    uint16_t slot,
+    const std::vector<ItemOptionInfo>& options)
 {
-    GameDB::PushTask(playerID, [playerID, itemUID, itemID, count, slot](mysqlx::Session& db) {
+    GameDB::PushTask(playerID, [playerID, itemUID, itemID, count, slot, options](mysqlx::Session& db) {
         try
         {
+            db.startTransaction();
             db.sql(
                   "INSERT INTO `item` (itemUID, playerID, itemID, `count`, slot) VALUES (?, ?, ?, ?, ?) AS n "
                   "ON DUPLICATE KEY UPDATE `count` = n.`count`, slot = n.slot ")
                 .bind(itemUID, playerID, itemID, count, slot)
                 .execute();
+
+            if (!options.empty())
+            {
+                auto insert = db.getSchema("game")
+                                  .getTable("item_option")
+                                  .insert("itemUID", "idx", "statType", "valueType", "value");
+
+                for (size_t i = 0; i < options.size(); ++i)
+                {
+                    insert.values(
+                        itemUID, static_cast<uint32_t>(i), static_cast<uint32_t>(options[i].statType),
+                        static_cast<uint32_t>(options[i].valueType), options[i].value);
+                }
+
+                // 옵션 데이터를 한번에 담아 DB에 저장
+                insert.execute();
+            }
+
+            db.commit();
         }
         catch (const mysqlx::Error& e)
         {
+            try
+            {
+                db.rollback();
+            }
+            catch (...)
+            {
+            }
             std::cerr << "[SaveItem] playerID " << playerID << ", itemUID " << itemUID << ": " << e.what() << std::endl;
             throw;
         }
     });
 }
-

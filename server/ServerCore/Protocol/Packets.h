@@ -250,11 +250,37 @@ struct RES_InventoryUpdatePacket
     uint16_t count;
 };
 
-struct RES_GoldPakcet
+struct RES_GoldPacket
 {
     PacketHeader header;
-    int64_t delta;  // 변화량
-    uint64_t totalGold;     // 보유량
+    int64_t delta;      // 변화량
+    uint64_t totalGold; // 보유량
+};
+
+// packet + DropInfo[count]
+struct RES_DropSpawnPacket
+{
+    PacketHeader header;
+    uint16_t count;
+};
+
+struct RES_DropDespawnPacket
+{
+    PacketHeader header;
+    uint64_t dropUID;
+};
+
+struct REQ_PickupPacket
+{
+    PacketHeader header;
+    uint64_t dropUID;
+};
+
+struct RES_PickupFailPacket
+{
+    PacketHeader header;
+    uint64_t dropUID;
+    PickupFailReason reason;
 };
 
 #pragma pack(pop)

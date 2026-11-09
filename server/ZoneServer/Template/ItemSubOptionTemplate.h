@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
-#include "Template/ItemOptionTemplate.h"
+#include "ServerCore/Protocol/ProtocolTypes.h"
 
 // Data/ItemSubOption.csv : ID,GroupID,StatType,ValueType,MinValue,MaxValue,Rate
 //  - 장비 추가 옵션. 그룹에서 Rate 가중치로 SubOptionCount개를 "중복 없이" 뽑는다
@@ -37,7 +37,7 @@ class ItemSubOptionTemplate
     }
 
     // count개를 중복 없이 뽑아서 out 뒤에 추가
-    void Roll(uint32_t groupID, uint32_t count, std::vector<RolledOption>& out) const;
+    void Roll(uint32_t groupID, uint32_t count, std::vector<ItemOptionInfo>& out) const;
 
   private:
     struct Group

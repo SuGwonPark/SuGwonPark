@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <iostream>
 #include <cstring>
 #include <map>
@@ -20,6 +20,7 @@
 #include <future>
 #include <sodium.h>
 #include <boost/asio.hpp>
+#include <algorithm>
 
 namespace net = boost::asio;
 using tcp = net::ip::tcp;

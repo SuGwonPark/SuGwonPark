@@ -30,7 +30,7 @@ bool ItemOptionTemplate::Load()
     });
 }
 
-void ItemOptionTemplate::GetGroup(uint32_t groupID, std::vector<RolledOption>& out) const
+void ItemOptionTemplate::GetGroup(uint32_t groupID, std::vector<ItemOptionInfo>& out) const
 {
     auto it = groups_.find(groupID);
     if (it == groups_.end())

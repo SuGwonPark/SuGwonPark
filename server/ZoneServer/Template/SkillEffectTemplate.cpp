@@ -18,7 +18,6 @@ bool SkillEffectTemplate::Load()
         d.value = r.I32("Value");
         d.durationMs = r.I32("DurationMs");
 
-        
         if (d.groupID == 0)
             throw std::invalid_argument("GroupID는 1 이상");
         if (d.value <= 0)
@@ -30,7 +29,7 @@ bool SkillEffectTemplate::Load()
         {
             // 버프/ 디버프는 StatType으로 세팅
             case SkillEffectType::Buff:
-            case SkillEffectType::Debuff: 
+            case SkillEffectType::Debuff:
                 d.statType = ParseCsvEnum<StatType>(r.Str("EffectSubType"), "StatType", r.U32("ID"));
                 if (d.statType == StatType::None)
                     throw std::invalid_argument("StatType이 필요");
@@ -46,8 +45,8 @@ bool SkillEffectTemplate::Load()
                     throw std::invalid_argument(
                         "DotDamage는 DurationMs가 " + std::to_string(ZoneConst::DOT_TICK_MS) + " 이상");
                 break;
-                
-                default:
+
+            default:
                 if (r.Str("EffectSubType") != "None")
                     throw std::invalid_argument("즉시 효과는 EffectSubType이 None이어야 함");
                 if (d.durationMs != 0)
@@ -59,7 +58,7 @@ bool SkillEffectTemplate::Load()
         const bool heal = d.effectType == SkillEffectType::HealHp || d.effectType == SkillEffectType::HealMp ||
                           d.effectType == SkillEffectType::Revive;
 
-        if (d.valueType == ValueType::Percent && d.value > BuffMaxPercent)
+        if (heal && d.valueType == ValueType::Percent && d.value > BuffMaxPercent)
             throw std::invalid_argument("회복/부활 Percent는 " + std::to_string(BuffMaxPercent) + "(100%) 이하");
 
         byGroup_[d.groupID].push_back(d);

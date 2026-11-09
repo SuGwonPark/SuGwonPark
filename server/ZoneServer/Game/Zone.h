@@ -3,7 +3,6 @@
 #include "ServerCore/Protocol/ProtocolTypes.h"
 #include "Game/AoiGrid.h"
 
-
 class Player;
 using PlayerRef = std::shared_ptr<Player>;
 
@@ -12,6 +11,17 @@ using MonsterRef = std::shared_ptr<Monster>;
 
 struct RewardResult;
 struct SkillEffectData;
+
+struct DropItem
+{
+    uint64_t dropUID;
+    uint32_t itemID;
+    uint32_t count;
+    float x, y, z;
+    uint64_t ownerID;                                 // 우선권 (0 = 누구나)
+    std::chrono::steady_clock::time_point ownerUntil; // 이 시각 전까지는 ownerID만 주울 수 있음
+    std::chrono::steady_clock::time_point despawnAt;  // 이 시각에 사라짐
+};
 
 class Zone : public JobSerializer<Zone>
 {
@@ -97,11 +107,13 @@ class Zone : public JobSerializer<Zone>
     void SendSkillFail(const PlayerRef& caster, uint32_t skillID, SkillFailReason reason);
 
     // 몬스터 1마리 효과 적용 (데미지, 회복, 버프, 디버프 등)
-    int32_t ApplySkillEffect(const PlayerRef& caster, const std::vector<SkillEffectData>& effects, Monster& monster, std::chrono::steady_clock::time_point now);
+    int32_t ApplySkillEffect(
+        const PlayerRef& caster,
+        const std::vector<SkillEffectData>& effects,
+        Monster& monster,
+        std::chrono::steady_clock::time_point now);
     // 몬스터 지속 효과 (디버프 도트) 처리
     bool UpdateMonsterEffects(Monster& monster, std::chrono::steady_clock::time_point now);
-
-
 
     void CollectMonstersInRadius(
         float cx, float cy, float cz, float radius, size_t maxCount, std::vector<Monster*>& out) const;
@@ -113,7 +125,6 @@ class Zone : public JobSerializer<Zone>
 
     // 부하 테스트용
     void RecordTickStat(std::chrono::steady_clock::time_point tickStart, double gapMs, float dt);
-
 
     // AOI (시야)
     AoiCell CellOf(const Player& player) const;
@@ -132,11 +143,36 @@ class Zone : public JobSerializer<Zone>
     // AOI (몬스터)
     AoiCell CellOf(const Monster& monster) const;
     void CollectMonsters(const std::vector<AoiCell>& cells, std::vector<Monster*>& out) const;
-    void SendMonsterSpawns(const PlayerRef& to, const std::vector<Monster*>& list);  
-    void DespawnMonstersTo(const PlayerRef& to, const std::vector<Monster*>& list);  // list → to 에게서 퇴장
+    void SendMonsterSpawns(const PlayerRef& to, const std::vector<Monster*>& list);
+    void DespawnMonstersTo(const PlayerRef& to, const std::vector<Monster*>& list); // list → to 에게서 퇴장
     void OnMonsterCellChanged(Monster& monster, AoiCell from, AoiCell to);
     // 몬스터 위치는 반드시 이 함수로만 바꾼다 (격자 동기화)
     bool MoveMonsterToward(Monster& monster, float tx, float ty, float tz, float step, float stopDist);
+
+    // 필드 아이템 드랍
+    void SpawnDrop(
+        uint32_t itemID,
+        uint32_t count,
+        float x,
+        float y,
+        float z,
+        uint64_t ownerID,
+        std::chrono::steady_clock::time_point now);
+
+    // 드랍 정보 전달
+    void UpdateDrops(std::chrono::steady_clock::time_point now);
+    // 드랍된 아이템 삭제
+    void RemoveDrop(uint64_t dropUID);
+    // 드롭 아이템 획득
+    void HandlePickup(const PlayerRef& player, uint64_t dropUID);
+    // 드롭 정보 플레이어에 전달
+    void SendDropSpawns(
+        const PlayerRef& to, const std::vector<AoiCell>& cells, std::chrono::steady_clock::time_point now);
+    // 드롭 삭제 정보 플레이어에 전달
+    void SendDropDespawns(const PlayerRef& to, const std::vector<AoiCell>& cells);
+
+    // 인벤토리 바뀐 칸: 중복 제거 → DB 저장 → 클라 알림 (보상 / 줍기 공용)
+    void CommitInventoryChange(const PlayerRef& player, std::vector<uint16_t>& changedSlots);
 
   private:
     uint32_t zoneID_;
@@ -157,14 +193,16 @@ class Zone : public JobSerializer<Zone>
     uint32_t autoSaveSlice_ = 0;
 
     bool closed_ = false; // 존 종료 중
-    
+
     // AOI 시야 범위
     AoiGrid playerGrid_;
     AoiGrid monsterGrid_;
+    AoiGrid dropGrid_;
 
+    std::unordered_map<uint64_t, DropItem> drops_;
+    uint64_t nextDropUID_ = 0;
 
-
-        // 틱 측정 (부하 테스트용)
+    // 틱 측정 (부하 테스트용)
     float tickStatTimer_ = 0.f;
     uint32_t tickStatCount_ = 0;
     int64_t tickWorkSumUs_ = 0; // Update 처리 시간 합 (마이크로초)

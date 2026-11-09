@@ -35,7 +35,7 @@ bool ItemSubOptionTemplate::Load()
     });
 }
 
-void ItemSubOptionTemplate::Roll(uint32_t groupID, uint32_t count, std::vector<RolledOption>& out) const
+void ItemSubOptionTemplate::Roll(uint32_t groupID, uint32_t count, std::vector<ItemOptionInfo>& out) const
 {
     auto it = groups_.find(groupID);
     if (it == groups_.end())
