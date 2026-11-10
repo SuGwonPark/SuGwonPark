@@ -37,9 +37,8 @@ enum PacketID : uint16_t
 
     // 시스템 (4000~)
     PKT_C_READY_TO_SPAWN = 4001,
-    PKT_C_USE_ITEM = 4002,
-    PKT_C_REVIVE = 4003, // 부활 요청
-    PKT_S_REVIVE = 4004, // 부활 (브로드캐스트)
+    PKT_C_REVIVE = 4002, // 부활 요청
+    PKT_S_REVIVE = 4003, // 부활 (브로드캐스트)
 
     // 로그인 (5000~)
     PKT_C_LOGIN = 5001,
@@ -56,11 +55,14 @@ enum PacketID : uint16_t
     // 아이템 (7000~)
     PKT_C_ENHANCE_ITEM = 7001,
     PKT_S_ENHANCE_ITEM = 7002,
-    PKT_S_INVENTORY = 7003,         // 인벤토리
-    PKT_S_INVENTORY_UPDATE = 7004,  // 바뀐 칸
-    PKT_S_GOLD = 7005, // 골드 변화
-    PKT_S_DROP_SPAWN = 7006,        // 바닥 아이템 등장 (목록)
-    PKT_S_DROP_DESPAWN = 7007,      // 바닥 아이템 사라짐 (주움 / 시간 지남 / 시야 밖)
-    PKT_C_PICKUP = 7008,            // 줍기 요청
-    PKT_S_PICKUP_FAIL = 7009,       // 줍기 실패 (나에게만)
+    PKT_S_INVENTORY = 7003,        // 인벤토리
+    PKT_S_INVENTORY_UPDATE = 7004, // 바뀐 칸
+    PKT_S_GOLD = 7005,             // 골드 변화
+    PKT_S_DROP_SPAWN = 7006,       // 바닥 아이템 등장 (목록)
+    PKT_S_DROP_DESPAWN = 7007,     // 바닥 아이템 사라짐 (주움 / 시간 지남 / 시야 밖)
+    PKT_C_PICKUP = 7008,           // 줍기 요청
+    PKT_S_PICKUP_FAIL = 7009,      // 줍기 실패 (나에게만)
+    PKT_C_USE_ITEM = 7010,         // 아이템 사용
+    PKT_S_USE_ITEM_FAIL = 7011,    // 아이템 사용 실패 (나에게만)
+    PKT_C_DESTROY_ITEM = 7012,     // 아이템 버리기
 };

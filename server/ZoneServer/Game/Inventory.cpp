@@ -110,6 +110,43 @@ uint32_t Inventory::Add(uint32_t itemID, uint32_t count, std::vector<uint16_t>& 
     return count;
 }
 
+int16_t Inventory::FindSmallestStack(uint32_t itemID) const
+{
+    int16_t best = -1;
+    for (uint16_t i = 0; i < SLOT_COUNT; ++i)
+    {
+        const InventoryItemData& s = slots_[i];
+        if (s.IsEmpty() || s.itemID != itemID)
+            continue;
+
+        // 저장해둔 아이템보다 갯수가 많으면 넘김 (갯수가 적은것부터 소모하기 위해 찾음)
+        if (best < 0 || s.count < slots_[best].count)
+            best = i;
+    }
+    return best;
+}
+
+bool Inventory::Remove(uint16_t slot, uint32_t count, std::vector<uint64_t>& removed)
+{
+    if (slot >= SLOT_COUNT || count <= 0)
+        return false;
+
+    InventoryItemData& data = slots_[slot];
+    if (data.IsEmpty() || data.count < count)
+        return false;
+
+    data.count -= count;
+
+    // 아이템 0개로 slot 데이터를 초기화
+    if (data.count == 0)
+    {
+        removed.push_back(data.itemUID);
+        data = InventoryItemData{};
+    }
+
+    return true;
+}
+
 void Inventory::CollectAll(std::vector<InventorySlotInfo>& out) const
 {
     for (uint16_t i = 0; i < SLOT_COUNT; ++i)

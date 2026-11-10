@@ -9,7 +9,7 @@
 8,10008,Consumable,None,Rare,None,10,99,150,0,0,0,9008,신속의 물약,,
 9,10009,Consumable,None,Unique,None,20,99,500,0,0,0,9009,생명의 엘릭서,,
 10,10010,Consumable,None,Legendary,None,25,99,2000,0,0,0,9010,불사조의 눈물,,
-11,10011,Consumable,None,Rare,Priest,10,99,200,0,0,0,9011,성수,,
+11,10011,Consumable,None,Rare,None,10,99,200,0,0,0,9011,성수,,
 12,20001,Material,None,Normal,None,1,999,5,0,0,0,0,철광석,,
 13,20002,Material,None,Normal,None,1,999,8,0,0,0,0,질긴 가죽,,
 14,20003,Material,None,Rare,None,1,999,50,0,0,0,0,마력 결정,,

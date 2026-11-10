@@ -283,4 +283,25 @@ struct RES_PickupFailPacket
     PickupFailReason reason;
 };
 
+struct REQ_UseItemPacket
+{
+    PacketHeader header;
+    uint32_t itemID;
+};
+
+struct RES_UseItemFailPacket
+{
+    PacketHeader header;
+    uint32_t itemID;
+    UseItemFailReason reason;
+};
+
+struct REQ_DestroyItemPacket
+{
+    PacketHeader header;
+    uint16_t slot;
+    uint64_t itemUID;
+    uint32_t count; // 몇 개 버릴지 (스택 일부만 가능)
+};
+
 #pragma pack(pop)

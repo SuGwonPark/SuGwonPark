@@ -218,8 +218,9 @@ class Player
 
     // 스킬 쿨타임 적용
     void StartSkillCooldown(
-        uint32_t skillID, std::chrono::steady_clock::time_point now, std::chrono::milliseconds cooldown)
+        uint32_t skillID, std::chrono::steady_clock::time_point now, int32_t cooldownMs)
     {
+        auto cooldown = std::chrono::milliseconds(cooldownMs);
         skillReadyAt_[skillID] = now + cooldown;
     }
 

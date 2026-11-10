@@ -171,8 +171,16 @@ class Zone : public JobSerializer<Zone>
     // 드롭 삭제 정보 플레이어에 전달
     void SendDropDespawns(const PlayerRef& to, const std::vector<AoiCell>& cells);
 
-    // 인벤토리 바뀐 칸: 중복 제거 → DB 저장 → 클라 알림 (보상 / 줍기 공용)
-    void CommitInventoryChange(const PlayerRef& player, std::vector<uint16_t>& changedSlots);
+    // 인벤토리 바뀐 슬롯: 중복 제거 → DB 저장 → 클라 알림 (보상 / 줍기 공용)
+    void CommitInventoryChange(
+        const PlayerRef& player, std::vector<uint16_t>& changedSlots, const std::vector<uint64_t>& removedUIDs = {});
+
+    // 아이템 사용
+    void HandleUseItem(const PlayerRef& player, uint32_t itemID);
+    // 아이템 삭제
+    void HandleDestoryItem(const PlayerRef& player, uint16_t slot, uint64_t itemUID, uint32_t count);
+
+    void RevivePlayer(const PlayerRef& player);
 
   private:
     uint32_t zoneID_;

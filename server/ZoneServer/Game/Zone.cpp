@@ -15,8 +15,9 @@
 #include "Template/SkillTemplate.h"
 #include "Template/StatTemplate.h"
 #include "Template/LevelTemplate.h"
-#include "ServerCore/Template/CharacterTemplate.h"
 #include "Template/SkillEffectTemplate.h"
+#include "Template/ItemTemplate.h"
+#include "ServerCore/Template/CharacterTemplate.h"
 
 #include "ServerCore/Manager/SendBufferManager.h"
 #include "ServerCore/Utils/util.h"
@@ -72,7 +73,15 @@ static DropInfo ToInfo(const DropItem& d, std::chrono::steady_clock::time_point 
     return info;
 }
 
-// Flat = 값 그대로, Percent = 시전자 공격력의 만분율
+// 회복/부활 양: Percent = 최대치의 만분율, Flat = 값 그대로
+static int32_t CalcRecoverAmount(const SkillEffectData& e, int32_t maxValue)
+{
+    if (e.valueType == ValueType::Percent)
+        return static_cast<int32_t>(std::lround(static_cast<double>(maxValue) * e.value / BuffMaxPercent));
+    return e.value;
+}
+
+// 스킬 데미지 Flat = 값 그대로, Percent = 시전자 공격력의 만분율
 static int32_t CalcEffectValue(const Player& caster, const SkillEffectData& e)
 {
     if (e.valueType == ValueType::Percent)
@@ -310,6 +319,31 @@ void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t siz
                 self->HandlePickup(it->second, req->dropUID);
                 break;
             }
+            case PKT_C_USE_ITEM: {
+                if (copied.size() < sizeof(REQ_UseItemPacket))
+                    return;
+
+                auto it = self->sessionToPlayer_.find(sessionID);
+                if (it == self->sessionToPlayer_.end())
+                    return;
+
+                auto* req = reinterpret_cast<REQ_UseItemPacket*>(copied.data());
+                self->HandleUseItem(it->second, req->itemID);
+                break;
+            }
+            case PKT_C_DESTROY_ITEM: {
+                if (copied.size() < sizeof(REQ_DestroyItemPacket))
+                    return;
+
+                auto it = self->sessionToPlayer_.find(sessionID);
+                if (it == self->sessionToPlayer_.end())
+                    return;
+
+                auto* req = reinterpret_cast<REQ_DestroyItemPacket*>(copied.data());
+                self->HandleDestoryItem(it->second, req->slot, req->itemUID, req->count);
+                break;
+            }
+
             default:
                 break;
         }
@@ -800,15 +834,7 @@ void Zone::HandleRevive(const PlayerRef& player)
     const AoiCell to = CellOf(*player);
     OnPlayerCellChanged(player, from, to);
 
-    RES_RevivePacket pkt{};
-    pkt.header.id = PKT_S_REVIVE;
-    pkt.header.size = sizeof(pkt);
-    pkt.playerID = player->GetPlayerID();
-    pkt.x = player->GetX();
-    pkt.y = player->GetY();
-    pkt.z = player->GetZ();
-    pkt.hp = player->GetHp();
-    BroadcastNear(to, &pkt, sizeof(pkt));
+    RevivePlayer(player);
 }
 
 void Zone::GiveRewards(const PlayerRef& player, const std::vector<RewardResult>& rewards)
@@ -1036,7 +1062,7 @@ void Zone::HandleSkillCast(const PlayerRef& caster, uint32_t skillID, ObjectType
 
     // 스킬 확정 이후 처리: 자원 처리 -> 데미지 -> 결과 -> 사망처리
     caster->TrySpendSkill(skill->costType, skill->cost);
-    caster->StartSkillCooldown(skillID, now, std::chrono::milliseconds(skill->cooldownMs));
+    caster->StartSkillCooldown(skillID, now, skill->cooldownMs);
 
     std::vector<SkillHit> hits;
     hits.reserve(targets.size());
@@ -1598,18 +1624,31 @@ void Zone::HandlePickup(const PlayerRef& player, uint64_t dropUID)
     RemoveDrop(dropUID);
 }
 
-void Zone::CommitInventoryChange(const PlayerRef& player, std::vector<uint16_t>& changedSlots)
+void Zone::CommitInventoryChange(
+    const PlayerRef& player, std::vector<uint16_t>& changedSlots, const std::vector<uint64_t>& removedUIDs)
 {
     if (changedSlots.empty())
         return;
+
     // 같은 칸이 여러 번 바뀔 수 있음 - 동일 슬롯의 경우 1개만 남기고 삭제
     std::sort(changedSlots.begin(), changedSlots.end());
     changedSlots.erase(std::unique(changedSlots.begin(), changedSlots.end()), changedSlots.end());
+
+    const uint64_t playerID = player->GetPlayerID();
+
+    // count가 0인 아이템 삭제
+    for (uint64_t uid : removedUIDs)
+    {
+        GameDB::Instance().DeleteItemAsync(playerID, uid);
+    }
 
     const Inventory& inven = player->GetInventory();
     for (uint16_t slot : changedSlots)
     {
         const InventoryItemData& data = inven.GetSlot(slot);
+        if (data.IsEmpty())
+            continue;
+
         GameDB::Instance().SaveItemAsync(
             player->GetPlayerID(), data.itemUID, data.itemID, data.count, slot, data.options);
     }
@@ -1623,6 +1662,144 @@ void Zone::CommitInventoryChange(const PlayerRef& player, std::vector<uint16_t>&
     pkt.count = static_cast<uint16_t>(infos.size());
     if (SendBufferRef buf = SendBufferManager::GetInstance()->MakeList(pkt, infos))
         SendTo(player, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+}
+
+void Zone::HandleUseItem(const PlayerRef& player, uint32_t itemID)
+{
+    auto fail = [&](UseItemFailReason reason) {
+        RES_UseItemFailPacket pkt{};
+        pkt.header.id = PKT_S_USE_ITEM_FAIL;
+        pkt.header.size = sizeof(pkt);
+        pkt.itemID = itemID;
+        pkt.reason = reason;
+        SendTo(player, &pkt, sizeof(pkt));
+    };
+
+    if (portalPending_.count(player->GetPlayerID()))
+        return;
+
+    const int16_t found = player->GetInventory().FindSmallestStack(itemID);
+    if (found < 0)
+        return fail(UseItemFailReason::InvalidItem);
+
+    const uint16_t slot = static_cast<uint16_t>(found);
+    const InventoryItemData& s = player->GetInventory().GetSlot(slot);
+
+    if (s.IsEmpty() || s.itemID != itemID)
+        return fail(UseItemFailReason::InvalidItem);
+
+    const ItemData* item = ItemTemplate::Instance().GetData(s.itemID);
+    if (!item || item->itemType != ItemType::Consumable)
+        return fail(UseItemFailReason::InvalidItem);
+    if (player->GetLevel() < item->requiredLevel)
+        return fail(UseItemFailReason::LevelTooLow);
+    if (item->useSkillID == 0)
+        return fail(UseItemFailReason::NotEffect);
+    if (item->classType != ClassType::None && item->classType != player->GetClassType())
+        return fail(UseItemFailReason::WrongClass);
+
+    // 아이템은 공용 아이템만 사용
+    const SkillData* skill = SkillTemplate::Instance().GetData(ClassType::None, item->useSkillID);
+    const std::vector<SkillEffectData>* effects =
+        skill ? SkillEffectTemplate::Instance().GetGroup(skill->effectGroupID) : nullptr;
+    if (!effects)
+        return fail(UseItemFailReason::NotEffect);
+
+    bool revive = false;
+    for (const SkillEffectData& e : *effects)
+    {
+        if (e.effectType == SkillEffectType::Revive)
+            revive = true;
+        else if (
+            e.effectType != SkillEffectType::HealHp && e.effectType != SkillEffectType::HealMp &&
+            e.effectType != SkillEffectType::Buff)
+            return fail(UseItemFailReason::NotUsable);
+    }
+
+    if (revive && !player->IsDead())
+        return fail(UseItemFailReason::NotDead);
+    if (!revive && player->IsDead())
+        return fail(UseItemFailReason::Dead);
+
+    // ================ 쿨타임 -> 소모 -> 효과 처리
+    const auto now = std::chrono::steady_clock::now();
+    if (!player->IsSkillReady(skill->skillID, now))
+        return fail(UseItemFailReason::Cooldown);
+
+    player->StartSkillCooldown(skill->skillID, now, skill->cooldownMs);
+
+    std::vector<uint16_t> changedSlots = {slot};
+    std::vector<uint64_t> removedUIDs;
+    player->GetInventory().Remove(slot, 1, removedUIDs);
+
+    int healHp = 0, healMp = 0;
+    for (const SkillEffectData& e : *effects)
+    {
+        switch (e.effectType)
+        {
+            case SkillEffectType::Revive: {
+                const int32_t hp = std::max(1, CalcRecoverAmount(e, player->GetMaxHp()));
+                player->Revive(player->GetX(), player->GetY(), player->GetZ(), hp);
+                RevivePlayer(player);
+                break;
+            }
+            case SkillEffectType::HealHp: {
+                healHp += CalcRecoverAmount(e, player->GetMaxHp());
+                break;
+            }
+            case SkillEffectType::HealMp: {
+                healMp += CalcRecoverAmount(e, player->GetMaxMp());
+                break;
+            }
+            case SkillEffectType::Buff: {
+
+                break;
+            }
+        }
+    }
+
+    // Hp,Mp 회복
+    if (player->Regen(healHp, healMp))
+    {
+        RES_PlayerStatPacket pkt = MakeStatPacket(*player);
+        BroadcastNear(CellOf(*player), &pkt, sizeof(pkt));
+    }
+
+    // 인벤토리 갱신
+    CommitInventoryChange(player, changedSlots, removedUIDs);
+}
+
+void Zone::HandleDestoryItem(const PlayerRef& player, uint16_t slot, uint64_t itemUID, uint32_t count)
+{
+    if (portalPending_.count(player->GetPlayerID()))
+        return;
+    if (slot >= Inventory::SLOT_COUNT)
+        return;
+
+    const InventoryItemData& s = player->GetInventory().GetSlot(slot);
+    if (s.IsEmpty() || s.itemUID != itemUID)
+        return;
+
+    std::vector<uint16_t> changedSlots = {slot};
+    std::vector<uint64_t> removedUIDs;
+    if (!player->GetInventory().Remove(slot, count, removedUIDs))
+        return;
+
+    CommitInventoryChange(player, changedSlots, removedUIDs);
+}
+
+void Zone::RevivePlayer(const PlayerRef& player)
+{
+    RES_RevivePacket pkt{};
+    pkt.header.id = PKT_S_REVIVE;
+    pkt.header.size = sizeof(pkt);
+    pkt.playerID = player->GetPlayerID();
+    pkt.x = player->GetX();
+    pkt.y = player->GetY();
+    pkt.z = player->GetZ();
+    pkt.hp = player->GetHp();
+    BroadcastNear(CellOf(*player), &pkt, sizeof(pkt));
+    return;
 }
 
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z)

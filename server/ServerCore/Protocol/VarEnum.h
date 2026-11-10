@@ -209,4 +209,5 @@ enum class UseItemFailReason : uint8_t
     Dead = 5,      // 죽은 상태에서 회복 아이템
     NotDead = 6,   // 살아 있는데 부활 아이템
     NotUsable = 7, // 아직 처리하지 않는 효과 (Buff 등)
+    NotEffect = 8,
 };

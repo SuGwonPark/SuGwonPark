@@ -39,6 +39,11 @@ class Inventory
         return slots_[slot];
     }
 
+    // 소모 아이템 찾기
+    int16_t FindSmallestStack(uint32_t itemID) const;
+
+    bool Remove(uint16_t slot, uint32_t count, std::vector<uint64_t>& removed);
+
     void CollectAll(std::vector<InventorySlotInfo>& out) const;
     void Collect(const std::vector<uint16_t>& slots, std::vector<InventorySlotInfo>& out) const;
 

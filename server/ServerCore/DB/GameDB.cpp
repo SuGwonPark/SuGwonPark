@@ -57,19 +57,21 @@ void GameDB::SaveItemAsync(
 
             if (!options.empty())
             {
-                auto insert = db.getSchema("game")
-                                  .getTable("item_option")
-                                  .insert("itemUID", "idx", "statType", "valueType", "value");
+                //(?,?,?), (?,?,?) 옵션 한번에 넣기위해 쿼리문 작성
+                std::string q = "INSERT IGNORE INTO `item_option` (itemUID, idx, statType, valueType, `value`) VALUES ";
+                for (size_t i = 0; i < options.size(); ++i)
+                    q += (i == 0) ? "(?, ?, ?, ?, ?)" : ", (?, ?, ?, ?, ?)";
 
+                mysqlx::SqlStatement stmt = db.sql(q);
                 for (size_t i = 0; i < options.size(); ++i)
                 {
-                    insert.values(
+                    stmt.bind(
                         itemUID, static_cast<uint32_t>(i), static_cast<uint32_t>(options[i].statType),
                         static_cast<uint32_t>(options[i].valueType), options[i].value);
                 }
 
                 // 옵션 데이터를 한번에 담아 DB에 저장
-                insert.execute();
+                stmt.execute();
             }
 
             db.commit();
@@ -84,6 +86,32 @@ void GameDB::SaveItemAsync(
             {
             }
             std::cerr << "[SaveItem] playerID " << playerID << ", itemUID " << itemUID << ": " << e.what() << std::endl;
+            throw;
+        }
+    });
+}
+
+void GameDB::DeleteItemAsync(uint64_t playerID, uint64_t itemUID)
+{
+    GameDB::PushTask(playerID, [playerID, itemUID](mysqlx::Session& db) {
+        try
+        {
+            db.startTransaction();
+            db.sql("DELETE FROM `item_option` WHERE itemUID = ?").bind(itemUID).execute();
+            db.sql("DELETE FROM `item` WHERE itemUID = ? AND playerID = ?").bind(itemUID, playerID).execute();
+            db.commit();
+        }
+        catch (const mysqlx::Error& e)
+        {
+            try
+            {
+                db.rollback();
+            }
+            catch (...)
+            {
+            }
+            std::cerr << "[DeleteItem] playerID " << playerID << ", itemUID " << itemUID << ": " << e.what()
+                      << std::endl;
             throw;
         }
     });
