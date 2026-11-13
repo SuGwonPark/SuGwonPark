@@ -9,7 +9,7 @@
 // 서버 실행 환경 설정. Config/server.ini 에서 읽는다 (GatewayServer / ZoneServer 공용)
 struct ServerConfig {
 	std::string gatewayHost = "127.0.0.1";   // Zone 서버가 접속할 Gateway 주소
-	uint16_t    clientPort = 8080;          // 클라이언트 -> Gateway
+	uint16_t    clientPort = 8090;          // 클라이언트 -> Gateway
 	uint16_t    internalPort = 9000;          // Zone -> Gateway (내부)
 };
 

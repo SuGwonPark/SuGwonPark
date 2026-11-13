@@ -7,7 +7,7 @@ struct ItemData
 {
     uint32_t itemID;
     ItemType itemType;
-    EquipSlot equipSlot;       // 슬롯 타입
+    EquipSlotType equipSlotType; // 슬롯 타입
     GradeType grade;           // 등급
     ClassType classType;       // 클래스 타입
     uint16_t requiredLevel;    // 착용 제한

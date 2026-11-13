@@ -15,14 +15,13 @@ class Player
     float x_;
     float y_;
     float z_;
-    int maxHp_ = 1;
     int hp_;
-    int maxMp_ = 0;
     int mp_;
-    uint32_t damage_ = 0;
     uint64_t exp_;
     uint64_t gold_ = 0;
     Inventory inventory_;
+    StatInfo stat_{};                                                   // 최종 스탯 정보 (기본 스탯 + 장비)
+    std::array<InventoryItemData, Game::EQUIP_SLOT_COUNT> equipment_{}; // 장착 아이템 정보
 
     uint64_t sessionID_ = 0;
 
@@ -56,9 +55,7 @@ class Player
   private:
     // 스킬 사용 처리
     void SpendSkillCost(SkillCostType type, int32_t cost);
-
-    // 직업 / 레벨의 스탯 적용
-    void ApplyStat();
+        
 
   public:
     Player(
@@ -91,6 +88,24 @@ class Player
 
     uint64_t AddGold(uint64_t amount);
 
+    // 기본 스탯 + 장비 스탯
+    void CalcStat();
+
+    // 스탯 다시 계산
+    void RecalcStat();
+
+    // 장착 칸에 in을 넣고 원래 있던 장비를 인벤토리로 돌려줌
+    void SwapEquip(uint16_t slotID, EquipSlotType slot, InventoryItemData in);
+
+    // DB 갱신
+    bool LoadEquip(uint16_t equipSlot, uint64_t itemUID, uint32_t itemID, std::vector<ItemOptionInfo> options);
+
+    std::chrono::milliseconds GetAttackCooldown() const;
+    bool TryUseAttack(std::chrono::steady_clock::time_point now);
+
+    // 받은 공격력에 내 방어력을 적용한 데미지 (최소 1)
+    int32_t ApplyDefense(int32_t rawDamage) const;
+
     uint64_t GetExp() const
     {
         return exp_;
@@ -105,7 +120,7 @@ class Player
     {
         return inventory_;
     }
-    
+
     const Inventory& GetInventory() const
     {
         return inventory_;
@@ -145,11 +160,11 @@ class Player
 
     int GetMaxHp() const
     {
-        return maxHp_;
+        return stat_.maxHp;
     }
     int GetMaxMp() const
     {
-        return maxMp_;
+        return stat_.maxMp;
     }
     int GetHp() const
     {
@@ -182,7 +197,12 @@ class Player
 
     uint32_t GetDamage() const
     {
-        return damage_;
+        return stat_.damage;
+    }
+
+    const StatInfo& GetStat() const
+    {
+        return stat_;
     }
 
     int32_t TakeDamage(int32_t damage)
@@ -217,8 +237,7 @@ class Player
     }
 
     // 스킬 쿨타임 적용
-    void StartSkillCooldown(
-        uint32_t skillID, std::chrono::steady_clock::time_point now, int32_t cooldownMs)
+    void StartSkillCooldown(uint32_t skillID, std::chrono::steady_clock::time_point now, int32_t cooldownMs)
     {
         auto cooldown = std::chrono::milliseconds(cooldownMs);
         skillReadyAt_[skillID] = now + cooldown;
@@ -232,5 +251,11 @@ class Player
             return false;
         lastSaved_ = now;
         return true;
+    }
+    
+    // 장착 슬롯의 장비 정보
+    const InventoryItemData& GetEquip(EquipSlotType slot) const
+    {
+        return equipment_[static_cast<size_t>(slot)];
     }
 };

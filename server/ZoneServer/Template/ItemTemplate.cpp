@@ -14,7 +14,7 @@ bool ItemTemplate::Load()
         ItemData d{};
         d.itemID = r.U32("ItemID");
         d.itemType = ParseCsvEnum<ItemType>(r.Str("ItemType"), "ItemType", d.itemID);
-        d.equipSlot = ParseCsvEnum2<EquipSlot>(r.Str("EquipSlot"), "EquipSlot", d.itemID); // None 허용
+        d.equipSlotType = ParseCsvEnum2<EquipSlotType>(r.Str("EquipSlotType"), "EquipSlotType", d.itemID); // None 허용
         d.grade = ParseCsvEnum<GradeType>(r.Str("Grade"), "Grade", d.itemID);
         d.classType = ParseCsvEnum2<ClassType>(r.Str("ClassType"), "ClassType", d.itemID); // None = 공용
         const uint32_t level = r.U32("RequiredLevel");
@@ -41,22 +41,22 @@ bool ItemTemplate::Load()
                 // 장비는 강화/옵션이 개별로 달라서 겹칠 수 없다
                 if (d.maxStack != 1)
                     throw std::invalid_argument("Equip은 MaxStack 1");
-                if (d.equipSlot == EquipSlot::None)
-                    throw std::invalid_argument("Equip은 EquipSlot이 필요");
+                if (d.equipSlotType == EquipSlotType::None)
+                    throw std::invalid_argument("Equip은 EquipSlotType이 필요");
                 if (d.useSkillID != 0)
                     throw std::invalid_argument("Equip은 UseSkillID 0");
                 break;
 
             case ItemType::Consumable:
-                if (d.equipSlot != EquipSlot::None)
-                    throw std::invalid_argument("Consumable은 EquipSlot None");
+                if (d.equipSlotType != EquipSlotType::None)
+                    throw std::invalid_argument("Consumable은 EquipSlotType None");
                 if (d.useSkillID == 0)
                     throw std::invalid_argument("Consumable은 UseSkillID가 필요");
                 break;
 
             default: // Material
-                if (d.equipSlot != EquipSlot::None)
-                    throw std::invalid_argument("Material은 EquipSlot None");
+                if (d.equipSlotType != EquipSlotType::None)
+                    throw std::invalid_argument("Material은 EquipSlotType None");
                 if (d.useSkillID != 0)
                     throw std::invalid_argument("Material은 UseSkillID 0");
                 break;

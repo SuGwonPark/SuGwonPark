@@ -10,6 +10,9 @@ struct StatData
     int32_t maxHp;
     int32_t maxMp;
     int32_t damage;
+    int32_t critRate;
+    int32_t critDamage;
+
 };
 
 class StatTemplate

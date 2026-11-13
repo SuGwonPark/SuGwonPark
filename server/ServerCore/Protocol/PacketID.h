@@ -16,6 +16,7 @@ enum PacketID : uint16_t
     PKT_S_SKILL_FAIL = 1008,  // 스킬 실패 (시전자에게만)
     PKT_S_PLAYER_STAT = 1009, // 플레이어 HP/MP (브로드캐스트)
     PKT_S_LEVEL_UP = 1010,    // 레벨업 (주변 브로드캐스트)
+    PKT_S_MY_STAT = 1011,     // 내 전체 스탯 (나에게만)
 
     // 몬스터 (1100~)
     PKT_S_MONSTER_SPAWN = 1101,   // 몬스터 생성
@@ -65,4 +66,9 @@ enum PacketID : uint16_t
     PKT_C_USE_ITEM = 7010,         // 아이템 사용
     PKT_S_USE_ITEM_FAIL = 7011,    // 아이템 사용 실패 (나에게만)
     PKT_C_DESTROY_ITEM = 7012,     // 아이템 버리기
+    PKT_C_EQUIP = 7013,            // 장비 착용 (itemUID)
+    PKT_C_UNEQUIP = 7014,          // 장비 해제 (EquipSlot)
+    PKT_S_EQUIP_FAIL = 7015,
+    PKT_S_EQUIPMENT = 7016,     // 장착 칸 목록 (입장: 전체 / 변경: 해당 칸)
+    PKT_S_EQUIP_CHANGED = 7017, // 외형 변경 (주변 브로드캐스트)
 };

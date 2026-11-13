@@ -182,6 +182,13 @@ class Zone : public JobSerializer<Zone>
 
     void RevivePlayer(const PlayerRef& player);
 
+    // 장비 착용
+    void HandleEquip(const PlayerRef& player, uint64_t itemUID);
+    // 장비 해제
+    void HandleUnequip(const PlayerRef& player, EquipSlotType est); 
+    // 착용/해제 공통: 스탯 재계산
+    void OnEquipChanged(const PlayerRef& player, EquipSlotType est);
+
   private:
     uint32_t zoneID_;
     uint32_t channelID_;

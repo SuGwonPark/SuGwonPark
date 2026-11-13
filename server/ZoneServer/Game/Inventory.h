@@ -18,6 +18,9 @@ struct InventoryItemData
     }
 };
 
+InventorySlotInfo ToSlotInfo(uint16_t slot, const InventoryItemData& s);
+EquipSlotInfo ToEquipInfo(EquipSlotType est, const InventoryItemData& e);
+
 class Inventory
 {
   public:
@@ -46,6 +49,14 @@ class Inventory
 
     void CollectAll(std::vector<InventorySlotInfo>& out) const;
     void Collect(const std::vector<uint16_t>& slots, std::vector<InventorySlotInfo>& out) const;
+
+    // 아이템 슬롯 찾기
+    int32_t FindSlot(uint64_t itemUID) const;
+    int32_t FindEmpty() const;
+    // 아이템 장착시 인벤토리 비우기
+    InventoryItemData Take(uint16_t slot);
+    // 아이템 해제시 인벤토리에 넣기
+    bool Put(uint16_t slot, InventoryItemData item);
 
   private:
     std::array<InventoryItemData, SLOT_COUNT> slots_{};

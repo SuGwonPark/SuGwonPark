@@ -21,6 +21,7 @@
 #include <sodium.h>
 #include <boost/asio.hpp>
 #include <algorithm>
+#include <cmath>
 
 namespace net = boost::asio;
 using tcp = net::ip::tcp;

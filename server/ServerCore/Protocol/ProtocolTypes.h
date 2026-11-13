@@ -21,6 +21,8 @@ inline constexpr uint16_t INVENTORY_SIZE = 100; // 인벤토리 칸 수
 inline constexpr uint64_t MAX_GOLD = 9'999'999'999;
 
 inline constexpr uint8_t MAX_ITEM_OPTIONS = 6; // 장비 1개 옵션 최대 수 (기본 + 추가)
+
+inline constexpr uint8_t EQUIP_SLOT_COUNT = 8; // EquipSlotType 1~7
 } // namespace Game
 
 // 아래 구조체는 패킷 바이트에 그대로 복사되므로 반드시 1바이트 정렬
@@ -46,6 +48,8 @@ struct PlayerInfo
     int32_t hp;
     int32_t maxMp;
     int32_t mp;
+    uint32_t weaponID; // 외형: 착용 무기 itemID (0 = 없음)
+    uint32_t armorID;  // 외형: 착용 몸통 itemID
 };
 
 struct MonsterInfo
@@ -66,7 +70,7 @@ struct SkillHit
 };
 
 struct DropInfo
-{ 
+{
     uint64_t dropUID;
     uint32_t itemID;
     uint32_t count;
@@ -90,6 +94,30 @@ struct InventorySlotInfo
     uint32_t count;
     uint8_t optionCount;                            // 장비만 1 이상
     ItemOptionInfo options[Game::MAX_ITEM_OPTIONS]; // 앞에서 optionCount개만 유효
+};
+
+struct EquipSlotInfo
+{                            // 장착 칸 1개 (S_EQUIPMENT 전용)
+    EquipSlotType equipSlot; // 1~7
+    uint64_t itemUID;        // 0 = 빈 칸
+    uint32_t itemID;         // 0 = 빈 칸
+    uint8_t optionCount;
+    ItemOptionInfo options[Game::MAX_ITEM_OPTIONS];
+};
+
+// 최종 스탯 (기본 + 장비 + 버프)
+struct StatInfo
+{
+    int32_t maxHp;
+    int32_t maxMp;
+    int32_t damage;
+    int32_t defense;
+    int32_t critRate;    // 만분율 (500 = 5%)
+    int32_t critDamage;  // 만분율 (15000 = 150%)
+    int32_t attackSpeed; // 공격속도 증가 만분율 (15000 = 150%)
+    float moveSpeed;
+    int32_t hpRegen; // 1초당
+    int32_t mpRegen;
 };
 
 #pragma pack(pop)

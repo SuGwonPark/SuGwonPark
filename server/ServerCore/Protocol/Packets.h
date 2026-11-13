@@ -304,4 +304,48 @@ struct REQ_DestroyItemPacket
     uint32_t count; // 몇 개 버릴지 (스택 일부만 가능)
 };
 
+// 내 스탯 정보
+struct RES_MyStatPacket
+{
+    PacketHeader header;
+    StatInfo stat;
+};
+
+// 장비 장착
+struct REQ_EquipPacket
+{
+    PacketHeader header;
+    uint64_t itemUID;
+};
+
+// 장비 해제
+struct REQ_UnequipPacket
+{
+    PacketHeader header;
+    EquipSlotType equipSlot;
+};
+
+// 장비 장착 실패
+struct RES_EquipFailPacket
+{
+    PacketHeader header;
+    EquipFailReason reason;
+};
+
+// 가변 길이: header + count + InventorySlotInfo[count]  (여기서 slot = EquipSlot 값, itemID 0 = 빈 칸)
+struct RES_EquipmentPacket
+{
+    PacketHeader header;
+    uint16_t count;
+};
+
+struct RES_EquipChangedPacket
+{
+    PacketHeader header;
+    uint64_t playerID;
+    EquipSlotType equipSlot;
+    uint32_t itemID; // 0 = 해제
+};
+
+
 #pragma pack(pop)

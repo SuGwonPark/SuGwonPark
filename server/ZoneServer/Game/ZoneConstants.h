@@ -29,7 +29,9 @@ inline constexpr uint32_t AUTOSAVE_SLICES = 6;
 
 inline constexpr int DOT_TICK_MS = 1000; // DOT 데미지 처리 주기 (1초)
 
-// 임시 데이터들 나중에 템플릿으로 뺴던가 해야함
+inline constexpr uint16_t EQUIP_SLOT_BASE = 10000;   // DB item.slot: 0~99 인벤토리, 10000+EquipSlot 장착
+
+//////////////// 임시 데이터들 나중에 템플릿으로 뺴던가 해야함
 inline constexpr int32_t PLAYER_HP_REGEN = 1; // 회복 1회당 (임시)
 inline constexpr int32_t PLAYER_MP_REGEN = 2; // 임시
 
@@ -42,5 +44,6 @@ inline constexpr int PLAYER_ATTACK_COOLDOWN_MS = 500; //(임시)
 inline constexpr float TICK_STAT_INTERVAL_SEC = 5.f; // 틱 측정 출력 주기 (부하 테스트용)
 
 inline constexpr uint8_t ZONE_SERVER_ID = 1; // 존 서버 프로세스 번호 (itemUID용). 여러 대 띄우면 Config로 옮겨야 함
+
 
 } // namespace ZoneConst

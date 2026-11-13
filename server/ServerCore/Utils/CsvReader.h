@@ -53,7 +53,7 @@ namespace Csv {
 	inline std::filesystem::path FindDataFile(const std::string& fileName) {
 		std::filesystem::path dir = std::filesystem::current_path();
 		for (int i = 0; i <= 3; ++i) {
-			std::filesystem::path candidate = dir / "Data" / fileName;
+            std::filesystem::path candidate = dir / "Data" / fileName;
 			std::error_code ec;
 			if (std::filesystem::exists(candidate, ec)) return candidate;
 			if (!dir.has_parent_path() || dir.parent_path() == dir) break;

@@ -39,6 +39,8 @@ static PlayerInfo ToInfo(const Player& p)
     info.hp = p.GetHp();
     info.maxMp = p.GetMaxMp();
     info.mp = p.GetMp();
+    info.weaponID = p.GetEquip(EquipSlotType::Weapon).itemID;
+    info.armorID = p.GetEquip(EquipSlotType::Armor).itemID;
     return info;
 }
 
@@ -102,6 +104,24 @@ static RES_PlayerStatPacket MakeStatPacket(const Player& player)
     return pkt;
 }
 
+static RES_MyStatPacket MakeMyStatPacket(const Player& player)
+{
+    RES_MyStatPacket pkt{};
+    pkt.header.id = PKT_S_MY_STAT;
+    pkt.header.size = sizeof(pkt);
+    pkt.stat = player.GetStat();
+    return pkt;
+}
+
+// 치명타: critRate 확률로 critDamage 배율
+static int32_t ApplyCritical(const Player& p, int32_t damage)
+{
+    const StatInfo& s = p.GetStat();
+    if (!Random::ChanceRate(s.critRate, static_cast<int>(BuffMaxPercent)))
+        return damage;
+    return static_cast<int32_t>(std::lround(static_cast<double>(damage) * s.critDamage / BuffMaxPercent));
+}
+
 Zone::Zone(uint32_t zoneID, uint32_t channelID)
     : zoneID_(zoneID), channelID_(channelID), playerGrid_(ZoneConst::AOI_CELL_SIZE),
       monsterGrid_(ZoneConst::AOI_CELL_SIZE), dropGrid_(ZoneConst::AOI_CELL_SIZE)
@@ -145,6 +165,23 @@ void Zone::Enter(PlayerRef player)
 
     if (SendBufferRef buf = SendBufferManager::MakeList(inven, slots))
         SendTo(player, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+
+    // 1-2) 나에게: 장착 장비 + 전체 스탯
+    std::vector<InventorySlotInfo> equips;
+    for (uint8_t i = 1; i < static_cast<uint8_t>(EquipSlotType::Max); ++i)
+    {
+        const InventoryItemData& e = player->GetEquip(static_cast<EquipSlotType>(i));
+        if (!e.IsEmpty())
+            equips.push_back(ToSlotInfo(i, e));
+    }
+    RES_EquipmentPacket pkt{};
+    pkt.header.id = PKT_S_EQUIPMENT;
+    pkt.count = static_cast<uint16_t>(equips.size());
+    if (SendBufferRef buf = SendBufferManager::MakeList(pkt, equips))
+        SendTo(player, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+
+    RES_MyStatPacket st = MakeMyStatPacket(*player);
+    SendTo(player, &st, sizeof(st));
 
     // 2) 나에게: 주변 플레이어 목록
     const AoiCell cell = CellOf(*player);
@@ -343,7 +380,30 @@ void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t siz
                 self->HandleDestoryItem(it->second, req->slot, req->itemUID, req->count);
                 break;
             }
+            case PKT_C_EQUIP: {
+                if (copied.size() < sizeof(REQ_EquipPacket))
+                    return;
 
+                auto it = self->sessionToPlayer_.find(sessionID);
+                if (it == self->sessionToPlayer_.end())
+                    return;
+
+                auto* req = reinterpret_cast<REQ_EquipPacket*>(copied.data());
+                self->HandleEquip(it->second, req->itemUID);
+                break;
+            }
+            case PKT_C_UNEQUIP: {
+                if (copied.size() < sizeof(REQ_UnequipPacket))
+                    return;
+
+                auto it = self->sessionToPlayer_.find(sessionID);
+                if (it == self->sessionToPlayer_.end())
+                    return;
+
+                auto* req = reinterpret_cast<REQ_UnequipPacket*>(copied.data());
+                self->HandleUnequip(it->second, req->equipSlot);
+                break;
+            }
             default:
                 break;
         }
@@ -475,9 +535,22 @@ void Zone::HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t siz
                             std::cerr << "[Spawn] 인벤토리 로드 제외 playerID " << playerID << ", itemUID " << itemUID
                                       << ", itemID " << itemID << ", slot " << slot << ", count " << count << std::endl;
                         }
-                    }
 
-                    player = loaded; // 인벤토리까지 다 읽었을 때만 넘김
+                        bool isEquip = false;
+                        if (slot >= ZoneConst::EQUIP_SLOT_BASE)
+                            isEquip =
+                                loaded->LoadEquip(slot - ZoneConst::EQUIP_SLOT_BASE, itemUID, itemID, itemOptions);
+                        else
+                            isEquip = loaded->GetInventory().LoadSlot(slot, itemUID, itemID, count, itemOptions);
+
+                        if (!isEquip)
+                        {
+                            std::cerr << "[Spawn] 아이템 로드 제외 playerID " << playerID << ", itemUID " << itemUID
+                                      << ", itemID " << itemID << ", slot " << slot << ", count " << count << std::endl;
+                        }
+                    }
+                    loaded->RecalcStat(); // 장비 반영 후
+                    player = loaded;      // 인벤토리까지 다 읽었을 때만 넘김
                 }
             }
         }
@@ -731,12 +804,12 @@ void Zone::HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64
     if (monster.DistSqTo(attacker->GetX(), attacker->GetY(), attacker->GetZ()) > range * range)
         return;
 
-    // 공격 쿨타임
+    // 공격 쿨타임 체크
     const auto now = std::chrono::steady_clock::now();
-    if (!attacker->TryUseAttack(now, std::chrono::milliseconds(ZoneConst::PLAYER_ATTACK_COOLDOWN_MS)))
+    if (!attacker->TryUseAttack(now))
         return;
 
-    const int32_t damage = monster.TakeDamage(attacker->GetDamage(), attackerUID);
+    const int32_t damage = monster.TakeDamage(ApplyCritical(*attacker, attacker->GetDamage()), attackerUID);
 
     if (monster.GetState() == MonsterState::Idle)
     {
@@ -806,7 +879,7 @@ void Zone::BroadcastMonsterHp(const Monster& monster)
 
 void Zone::MonsterAttack(Monster& monster, const PlayerRef& target)
 {
-    const int32_t damage = target->TakeDamage(monster.GetData().attack);
+    const int32_t damage = target->TakeDamage(target->ApplyDefense(monster.GetData().attack));
 
     RES_AttackPacket pkt{};
     pkt.header.id = PKT_S_ATTACK;
@@ -906,6 +979,10 @@ void Zone::GiveRewards(const PlayerRef& player, const std::vector<RewardResult>&
                 pkt.maxMp = player->GetMaxMp();
                 pkt.mp = player->GetMp();
                 BroadcastNear(CellOf(*player), &pkt, sizeof(pkt)); // 나 포함
+
+                // 레벨업시 내 스텟도 변화
+                RES_MyStatPacket st = MakeMyStatPacket(*player);
+                SendTo(player, &st, sizeof(st));
             }
         }
     }
@@ -1118,7 +1195,8 @@ int32_t Zone::ApplySkillEffect(
         switch (effect.effectType)
         {
             case SkillEffectType::Damage: {
-                totalDamage += monster.TakeDamage(CalcEffectValue(*caster, effect), caster->GetPlayerID());
+                totalDamage +=
+                    monster.TakeDamage(ApplyCritical(*caster, CalcEffectValue(*caster, effect)), caster->GetPlayerID());
             }
             break;
 
@@ -1197,7 +1275,7 @@ void Zone::RegenPlayers()
     {
         if (portalPending_.count(pid))
             continue;
-        if (player->Regen(ZoneConst::PLAYER_HP_REGEN, ZoneConst::PLAYER_MP_REGEN))
+        if (player->Regen(player->GetStat().hpRegen, player->GetStat().mpRegen))
         {
             RES_PlayerStatPacket pkt = MakeStatPacket(*player);
             BroadcastNear(CellOf(*player), &pkt, sizeof(pkt));
@@ -1802,6 +1880,116 @@ void Zone::RevivePlayer(const PlayerRef& player)
     return;
 }
 
+void Zone::HandleEquip(const PlayerRef& player, uint64_t itemUID)
+{
+    auto fail = [&](EquipFailReason reason) {
+        RES_EquipFailPacket pkt{};
+        pkt.header.id = PKT_S_EQUIP_FAIL;
+        pkt.header.size = sizeof(pkt);
+        pkt.reason = reason;
+        SendTo(player, &pkt, sizeof(pkt));
+    };
+
+    if (portalPending_.count(player->GetPlayerID()))
+        return;
+
+    Inventory& inv = player->GetInventory();
+    const int32_t found = inv.FindSlot(itemUID);
+    if (found < 0)
+        return fail(EquipFailReason::InvalidItem);
+
+    const uint16_t slotID = static_cast<uint16_t>(found);
+
+    const ItemData* item = ItemTemplate::Instance().GetData(inv.GetSlot(slotID).itemID);
+    if (!item || item->itemType != ItemType::Equip || item->equipSlotType == EquipSlotType::None)
+        return fail(EquipFailReason::NotEquip);
+    if (player->GetLevel() < item->requiredLevel)
+        return fail(EquipFailReason::LevelTooLow);
+    if (item->classType != ClassType::None && item->classType != player->GetClassType())
+        return fail(EquipFailReason::WrongClass);
+
+    const EquipSlotType est = item->equipSlotType;
+
+    // ========= 확정 구간 : 인벤토리에서 장비 장착 및 장착 중인 장비 해제
+    player->SwapEquip(slotID, est, inv.GetSlot(slotID));
+
+    // DB: 장착한 장비는 장착 칸 슬롯으로 저장
+    const InventoryItemData& equipItem = player->GetEquip(est);
+    GameDB::Instance().SaveItemAsync(
+        player->GetPlayerID(), equipItem.itemUID, equipItem.itemID, equipItem.count,
+        static_cast<uint16_t>(ZoneConst::EQUIP_SLOT_BASE + static_cast<uint16_t>(est)), equipItem.options);
+
+    std::vector<uint16_t> changedSlots{slotID};
+    CommitInventoryChange(player, changedSlots);
+
+    OnEquipChanged(player, est);
+}
+
+void Zone::HandleUnequip(const PlayerRef& player, EquipSlotType est)
+{
+    auto fail = [&](EquipFailReason reason) {
+        RES_EquipFailPacket pkt{};
+        pkt.header.id = PKT_S_EQUIP_FAIL;
+        pkt.header.size = sizeof(pkt);
+        pkt.reason = reason;
+        SendTo(player, &pkt, sizeof(pkt));
+    };
+
+    if (portalPending_.count(player->GetPlayerID()))
+        return;
+
+    const size_t idx = static_cast<size_t>(est);
+    if (idx == 0 || idx >= static_cast<size_t>(EquipSlotType::Max))
+        return fail(EquipFailReason::InvalidItem);
+    if (player->GetEquip(est).IsEmpty())
+        return fail(EquipFailReason::EmptySlot);
+
+    Inventory& inv = player->GetInventory();
+    const int32_t found = inv.FindEmpty();
+    if (found < 0)
+        return fail(EquipFailReason::InventoryFull);
+    const uint16_t slotID = static_cast<uint16_t>(found);
+
+    // ===== 확정: 장착 칸 → 빈 인벤 칸 =====
+    player->SwapEquip(slotID, est, InventoryItemData{});
+
+    // 장착 해제한 아이템을 인벤 칸 번호로 다시 저장 + 알림
+    std::vector<uint16_t> changedSlots{slotID};
+    CommitInventoryChange(player, changedSlots);
+
+    OnEquipChanged(player, est);
+}
+
+void Zone::OnEquipChanged(const PlayerRef& player, EquipSlotType est)
+{
+    player->RecalcStat();
+
+    std::vector<EquipSlotInfo> one{ToEquipInfo(est, player->GetEquip(est))};
+    RES_EquipmentPacket eq{};
+    eq.header.id = PKT_S_EQUIPMENT;
+    eq.count = one.size();
+    if (SendBufferRef buf = SendBufferManager::MakeList(eq, one))
+        SendTo(player, buf->Buffer(), buf->AllocSize());
+
+    RES_MyStatPacket st = MakeMyStatPacket(*player);
+    SendTo(player, &st, sizeof(st));
+
+    // 주변에 내 정보 전달 (외형 정보)
+    const AoiCell cell = CellOf(*player);
+
+    RES_EquipChangedPacket ch{};
+    ch.header.id = PKT_S_EQUIP_CHANGED;
+    ch.header.size = sizeof(ch);
+    ch.playerID = player->GetPlayerID();
+    ch.equipSlot = est;
+    ch.itemID = player->GetEquip(est).itemID;
+    BroadcastNear(cell, &ch, sizeof(ch));
+
+    // 주변에 내 Hp,Mp 정보 전달
+    RES_PlayerStatPacket ps = MakeStatPacket(*player);
+    BroadcastNear(cell, &ps, sizeof(ps));
+}
+
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z)
 {
     if (portalPending_.count(playerID))
@@ -1822,7 +2010,7 @@ void Zone::HandleMove(uint64_t playerID, float x, float y, float z)
 
     const AoiCell from = CellOf(*player); // 이동 전 칸
 
-    if (!player->TryMove(x, y, z, ZoneConst::MAX_MOVE_SPEED))
+    if (!player->TryMove(x, y, z, player->GetStat().moveSpeed))
     {
         // 비정상적인 움직임 감지 현재 포지션값을 넘긴다
         pkt.x = player->GetX();

@@ -14,6 +14,8 @@ bool StatTemplate::Load()
         d.maxHp = r.I32("Hp");
         d.maxMp = r.I32("Mp");
         d.damage = r.I32("Damage");
+        d.critRate = r.I32("CritRate");
+        d.critDamage = r.I32("CritDamage");
 
         if (level == 0 || level > 0xFFFF)
             throw std::invalid_argument("Level은 1 ~ 65535");
@@ -24,6 +26,10 @@ bool StatTemplate::Load()
             throw std::invalid_argument("Mp는 0 이상");
         if (d.damage <= 0)
             throw std::invalid_argument("Damage는 1 이상");
+        if (d.critRate < 0 || d.critRate > static_cast<int32_t>(BuffMaxPercent))
+            throw std::invalid_argument("CritRate는 0 ~ " + std::to_string(BuffMaxPercent));
+        if (d.critDamage < static_cast<int32_t>(BuffMaxPercent))
+            throw std::invalid_argument("CritDamage는 " + std::to_string(BuffMaxPercent) + "(100%) 이상");
 
         if (!data_.emplace(Key(d.classType, d.level), d).second)
             throw std::invalid_argument("중복 (ClassType, Level): " + r.Str("ClassType") + ", " + r.Str("Level"));

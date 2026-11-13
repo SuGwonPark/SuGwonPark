@@ -116,7 +116,7 @@ enum class ItemType : uint8_t
     Consumable = 3, // 소모품
 };
 
-enum class EquipSlot : uint8_t
+enum class EquipSlotType : uint8_t
 {
     None = 0,
     Weapon = 1,   // 무기
@@ -126,6 +126,7 @@ enum class EquipSlot : uint8_t
     Boots = 5,    // 신발
     Ring = 6,     // 반지
     Necklace = 7, // 목걸이
+    Max = 8,      // 마지막
 };
 
 enum class GradeType : uint8_t
@@ -157,6 +158,7 @@ enum class StatType : uint8_t
     AttackSpeed = 8, // 공격 속도
     HpRegen = 9,     // hp 리젠
     MpRegen = 10,    // mp 리젠
+    Max = 11,   // 마지막
 };
 
 enum class GenderType : uint8_t
@@ -174,7 +176,7 @@ enum class AssetType : uint8_t
 
 
 // ==================== Fail Enum =============================
-// 스킬 실패 이유 (시전자에게만 전송)
+// 스킬 실패 (시전자에게만 전송)
 enum class SkillFailReason : uint8_t
 {
     None = 0,
@@ -186,7 +188,7 @@ enum class SkillFailReason : uint8_t
     Dead = 6,          // 시전자가 사망 상태
 };
 
-// 줍기 실패 이유 (주운 사람에게만)
+// 줍기 실패 (주운 사람에게만)
 enum class PickupFailReason : uint8_t
 {
     None = 0,
@@ -198,7 +200,7 @@ enum class PickupFailReason : uint8_t
 };
 
 
-// 아이템 사용 실패 이유 (사용한 사람에게만)
+// 아이템 사용 실패 (사용한 사람에게만)
 enum class UseItemFailReason : uint8_t
 {
     None = 0,
@@ -210,4 +212,17 @@ enum class UseItemFailReason : uint8_t
     NotDead = 6,   // 살아 있는데 부활 아이템
     NotUsable = 7, // 아직 처리하지 않는 효과 (Buff 등)
     NotEffect = 8,
+};
+
+// 장비 착용/해제 실패
+enum class EquipFailReason : uint8_t
+{
+    None = 0,
+    InvalidItem = 1, // 없는 itemUID / 잘못된 장착 칸
+    NotEquip = 2,    // 장비가 아님
+    LevelTooLow = 3,
+    WrongClass = 4,
+    Dead = 5,
+    InventoryFull = 6, // 해제할 빈 칸 없음
+    EmptySlot = 7,     // 해제하려는 칸이 비어 있음
 };
