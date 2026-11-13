@@ -61,7 +61,7 @@ class Monster
     }
     int32_t GetMaxHp() const
     {
-        return data_->maxHp;
+        return stat_.maxHp;
     }
     bool IsDead() const
     {
@@ -72,6 +72,13 @@ class Monster
     {
         return state_;
     }
+
+    // 디버프가 반영된 최종 전투 스탯
+    const CombatStat& GetStat() const
+    {
+        return stat_;
+    }
+
     uint64_t GetTargetID() const
     {
         return targetPlayerID_;
@@ -156,7 +163,10 @@ class Monster
     void ClearEffects();
 
     // 디버프가 반영된 이동 속도
-    float GetMoveSpeed() const;
+    float GetMoveSpeed() const
+    {
+        return stat_.moveSpeed;
+    }
     // ====== 지속 효과 End ======
 
   private:
@@ -177,10 +187,16 @@ class Monster
         Clock::time_point endAt;
     };
 
+
+    // 디버프 목록으로 stat_ 다시 계산
+    void RecalcStat();
+
   private:
     uint64_t monsterUID_;
     const MonsterData* data_; // 정적 테이블을 가리킴 (수명 걱정 없음)
     float x_, y_, z_;
+    CombatStat stat_;
+
     float spawnX_, spawnY_, spawnZ_;
     int32_t hp_;
 

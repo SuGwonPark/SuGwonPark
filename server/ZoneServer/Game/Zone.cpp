@@ -109,17 +109,8 @@ static RES_MyStatPacket MakeMyStatPacket(const Player& player)
     RES_MyStatPacket pkt{};
     pkt.header.id = PKT_S_MY_STAT;
     pkt.header.size = sizeof(pkt);
-    pkt.stat = player.GetStat();
+    pkt.stat = ToStatInfo(player.GetStat());
     return pkt;
-}
-
-// 치명타: critRate 확률로 critDamage 배율
-static int32_t ApplyCritical(const Player& p, int32_t damage)
-{
-    const StatInfo& s = p.GetStat();
-    if (!Random::ChanceRate(s.critRate, static_cast<int>(BuffMaxPercent)))
-        return damage;
-    return static_cast<int32_t>(std::lround(static_cast<double>(damage) * s.critDamage / BuffMaxPercent));
 }
 
 Zone::Zone(uint32_t zoneID, uint32_t channelID)
@@ -672,14 +663,14 @@ void Zone::UpdateMonster(Monster& monster, float dt, std::chrono::steady_clock::
     {
         case MonsterState::Idle: {
             // 플레이어 타깃 체크
-            if (PlayerRef target = FindNearestPlayer(monster, data.aggroRange))
+            if (PlayerRef target = FindNearestPlayer(monster, data.ai.aggroRange))
                 monster.StartChase(target->GetPlayerID());
             break;
         }
         case MonsterState::Chase: {
 
             // 복귀 거리
-            const float leash = ZoneConst::MONSTER_LEASH_RANGE;
+            const float leash = data.ai.leashRange;
 
             // 일정 거리 이상 가면 초기화
             if (monster.DistSqFromSpawn() > leash * leash)
@@ -694,7 +685,7 @@ void Zone::UpdateMonster(Monster& monster, float dt, std::chrono::steady_clock::
             if (it != players_.end() && !it->second->IsDead() && !portalPending_.count(it->first))
                 target = it->second;
             else
-                target = FindNearestPlayer(monster, data.aggroRange);
+                target = FindNearestPlayer(monster, data.ai.aggroRange);
 
             if (!target)
             {
@@ -704,12 +695,14 @@ void Zone::UpdateMonster(Monster& monster, float dt, std::chrono::steady_clock::
 
             // 공격 범위까지 접근
             moved = MoveMonsterToward(
-                monster, target->GetX(), target->GetY(), target->GetZ(), step, data.attackRange * 0.9f);
+                monster, target->GetX(), target->GetY(), target->GetZ(), step, data.ai.attackRange * 0.9f);
 
             // 공격 범위 안이면 쿨타임 체크하여 공격
-            const float atk = data.attackRange;
+            const float atk = data.ai.attackRange;
+            const auto cooldown =
+                std::chrono::milliseconds(Combat::AttackCooldownMs(data.ai.attackCooldownMs, monster.GetStat()));
             if (monster.DistSqTo(target->GetX(), target->GetY(), target->GetZ()) <= atk * atk &&
-                monster.TryUseAttack(now, std::chrono::milliseconds(ZoneConst::MONSTER_ATTACK_COOLDOWN_MS)))
+                monster.TryUseAttack(now, cooldown))
             {
                 MonsterAttack(monster, target);
             }
@@ -809,7 +802,8 @@ void Zone::HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64
     if (!attacker->TryUseAttack(now))
         return;
 
-    const int32_t damage = monster.TakeDamage(ApplyCritical(*attacker, attacker->GetDamage()), attackerUID);
+    const int32_t raw = Combat::ApplyCritical(attacker->GetStat(), attacker->GetDamage());
+    const int32_t damage = monster.TakeDamage(Combat::ReduceByDefense(raw, monster.GetStat()), attackerUID);
 
     if (monster.GetState() == MonsterState::Idle)
     {
@@ -879,7 +873,9 @@ void Zone::BroadcastMonsterHp(const Monster& monster)
 
 void Zone::MonsterAttack(Monster& monster, const PlayerRef& target)
 {
-    const int32_t damage = target->TakeDamage(target->ApplyDefense(monster.GetData().attack));
+    const CombatStat& ms = monster.GetStat();
+    const int32_t raw = Combat::ApplyCritical(ms, ms.damage);
+    const int32_t damage = target->TakeDamage(Combat::ReduceByDefense(raw, target->GetStat()));
 
     RES_AttackPacket pkt{};
     pkt.header.id = PKT_S_ATTACK;
@@ -1195,8 +1191,9 @@ int32_t Zone::ApplySkillEffect(
         switch (effect.effectType)
         {
             case SkillEffectType::Damage: {
+                const int32_t raw = Combat::ApplyCritical(caster->GetStat(), CalcEffectValue(*caster, effect));
                 totalDamage +=
-                    monster.TakeDamage(ApplyCritical(*caster, CalcEffectValue(*caster, effect)), caster->GetPlayerID());
+                    monster.TakeDamage(Combat::ReduceByDefense(raw, monster.GetStat()), caster->GetPlayerID());
             }
             break;
 

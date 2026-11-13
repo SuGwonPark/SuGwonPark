@@ -116,53 +116,26 @@ uint64_t Player::AddGold(uint64_t amount)
 
 void Player::CalcStat()
 {
-    const StatData* base = StatTemplate::Instance().Get(classType_, level_);
-    if (!base)
+    const StatData* data = StatTemplate::Instance().Get(classType_, level_);
+    if (!data)
         return;
 
-    // 스탯별 Flat / Percent 합
-    constexpr size_t STAT_COUNT = static_cast<size_t>(StatType::Max);
-    int64_t flat[STAT_COUNT] = {};
-    int64_t pct[STAT_COUNT] = {};
-
-    // 장비 스탯 옵션 총 합산
+    CombatStat base{};
+    base.maxHp = data->maxHp;
+    base.maxMp = data->maxMp;
+    base.damage = data->damage;
+    base.critRate = data->critRate;
+    base.critDamage = data->critDamage;
+    base.moveSpeed = ZoneConst::MAX_MOVE_SPEED;
+    base.hpRegen = ZoneConst::PLAYER_HP_REGEN;
+    base.mpRegen = ZoneConst::PLAYER_MP_REGEN;
+    
+    std::vector<StatModifier> mods;
     for (const InventoryItemData& e : equipment_)
-    {
         for (const ItemOptionInfo& o : e.options)
-        {
-            const size_t i = static_cast<size_t>(o.statType);
-            if (i >= STAT_COUNT)
-                continue;
-            auto& pick = o.valueType == ValueType::Percent ? pct : flat;
-            pick[i] += o.value;
-        }
-    }
+            mods.push_back({o.statType, o.valueType, o.value});
 
-    // 일반 스탯: (기본 + flat) * (1 + percent)
-    auto normal = [&](StatType t, double baseValue) {
-        const size_t i = static_cast<size_t>(t);
-        return (baseValue + flat[i]) * (1.0 + static_cast<double>(pct[i] / BuffMaxPercent));
-    };
-
-    // 확률 / 배율 스탯 (값 자체가 만분율이라 그냥 더함)
-    auto rate = [&](StatType t, int32_t baseValue) {
-        const size_t i = static_cast<size_t>(t);
-        return static_cast<int32_t>(baseValue + flat[i] + pct[i]);
-    };
-
-    auto toInt = [](double v) { return static_cast<int32_t>(std::lround(v)); };
-    const int32_t maxRate = static_cast<int32_t>(BuffMaxPercent);
-
-    stat_.maxHp = std::max(1, toInt(normal(StatType::Hp, base->maxHp)));
-    stat_.maxMp = std::max(0, toInt(normal(StatType::Mp, base->maxMp)));
-    stat_.damage = std::max(1, toInt(normal(StatType::Damage, base->damage)));
-    stat_.defense = std::max(0, toInt(normal(StatType::Defense, 0)));
-    stat_.critRate = std::clamp(rate(StatType::CritRate, base->critRate), 0, maxRate);  // Stat.csv
-    stat_.critDamage = std::max(maxRate, rate(StatType::CritDamage, base->critDamage)); // 기본 100%
-    stat_.attackSpeed = std::max(0, rate(StatType::AttackSpeed, 0));
-    stat_.moveSpeed = static_cast<float>(normal(StatType::MoveSpeed, ZoneConst::MAX_MOVE_SPEED));
-    stat_.hpRegen = std::max(0, toInt(normal(StatType::HpRegen, ZoneConst::PLAYER_HP_REGEN)));
-    stat_.mpRegen = std::max(0, toInt(normal(StatType::MpRegen, ZoneConst::PLAYER_MP_REGEN)));
+    stat_ = Combat::CalcStat(base, mods);
 }
 
 void Player::RecalcStat()
@@ -205,10 +178,7 @@ bool Player::LoadEquip(uint16_t equipSlot, uint64_t itemUID, uint32_t itemID, st
 
 std::chrono::milliseconds Player::GetAttackCooldown() const
 {
-    const double ms = static_cast<int64_t>(std::lround(
-        ZoneConst::PLAYER_ATTACK_COOLDOWN_MS * static_cast<double>(BuffMaxPercent) /
-        (BuffMaxPercent + stat_.attackSpeed)));
-    return std::chrono::milliseconds(std::lround(ms));
+    return std::chrono::milliseconds(Combat::AttackCooldownMs(ZoneConst::PLAYER_ATTACK_COOLDOWN_MS, stat_));
 }
 
 bool Player::TryUseAttack(std::chrono::steady_clock::time_point now)
@@ -217,11 +187,6 @@ bool Player::TryUseAttack(std::chrono::steady_clock::time_point now)
         return false;
     lastAttackTime_ = now;
     return true;
-}
-
-int32_t Player::ApplyDefense(int32_t rawDamage) const
-{
-    return std::max(1, static_cast<int32_t>(std::lround(rawDamage * 100.0 / (100.0 + stat_.defense))));
 }
 
 void Player::SpendSkillCost(SkillCostType type, int32_t cost)

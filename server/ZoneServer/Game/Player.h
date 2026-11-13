@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "ServerCore/Protocol/VarEnum.h"
 #include "Game/Inventory.h"
+#include "Game/CombatStat.h"
 
 class Player
 {
@@ -20,7 +21,7 @@ class Player
     uint64_t exp_;
     uint64_t gold_ = 0;
     Inventory inventory_;
-    StatInfo stat_{};                                                   // 최종 스탯 정보 (기본 스탯 + 장비)
+    CombatStat stat_{};                                                 // 최종 스탯 정보 (기본 스탯 + 장비)
     std::array<InventoryItemData, Game::EQUIP_SLOT_COUNT> equipment_{}; // 장착 아이템 정보
 
     uint64_t sessionID_ = 0;
@@ -103,8 +104,6 @@ class Player
     std::chrono::milliseconds GetAttackCooldown() const;
     bool TryUseAttack(std::chrono::steady_clock::time_point now);
 
-    // 받은 공격력에 내 방어력을 적용한 데미지 (최소 1)
-    int32_t ApplyDefense(int32_t rawDamage) const;
 
     uint64_t GetExp() const
     {
@@ -200,7 +199,7 @@ class Player
         return stat_.damage;
     }
 
-    const StatInfo& GetStat() const
+    const CombatStat& GetStat() const
     {
         return stat_;
     }
@@ -218,15 +217,6 @@ class Player
     {
         hp_ = hp;
         SetPosition(x, y, z);
-    }
-
-    // 공격 가능 여부 체크
-    bool TryUseAttack(std::chrono::steady_clock::time_point now, std::chrono::milliseconds cooldown)
-    {
-        if (now - lastAttackTime_ < cooldown)
-            return false;
-        lastAttackTime_ = now;
-        return true;
     }
 
     // 스킬 사용 가능 여부
