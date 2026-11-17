@@ -70,7 +70,8 @@ int main(int argc, char* argv[])
                       << " / 끊김 " << s.closed << " | 수신 " << (rp - lastRecvP) / INTERVAL_SEC << " pkt/s, "
                       << (rb - lastRecvB) / 1024.0 / INTERVAL_SEC << " KB/s | 송신 " << (sp - lastSentP) / INTERVAL_SEC
                       << " pkt/s | 사망 " << s.deaths << ", 위치보정 " << s.moveCorrections << ", 스킬실패 "
-                      << s.skillFails << " | 실패(로그인/생성/선택) " << s.loginFail << "/" << s.createFail << "/"
+                      << s.skillFails << ", 레벨업 " << s.levelUps << " | 줍기 " << s.pickups << "/실패 "
+                      << s.pickupFails << " | 실패(로그인/생성/선택) " << s.loginFail << "/" << s.createFail << "/"
                       << s.selectFail << std::endl;
             lastRecvP = rp;
             lastRecvB = rb;

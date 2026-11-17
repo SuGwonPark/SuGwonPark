@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "Monster.h"
 #include "ZoneConstants.h"
+#include "Game/Combat.h"
 
 Monster::Monster(uint64_t monsterUID, const MonsterData* data, float x, float y, float z)
     : monsterUID_(monsterUID), data_(data), stat_(data->stat), x_(x), y_(y), z_(z), spawnX_(x), spawnY_(y), spawnZ_(z),

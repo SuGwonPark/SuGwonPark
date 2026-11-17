@@ -1,11 +1,11 @@
 ﻿#include "pch.h"
 #include "Network/GatewaySession.h"
-#include "Game/Zone.h"
+#include "World/Zone.h"
 #include "ServerCore/DB/GameDB.h"
 #include "ServerCore/Utils/Config.h"
 #include "Template/ZoneTemplate.h"
 #include "Template/Template.h"
-#include "Game/ZoneConstants.h"
+#include "World/ZoneConstants.h"
 
 int main(int argc, char* argv[])
 {

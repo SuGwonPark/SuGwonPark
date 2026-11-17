@@ -57,6 +57,14 @@ class Bot : public std::enable_shared_from_this<Bot>
         int32_t hp = 0;
     };
 
+    struct DropView
+    {
+        float x = 0.f;
+        float z = 0.f;
+        uint64_t ownerID = 0;         // 우선권 가진 플레이어 (0 = 누구나)
+        Clock::time_point ownerUntil; // 이 시간 전에는 ownerID만 주울 수 있음
+    };
+
     // 네트워크
     void DoRead();
     void ProcessPackets();
@@ -82,6 +90,7 @@ class Bot : public std::enable_shared_from_this<Bot>
     void OnTick();
     void MoveToward(float tx, float tz, float step, float stopDist);
     void PickWaypoint();
+    bool TryPickupDrop(Clock::time_point now, float step); // 주울 드롭이 있으면 이동/줍기 후 true
 
   private:
     const BotConfig cfg_;
@@ -108,12 +117,15 @@ class Bot : public std::enable_shared_from_this<Bot>
     int32_t hp_ = 0;
     int32_t mp_ = 0;
     std::unordered_map<uint64_t, MonsterView> monsters_; // 시야 안 몬스터
+    std::unordered_map<uint64_t, DropView> drops_;       // 시야 안 바닥 아이템
 
     // 행동 상태
     float wx_ = 0.f, wz_ = 0.f; // 배회 목표 지점
     Clock::time_point nextAttackAt_{};
     Clock::time_point nextSkillAt_{};
     Clock::time_point nextReviveAt_{};
+    Clock::time_point nextPickupAt_{};
+    uint64_t pendingPickupUID_ = 0; // 줍기 요청한 드롭 (사라지면 성공으로 집계)
     std::mt19937 rng_;
 };
 

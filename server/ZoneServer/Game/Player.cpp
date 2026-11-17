@@ -2,6 +2,7 @@
 #include "Player.h"
 
 #include "Game/ZoneConstants.h"
+#include "Game/Combat.h"
 
 #include "Template/LevelTemplate.h"
 #include "Template/StatTemplate.h"
@@ -145,16 +146,21 @@ void Player::RecalcStat()
     mp_ = std::min(mp_, stat_.maxMp);
 }
 
-void Player::SwapEquip(uint16_t slotID, EquipSlotType slot, InventoryItemData in)
+bool Player::SwapEquip(uint16_t slotID, EquipSlotType slot, InventoryItemData in)
 {
     InventoryItemData& e = equipment_[static_cast<size_t>(slot)];
+
+    // 돌려받을 칸이 비어 있어야 함 (기존 장비 유실 방지)
+    if (!e.IsEmpty() && !inventory_.GetSlot(slotID).IsEmpty())
+        return false;
+
     InventoryItemData old = std::move(e);
     e = std::move(in);
 
     // 장착중이던 장비 인벤토리로 이동
     if (!old.IsEmpty())
         inventory_.Put(slotID, std::move(old));
-
+    return true;
 }
 
 // DB 데이터 세팅시 사용

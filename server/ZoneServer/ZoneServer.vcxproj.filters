@@ -5,39 +5,42 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="DB">
-      <UniqueIdentifier>{153f65d5-f986-4c31-85df-c7651c220a51}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Network">
       <UniqueIdentifier>{4397203f-fa82-4a4b-a2c1-3f1f8bd7dfce}</UniqueIdentifier>
     </Filter>
-    <Filter Include="JobSystem">
-      <UniqueIdentifier>{eb345a61-f252-4273-bf16-a3e7f075d994}</UniqueIdentifier>
+    <Filter Include="World">
+      <UniqueIdentifier>{7e0d10e8-a302-4031-ae87-6e992d63837f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Game">
-      <UniqueIdentifier>{9b9f1a82-6cf9-4142-a1a5-ed842bcb8b34}</UniqueIdentifier>
+    <Filter Include="Object">
+      <UniqueIdentifier>{bdc913e8-0998-4409-b63f-cd8145f2def1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Manager">
-      <UniqueIdentifier>{d3ecfc51-34ce-4b62-816a-436c5ab4eda6}</UniqueIdentifier>
+    <Filter Include="Item">
+      <UniqueIdentifier>{0454052a-20b3-452e-856b-fba03f0e5fee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Combat">
+      <UniqueIdentifier>{798c9ed3-211e-421b-8503-7baaca079ffa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util">
+      <UniqueIdentifier>{73fb0c06-e1ce-4c0b-bcca-42cf56d62132}</UniqueIdentifier>
     </Filter>
     <Filter Include="Template">
       <UniqueIdentifier>{b7ce8bf0-8b96-424b-a68b-a1a060211507}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Game\Player.cpp">
-      <Filter>Game</Filter>
+    <ClCompile Include="Object\Player.cpp">
+      <Filter>Object</Filter>
     </ClCompile>
-    <ClCompile Include="Game\Zone.cpp">
-      <Filter>Game</Filter>
+    <ClCompile Include="World\Zone.cpp">
+      <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="Network\GatewaySession.cpp">
       <Filter>Network</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Main_Zone.cpp" />
-    <ClCompile Include="Game\Monster.cpp">
-      <Filter>Game</Filter>
+    <ClCompile Include="Object\Monster.cpp">
+      <Filter>Object</Filter>
     </ClCompile>
     <ClCompile Include="Template\MonsterSpawnTemplate.cpp">
       <Filter>Template</Filter>
@@ -78,32 +81,35 @@
     <ClCompile Include="Template\ItemSubOptionTemplate.cpp">
       <Filter>Template</Filter>
     </ClCompile>
-    <ClCompile Include="Game\AoiGrid.cpp">
-      <Filter>Game</Filter>
+    <ClCompile Include="World\AoiGrid.cpp">
+      <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="Game\Inventory.cpp">
-      <Filter>Game</Filter>
+    <ClCompile Include="Item\Inventory.cpp">
+      <Filter>Item</Filter>
     </ClCompile>
-    <ClCompile Include="Game\CombatStat.cpp">
-      <Filter>Game</Filter>
+    <ClCompile Include="Combat\Combat.cpp">
+      <Filter>Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="World\ZoneCombat.cpp">
+      <Filter>World</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Game\Player.h">
-      <Filter>Game</Filter>
+    <ClInclude Include="Object\Player.h">
+      <Filter>Object</Filter>
     </ClInclude>
-    <ClInclude Include="Game\Zone.h">
-      <Filter>Game</Filter>
+    <ClInclude Include="World\Zone.h">
+      <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="Network\GatewaySession.h">
       <Filter>Network</Filter>
     </ClInclude>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="Game\ZoneConstants.h">
-      <Filter>Game</Filter>
+    <ClInclude Include="World\ZoneConstants.h">
+      <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="Game\Monster.h">
-      <Filter>Game</Filter>
+    <ClInclude Include="Object\Monster.h">
+      <Filter>Object</Filter>
     </ClInclude>
     <ClInclude Include="Template\MonsterSpawnTemplate.h">
       <Filter>Template</Filter>
@@ -145,17 +151,26 @@
     <ClInclude Include="Template\ItemSubOptionTemplate.h">
       <Filter>Template</Filter>
     </ClInclude>
-    <ClInclude Include="Game\ItemUID.h">
-      <Filter>Game</Filter>
+    <ClInclude Include="Item\ItemUID.h">
+      <Filter>Item</Filter>
     </ClInclude>
-    <ClInclude Include="Game\AoiGrid.h">
-      <Filter>Game</Filter>
+    <ClInclude Include="World\AoiGrid.h">
+      <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="Game\Inventory.h">
-      <Filter>Game</Filter>
+    <ClInclude Include="Item\Inventory.h">
+      <Filter>Item</Filter>
     </ClInclude>
-    <ClInclude Include="Game\CombatStat.h">
-      <Filter>Game</Filter>
+    <ClInclude Include="Combat\CombatStat.h">
+      <Filter>Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="Combat\Combat.h">
+      <Filter>Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="Combat\HitArea.h">
+      <Filter>Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="Util\MathUtil.h">
+      <Filter>Util</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

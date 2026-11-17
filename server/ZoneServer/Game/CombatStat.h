@@ -1,6 +1,5 @@
 ﻿#pragma once
 #include <cstdint>
-#include <vector>
 #include "ServerCore/Protocol/ProtocolTypes.h"
 
 // 전투 스탯 (서버 전용). Player/Monster 공용으로 사용
@@ -51,16 +50,3 @@ inline StatInfo ToStatInfo(const CombatStat& cs)
     info.mpRegen = cs.mpRegen;
     return info;
 }
-
-namespace Combat
-{
-// 기본값 + 수정치 → 최종 스탯
-//  일반 스탯(HP, MP, 공격력, 방어력, 이동속도, 리젠): (기본 + Flat 합) × (1 + Percent 합)
-//  확률/배율 스탯(치명타, 공격속도, 위협 배율): Flat/Percent 구분 없이 만분율 포인트로 더함
-
-CombatStat CalcStat(const CombatStat& base, const std::vector<StatModifier>& mods);
-
-int32_t ApplyCritical(const CombatStat& attacker, int32_t damage);
-int32_t ReduceByDefense(int32_t damage, const CombatStat& defender);
-int32_t AttackCooldownMs(int32_t baseMs, const CombatStat& attacker);
-} // namespace Combat

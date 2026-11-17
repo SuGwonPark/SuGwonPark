@@ -19,13 +19,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Game\AoiGrid.cpp" />
-    <ClCompile Include="Game\CombatStat.cpp" />
-    <ClCompile Include="Game\Inventory.cpp" />
-    <ClCompile Include="Game\Monster.cpp" />
+    <ClCompile Include="World\AoiGrid.cpp" />
+    <ClCompile Include="Combat\Combat.cpp" />
+    <ClCompile Include="World\ZoneCombat.cpp" />
+    <ClCompile Include="Item\Inventory.cpp" />
+    <ClCompile Include="Object\Monster.cpp" />
     <ClCompile Include="Main_Zone.cpp" />
-    <ClCompile Include="Game\Player.cpp" />
-    <ClCompile Include="Game\Zone.cpp" />
+    <ClCompile Include="Object\Player.cpp" />
+    <ClCompile Include="World\Zone.cpp" />
     <ClCompile Include="Network\GatewaySession.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Template\ItemOptionTemplate.cpp" />
@@ -43,16 +44,19 @@
     <ClCompile Include="Template\ZoneTemplate.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Game\AoiGrid.h" />
-    <ClInclude Include="Game\CombatStat.h" />
-    <ClInclude Include="Game\Inventory.h" />
-    <ClInclude Include="Game\ItemUID.h" />
-    <ClInclude Include="Game\Monster.h" />
-    <ClInclude Include="Game\Player.h" />
-    <ClInclude Include="Game\Zone.h" />
+    <ClInclude Include="World\AoiGrid.h" />
+    <ClInclude Include="Combat\CombatStat.h" />
+    <ClInclude Include="Combat\Combat.h" />
+    <ClInclude Include="Combat\HitArea.h" />
+    <ClInclude Include="Util\MathUtil.h" />
+    <ClInclude Include="Item\Inventory.h" />
+    <ClInclude Include="Item\ItemUID.h" />
+    <ClInclude Include="Object\Monster.h" />
+    <ClInclude Include="Object\Player.h" />
+    <ClInclude Include="World\Zone.h" />
     <ClInclude Include="Game\ZoneData.h" />
     <ClInclude Include="Network\GatewaySession.h" />
-    <ClInclude Include="Game\ZoneConstants.h" />
+    <ClInclude Include="World\ZoneConstants.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Template\ItemOptionTemplate.h" />
     <ClInclude Include="Template\ItemSubOptionTemplate.h" />

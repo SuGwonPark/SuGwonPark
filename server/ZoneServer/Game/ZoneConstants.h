@@ -34,10 +34,10 @@ inline constexpr uint16_t EQUIP_SLOT_BASE = 10000;   // DB item.slot: 0~99 인�
 inline constexpr int32_t PLAYER_HP_REGEN = 1; // 회복 1회당 (임시)
 inline constexpr int32_t PLAYER_MP_REGEN = 2; // 임시
 
-inline constexpr size_t SKILL_MAX_TARGETS = 8;          // 범위 스킬 최대 타격 수 (임시)
-
 inline constexpr float PLAYER_ATTACK_RANGE = 2.5f;    // 캐릭터 공격 범위		(임시)
-inline constexpr int PLAYER_ATTACK_COOLDOWN_MS = 500; //(임시)
+inline constexpr float PLAYER_ATTACK_ANGLE = 120.f;   // 논타겟 기본 공격 부채꼴 각도 (임시)
+
+inline constexpr int PLAYER_ATTACK_COOLDOWN_MS = 500; // (임시)
 
 inline constexpr float TICK_STAT_INTERVAL_SEC = 5.f; // 틱 측정 출력 주기 (부하 테스트용)
 

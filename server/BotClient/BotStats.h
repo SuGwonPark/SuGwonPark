@@ -21,6 +21,9 @@ struct BotStats
     std::atomic<uint64_t> deaths{0};          // 봇 사망
     std::atomic<uint64_t> moveCorrections{0}; // 서버가 위치를 되돌림 (이동 검증 실패)
     std::atomic<uint64_t> skillFails{0};      // S_SKILL_FAIL 수신
+    std::atomic<uint64_t> levelUps{0};        // S_LEVEL_UP 수신 (내 캐릭터)
+    std::atomic<uint64_t> pickups{0};         // 줍기 성공 (요청한 드롭이 사라짐)
+    std::atomic<uint64_t> pickupFails{0};     // S_PICKUP_FAIL 수신
 
     static BotStats& Get()
     {

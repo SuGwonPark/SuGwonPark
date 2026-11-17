@@ -2,7 +2,7 @@
 #include "pch.h"
 #include "ServerCore/Protocol/InternalPackets.h"
 #include "ServerCore/Network/SendBuffer.h"
-#include "Game/Zone.h"
+#include "World/Zone.h"
 
 // Zone 서버 -> Gateway로 향하는 연결 (ZoneServerSession의 반대편 끝).
 // Zone에서 Gateway로 보내야 하는 제어 패킷(예: Zone 이동 완료 ACK)을 여기로 보낸다.

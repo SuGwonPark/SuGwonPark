@@ -14,6 +14,9 @@ constexpr float ATTACK_STOP_DIST = 2.f;                          // 몬스터 �
 constexpr auto ATTACK_INTERVAL = std::chrono::milliseconds(600); // 서버 쿨타임 500 + 여유
 constexpr auto SKILL_INTERVAL = std::chrono::milliseconds(1600); // Slash 쿨타임 1500 + 여유
 constexpr auto REVIVE_INTERVAL = std::chrono::seconds(3);
+constexpr float PICKUP_RANGE = 3.f;                              // 서버 PICKUP_RANGE
+constexpr float PICKUP_STOP_DIST = 1.f;                          // 드롭 앞 이 거리에서 멈춤
+constexpr auto PICKUP_INTERVAL = std::chrono::milliseconds(500); // 같은 드롭 반복 요청 방지
 constexpr uint32_t SKILL_ID = 1; // Slash (Single, 사거리 2.5, MP 5)
 constexpr int32_t SKILL_COST = 5;
 constexpr int MAX_CLOSE_LOG = 20; // 종료 로그는 앞의 20개만 (봇 수백 개면 화면이 넘침)
@@ -362,8 +365,57 @@ void Bot::HandlePacket(uint16_t id, const uint8_t* data, uint16_t size)
             }
             return;
         }
+        case PKT_S_LEVEL_UP: {
+            const auto* p = As<RES_LevelUpPacket>(data, size);
+            if (p && p->playerID == myID_)
+            {
+                ++Stats().levelUps;
+                hp_ = p->hp;
+                mp_ = p->mp;
+            }
+            return;
+        }
+
+        // ---------- 바닥 아이템 ----------
+        case PKT_S_DROP_SPAWN: {
+            const auto* p = As<RES_DropSpawnPacket>(data, size);
+            if (!p || size < sizeof(*p) + p->count * sizeof(DropInfo))
+                return;
+            const auto now = Clock::now();
+            for (uint16_t i = 0; i < p->count; ++i)
+            {
+                DropInfo info{};
+                std::memcpy(&info, data + sizeof(*p) + i * sizeof(DropInfo), sizeof(info));
+                drops_[info.dropUID] =
+                    DropView{info.x, info.z, info.ownerID, now + std::chrono::milliseconds(info.ownerRemainMs)};
+            }
+            return;
+        }
+        case PKT_S_DROP_DESPAWN: {
+            const auto* p = As<RES_DropDespawnPacket>(data, size);
+            if (!p)
+                return;
+            if (p->dropUID == pendingPickupUID_)
+            {
+                ++Stats().pickups; // 요청한 드롭이 사라짐 = 주운 것으로 봄
+                pendingPickupUID_ = 0;
+            }
+            drops_.erase(p->dropUID);
+            return;
+        }
+        case PKT_S_PICKUP_FAIL: {
+            const auto* p = As<RES_PickupFailPacket>(data, size);
+            if (!p)
+                return;
+            ++Stats().pickupFails;
+            if (p->dropUID == pendingPickupUID_)
+                pendingPickupUID_ = 0;
+            drops_.erase(p->dropUID); // 다시 시도하지 않음 (가방 가득 / 우선권 / 이미 없음)
+            return;
+        }
+
         default:
-            return; // S_SPAWN, S_DESPAWN, S_EXP 등은 받기만 (통계에는 잡힘)
+            return; // S_SPAWN, S_DESPAWN, S_EXP, S_INVENTORY 등은 받기만 (통계에는 잡힘)
     }
 }
 
@@ -435,6 +487,10 @@ void Bot::OnTick()
 
     if (targetUID == 0)
     {
+        // 근처에 싸울 몬스터가 없으면 바닥 아이템부터 줍기
+        if (TryPickupDrop(now, step))
+            return;
+
         // 배회: 목표 지점에 도착하면 새 지점
         if (DistSq(x_, z_, wx_, wz_) < 1.f)
             PickWaypoint();
@@ -485,6 +541,45 @@ void Bot::MoveToward(float tx, float tz, float step, float stopDist)
     pkt.y = y_;
     pkt.z = z_;
     SendPacket(pkt, PKT_C_MOVE);
+}
+
+bool Bot::TryPickupDrop(Clock::time_point now, float step)
+{
+    // 주울 수 있는 가장 가까운 드롭 (우선권이 남은 남의 드롭은 제외)
+    uint64_t dropUID = 0;
+    float bestSq = CHASE_RANGE * CHASE_RANGE;
+    float tx = 0.f, tz = 0.f;
+    for (const auto& [uid, d] : drops_)
+    {
+        if (d.ownerID != 0 && d.ownerID != myID_ && now < d.ownerUntil)
+            continue;
+        const float dSq = DistSq(x_, z_, d.x, d.z);
+        if (dSq < bestSq)
+        {
+            bestSq = dSq;
+            dropUID = uid;
+            tx = d.x;
+            tz = d.z;
+        }
+    }
+    if (dropUID == 0)
+        return false;
+
+    if (bestSq > (PICKUP_RANGE - 0.5f) * (PICKUP_RANGE - 0.5f))
+    {
+        MoveToward(tx, tz, step, PICKUP_STOP_DIST);
+        return true;
+    }
+
+    if (now >= nextPickupAt_)
+    {
+        REQ_PickupPacket req{};
+        req.dropUID = dropUID;
+        SendPacket(req, PKT_C_PICKUP);
+        pendingPickupUID_ = dropUID;
+        nextPickupAt_ = now + PICKUP_INTERVAL;
+    }
+    return true;
 }
 
 void Bot::PickWaypoint()

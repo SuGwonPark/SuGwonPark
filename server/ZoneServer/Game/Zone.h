@@ -11,6 +11,8 @@ using MonsterRef = std::shared_ptr<Monster>;
 
 struct RewardResult;
 struct SkillEffectData;
+struct HitArea;
+struct REQ_SkillCastPacket;
 
 struct DropItem
 {
@@ -88,35 +90,42 @@ class Zone : public JobSerializer<Zone>
     // 클라이언트에 전송
     void BroadcastMonsterMove(const Monster& monster);
 
-    // 전투
-    void HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64_t targetUID);
-    void OnMonsterDead(Monster& monster);
-    void RespawnMonster(Monster& monster);
-    void BroadcastMonsterHp(const Monster& monster);
-
+    // ======== 전투 (ZoneCombat.cpp) ========
+    // 기본 공격
+    void HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64_t targetUID, float dirX, float dirZ);
     void MonsterAttack(Monster& monster, const PlayerRef& target);
-    void HandleRevive(const PlayerRef& player);
+    void BroadcastMonsterHp(const Monster& monster);
+    void OnMonsterDead(Monster& monster);
 
-    // 보상 지급
-    void GiveRewards(const PlayerRef& player, const std::vector<RewardResult>& rewards);
-    void DistributeRewards(const Monster& monster);
+    // 판정 범위 안 몬스터를 기준점에서 가까운 순으로 최대 maxCount마리
+    void CollectMonstersInArea(const HitArea& area, size_t maxCount, std::vector<Monster*>& out) const;
 
-    // 스킬 캐스팅
-    void HandleSkillCast(const PlayerRef& caster, uint32_t skillID, ObjectType TargetType, uint64_t targetUID);
-    // 스킬 실패
+    // 스킬
+    void HandleSkillCast(const PlayerRef& caster, const REQ_SkillCastPacket& req);
     void SendSkillFail(const PlayerRef& caster, uint32_t skillID, SkillFailReason reason);
-
-    // 몬스터 1마리 효과 적용 (데미지, 회복, 버프, 디버프 등)
+    // 몬스터 1마리 효과 적용 (데미지, 디버프, 도트)
     int32_t ApplySkillEffect(
         const PlayerRef& caster,
         const std::vector<SkillEffectData>& effects,
         Monster& monster,
         std::chrono::steady_clock::time_point now);
+
+    //void CollectMonstersInRadius(
+    //    float cx, float cy, float cz, float radius, size_t maxCount, std::vector<Monster*>& out) const;
+    
     // 몬스터 지속 효과 (디버프 도트) 처리
     bool UpdateMonsterEffects(Monster& monster, std::chrono::steady_clock::time_point now);
 
-    void CollectMonstersInRadius(
-        float cx, float cy, float cz, float radius, size_t maxCount, std::vector<Monster*>& out) const;
+    // 사망 / 부활
+    void HandleRevive(const PlayerRef& player);
+    void RevivePlayer(const PlayerRef& player);
+    // ======== 전투 End ========
+
+    void RespawnMonster(Monster& monster);
+
+    // 보상 지급
+    void GiveRewards(const PlayerRef& player, const std::vector<RewardResult>& rewards);
+    void DistributeRewards(const Monster& monster);
 
     void RegenPlayers();
 
@@ -180,12 +189,10 @@ class Zone : public JobSerializer<Zone>
     // 아이템 삭제
     void HandleDestoryItem(const PlayerRef& player, uint16_t slot, uint64_t itemUID, uint32_t count);
 
-    void RevivePlayer(const PlayerRef& player);
-
     // 장비 착용
     void HandleEquip(const PlayerRef& player, uint64_t itemUID);
     // 장비 해제
-    void HandleUnequip(const PlayerRef& player, EquipSlotType est); 
+    void HandleUnequip(const PlayerRef& player, EquipSlotType est);
     // 착용/해제 공통: 스탯 재계산
     void OnEquipChanged(const PlayerRef& player, EquipSlotType est);
 

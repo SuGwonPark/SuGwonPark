@@ -7,6 +7,7 @@ inline constexpr uint32_t BuffMaxPercent = 10000;
 
 enum class ObjectType : uint8_t
 {
+    None = 0, //  논타겟
     Player = 1,
     Monster = 2,
 };
@@ -78,6 +79,9 @@ enum class RangeType : uint8_t
     Single = 1,     // 대상 1명 (Range 안)
     SelfArea = 2,   // 시전자 중심 원형 (Radius)
     TargetArea = 3, // 대상 위치 중심 원형 (Range 안에서, Radius)
+    Cone = 4,       // 시전자 앞 부채꼴 (길이 Range, 각도 Angle)
+    Line = 5,       // 시전자 앞 직사각형 (길이 Range, 폭 Width)
+    GroundArea = 6, // 조준점 중심 원형 (조준 거리 Range 안, Radius)
 };
 
 enum class SkillCostType : uint8_t
@@ -186,6 +190,7 @@ enum class SkillFailReason : uint8_t
     InvalidTarget = 4, // 대상 없음 / 죽음 / 귀환 중
     OutOfRange = 5,    // 사거리 밖
     Dead = 6,          // 시전자가 사망 상태
+    InvalidAim = 7,    // 방향 / 조준점이 잘못됨
 };
 
 // 줍기 실패 (주운 사람에게만)

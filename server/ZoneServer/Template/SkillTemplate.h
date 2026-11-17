@@ -10,8 +10,11 @@ struct SkillData
     ClassType classType;   // None = 직업 제한 없음 (아이템 스킬 등 공용)
     TargetType targetType; // 누구를 대상으로 (적 / 아군 / 본인)
     RangeType rangeType;   // 범위 모양 (단일 / 시전자 중심 / 대상 중심)
-    float range;           // Single / TargetArea: 대상까지 최대 거리
-    float radius;          // SelfArea / TargetArea: 반경
+    float range;           // Single/TargetArea/GroundArea: 최대 거리, Cone/Line: 길이
+    float radius;          // SelfArea/TargetArea/GroundArea: 반경
+    float angle;            // cone: 부채꼴 각도
+    float width;            // Line 폭
+    int32_t targetCount;
     int32_t cooldownMs;
     int32_t castingMs; // 시전 시간. 0이면 즉시 발동
     SkillCostType costType; // 소모 자원 타입

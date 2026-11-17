@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
-#include "Game/CombatStat.h"
+#include "Combat/CombatStat.h"
 
 struct MonsterAI
 {

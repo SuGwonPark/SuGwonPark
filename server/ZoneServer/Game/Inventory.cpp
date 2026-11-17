@@ -30,19 +30,6 @@ InventorySlotInfo ToSlotInfo(uint16_t slot, const InventoryItemData& s)
     return info;
 }
 
-EquipSlotInfo ToEquipInfo(EquipSlotType est, const InventoryItemData& e)
-{
-    EquipSlotInfo info{};
-    info.equipSlot = est;
-    info.itemUID = e.itemUID;
-    info.itemID = e.itemID;
-    info.optionCount = static_cast<uint8_t>(std::min<size_t>(e.options.size(), Game::MAX_ITEM_OPTIONS));
-    for (uint8_t i = 0; i < info.optionCount; ++i)
-        info.options[i] = e.options[i];
-    return info;
-}
-
-
 bool Inventory::LoadSlot(
     uint16_t slot, uint64_t itemUID, uint32_t itemID, uint32_t count, std::vector<ItemOptionInfo> options)
 {

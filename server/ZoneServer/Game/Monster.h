@@ -194,8 +194,8 @@ class Monster
   private:
     uint64_t monsterUID_;
     const MonsterData* data_; // 정적 테이블을 가리킴 (수명 걱정 없음)
+    CombatStat stat_;         // 기본 스탯 + 디버프 반영 최종값
     float x_, y_, z_;
-    CombatStat stat_;
 
     float spawnX_, spawnY_, spawnZ_;
     int32_t hp_;

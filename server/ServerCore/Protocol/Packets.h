@@ -147,19 +147,21 @@ struct RES_MonsterMovePacket
 struct REQ_AttackPacket
 {
     PacketHeader header;
-    ObjectType targetType; // 타겟 타이
-    uint64_t targetUID;    // 타겟 고유값
+    ObjectType targetType; // None = 논타겟 (바라보는 방향 전방 판정)
+    uint64_t targetUID;    // 타겟 고유값 (논타겟이면 0)
+    float dirX, dirZ;      // 바라보는 방향 (XZ 평면). 논타겟일 때 사용
 };
 
 struct RES_AttackPacket
-{ // 공격 결과. 존 전체에 브로드캐스트
+{ // 공격 결과. 헛스윙이면 targetType = None
     PacketHeader header;
-    ObjectType attackerType; // 4단계(몬스터 반격)에서 Monster도 사용
+    ObjectType attackerType;
     uint64_t attackerUID;
     ObjectType targetType;
     uint64_t targetUID;
     int32_t damage;   // 실제로 깎인 양
     int32_t targetHp; // 맞은 뒤 남은 HP
+    float dirX, dirZ; // 공격 방향 (주변 캐릭터 회전용)
 };
 
 struct RES_MonsterHpPacket
@@ -193,8 +195,10 @@ struct REQ_SkillCastPacket
 {
     PacketHeader header;
     uint32_t skillID;
-    ObjectType targetType; // Single 스킬일 때만 사용
+    ObjectType targetType;  // Single / TargetArea
     uint64_t targetUID;
+    float dirX, dirZ;       // Cone / Line: 시전 방향
+    float aimX, aimY, aimZ; // GroundArea: 조준점
 };
 
 struct RES_SkillCastPacket
@@ -202,8 +206,10 @@ struct RES_SkillCastPacket
     PacketHeader header;
     uint64_t casterID;
     uint32_t skillID;
-    int32_t casterHp; // 시전 후 남은 MP
-    int32_t casterMp;
+    int32_t casterHp;       // 시전 후 남은 HP
+    int32_t casterMp;       // 시전 후 남은 MP
+    float dirX, dirZ;       // 시전 방향
+    float aimX, aimY, aimZ; // 이펙트 중심 (GroundArea 조준점 / TargetArea 대상 위치)
     uint16_t hitCount;
 };
 

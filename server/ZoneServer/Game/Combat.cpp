@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
-#include "CombatStat.h"
+#include "Game/Combat.h"
 #include "Game/ZoneConstants.h"
+#include "Template/SkillEffectTemplate.h"
 #include "ServerCore/Utils/util.h"
 
 namespace
@@ -82,4 +83,18 @@ int32_t Combat::AttackCooldownMs(int32_t baseMs, const CombatStat& attacker)
     // 공속 +100%(10000) → 쿨타임 절반, -50%(-5000) → 2배
     const int32_t speed = std::max(MIN_ATTACK_SPEED, attacker.attackSpeed);
     return std::max(1, ToInt(static_cast<double>(baseMs) * RATE_MAX / (RATE_MAX + speed)));
+}
+
+int32_t Combat::CalcSkillValue(const CombatStat& caster, const SkillEffectData& e)
+{
+    if (e.valueType == ValueType::Percent)
+        return ToInt(static_cast<double>(caster.damage) * e.value / BuffMaxPercent);
+    return e.value;
+}
+
+int32_t Combat::CalcRecoverAmount(const SkillEffectData& e, int32_t maxValue)
+{
+    if (e.valueType == ValueType::Percent)
+        return ToInt(static_cast<double>(maxValue) * e.value / BuffMaxPercent);
+    return e.value;
 }

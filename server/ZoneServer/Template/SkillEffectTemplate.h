@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <vector>
 #include "ServerCore/Protocol/VarEnum.h"
-#include "Game/ZoneConstants.h"
+#include "World/ZoneConstants.h"
 
 // 스킬 효과 (데미지, 버프, 디버프 등)
 struct SkillEffectData

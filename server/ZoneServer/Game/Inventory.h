@@ -19,7 +19,6 @@ struct InventoryItemData
 };
 
 InventorySlotInfo ToSlotInfo(uint16_t slot, const InventoryItemData& s);
-EquipSlotInfo ToEquipInfo(EquipSlotType est, const InventoryItemData& e);
 
 class Inventory
 {

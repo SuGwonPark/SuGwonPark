@@ -95,8 +95,8 @@ class Player
     // 스탯 다시 계산
     void RecalcStat();
 
-    // 장착 칸에 in을 넣고 원래 있던 장비를 인벤토리로 돌려줌
-    void SwapEquip(uint16_t slotID, EquipSlotType slot, InventoryItemData in);
+    // 장착 칸에 in을 넣고 원래 있던 장비를 인벤토리 slotID로 돌려줌. 돌려받을 칸이 차 있으면 false (아무것도 바꾸지 않음)
+    bool SwapEquip(uint16_t slotID, EquipSlotType slot, InventoryItemData in);
 
     // DB 갱신
     bool LoadEquip(uint16_t equipSlot, uint64_t itemUID, uint32_t itemID, std::vector<ItemOptionInfo> options);
@@ -194,7 +194,7 @@ class Player
         return level_;
     }
 
-    uint32_t GetDamage() const
+    int32_t GetDamage() const
     {
         return stat_.damage;
     }
