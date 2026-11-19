@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "Template/MonsterTemplate.h"
 #include "ServerCore/Protocol/VarEnum.h"
+#include "Combat/StatusEffects.h"
 
 enum class MonsterState : uint8_t
 {
@@ -152,10 +153,10 @@ class Monster
 
     // ====== 지속 효과 ======
     // 같은 스탯 디버프는 중첩하지 않음: 더 강하면 교체, 같으면 시간 갱신, 약하면 무시
-    void AddDebuff(StatType stat, ValueType valueType, int32_t value, Clock::time_point endAt);
+    EffectResult AddStatEffect(StatType stat, ValueType valueType, int32_t value, Clock::time_point endAt);
 
     // 같은 시전자의 같은 종류(DotType) 도트: 더 강하면 교체, 같으면 시간 갱신, 약하면 무시 (틱 주기 유지)
-    void AddDot(
+    EffectResult AddDot(
         uint64_t casterID, DotType dotType, int32_t damagePerTick, Clock::time_point now, Clock::time_point endAt);
 
     // 끝난 효과 제거 + 이번에 들어갈 도트 데미지 합 반환.
@@ -170,25 +171,7 @@ class Monster
     // ====== 지속 효과 End ======
 
   private:
-    struct Debuff
-    {
-        StatType stat;
-        ValueType valueType;
-        int32_t value;
-        Clock::time_point endAt;
-    };
-
-    struct Dot
-    {
-        uint64_t casterID;
-        DotType dotType;
-        int32_t damagePerTick;
-        Clock::time_point nextTickAt;
-        Clock::time_point endAt;
-    };
-
-
-    // 디버프 목록으로 stat_ 다시 계산
+        // 디버프 목록으로 stat_ 다시 계산
     void RecalcStat();
 
   private:
@@ -205,8 +188,7 @@ class Monster
 
     Clock::time_point respawnAt_{};
     Clock::time_point lastAttackTime_{};
-    std::vector<Debuff> debuffs_;
-    std::vector<Dot> dots_;
+    StatusEffects effects_; // 버프 / 디버프 / 도트
 
     // 데미지 기여도
     std::vector<Contribution> contributions_{};

@@ -17,6 +17,9 @@ enum PacketID : uint16_t
     PKT_S_PLAYER_STAT = 1009, // 플레이어 HP/MP (브로드캐스트)
     PKT_S_LEVEL_UP = 1010,    // 레벨업 (주변 브로드캐스트)
     PKT_S_MY_STAT = 1011,     // 내 전체 스탯 (나에게만)
+    PKT_S_SKILL_CAST_START = 1012,  // 시전 시작 (브로드캐스트)
+    PKT_S_SKILL_CAST_CANCEL = 1013, // 시전 취소 (브로드캐스트)
+    PKT_S_BUFF_UPDATE = 1014, // 내 버프 추가/갱신/해제 (나에게만)
 
     // 몬스터 (1100~)
     PKT_S_MONSTER_SPAWN = 1101,   // 몬스터 생성

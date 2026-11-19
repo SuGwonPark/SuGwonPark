@@ -1,6 +1,9 @@
 ﻿#pragma once
 #include "ServerCore/JobSystem/JobSerializer.h"
 #include "ServerCore/Protocol/ProtocolTypes.h"
+
+#include "Combat/CombatStat.h"
+
 #include "World/AoiGrid.h"
 
 class Player;
@@ -11,6 +14,7 @@ using MonsterRef = std::shared_ptr<Monster>;
 
 struct RewardResult;
 struct SkillEffectData;
+struct SkillData;
 struct HitArea;
 struct REQ_SkillCastPacket;
 
@@ -23,6 +27,16 @@ struct DropItem
     uint64_t ownerID;                                 // 우선권 (0 = 누구나)
     std::chrono::steady_clock::time_point ownerUntil; // 이 시각 전까지는 ownerID만 주울 수 있음
     std::chrono::steady_clock::time_point despawnAt;  // 이 시각에 사라짐
+};
+
+// 스킬 판정 결과 (대상 / 방향 / 이펙트 중심)
+struct SkillResolve
+{
+    std::vector<Monster*> targets;
+    Monster* mainTarget
+        = nullptr;
+    float dirX = 0.f, dirZ = 0.f;
+    float aimX = 0.f, aimY = 0.f, aimZ = 0.f;
 };
 
 class Zone : public JobSerializer<Zone>
@@ -102,7 +116,34 @@ class Zone : public JobSerializer<Zone>
 
     // 스킬
     void HandleSkillCast(const PlayerRef& caster, const REQ_SkillCastPacket& req);
+
+    // 범위 별 대상 수집, 방향/이펙트 중심 결정.
+    bool ResolveSkillTargets(
+        const PlayerRef& caster,
+        const SkillData& skill,
+        const REQ_SkillCastPacket& req,
+        SkillResolve& out,
+        SkillFailReason& reason) const;
+
+    // 자원/쿨타임 소모 -> 효과 적용 -> 결과 전송 -> 타겟 사망 처리
+    void ExecuteSkill(
+        const PlayerRef& caster,
+        const SkillData& skill,
+        const std::vector<SkillEffectData>& effects,
+        const SkillResolve& res,
+        std::chrono::steady_clock::time_point now);
+   
+    // 스킬 실패
     void SendSkillFail(const PlayerRef& caster, uint32_t skillID, SkillFailReason reason);
+
+    // 시전(캐스팅)
+    // 종료 캐스팅 처리
+    void UpdateCasting(std::chrono::steady_clock::time_point now);
+    void CompleteCasting(const PlayerRef& caster, std::chrono::steady_clock::time_point now);
+    // 캐스팅 취소
+    void CancelCasting(const PlayerRef& player, CastCancelReason reason);
+    void BroadcastCastCancel(const Player& player, uint32_t skillID, CastCancelReason reason);
+
     // 몬스터 1마리 효과 적용 (데미지, 디버프, 도트)
     int32_t ApplySkillEffect(
         const PlayerRef& caster,
@@ -117,6 +158,25 @@ class Zone : public JobSerializer<Zone>
     void HandleRevive(const PlayerRef& player);
     void RevivePlayer(const PlayerRef& player);
     // ======== 전투 End ========
+
+    // ==== 지속 효과 ====
+
+    void ApplyPlayerEffects(
+        const PlayerRef& target,
+        uint64_t casterID,
+        const CombatStat& casterStat,
+        const std::vector<SkillEffectData>& effects,
+        const std::chrono::steady_clock::time_point now);
+
+    void UpdatePlayerEffects(std::chrono::steady_clock::time_point now);
+
+    void OnPlayerDead(const PlayerRef& player);
+
+    void SendEffectUpdate(const PlayerRef& player, const StatModifier& mod, int32_t remainMs);
+
+    void OnPlayerStatChanged(const PlayerRef& player);
+    void BroadcastPlayerStat(const PlayerRef& player);
+    // ========================
 
     void RespawnMonster(Monster& monster);
 
@@ -193,10 +253,14 @@ class Zone : public JobSerializer<Zone>
     // 착용/해제 공통: 스탯 재계산
     void OnEquipChanged(const PlayerRef& player, EquipSlotType est);
 
+
+
+
   private:
     uint32_t zoneID_;
     uint32_t channelID_;
     std::unordered_map<uint64_t, PlayerRef> players_;
+    std::unordered_set<uint64_t> castingPlayers_;
     std::unordered_map<uint64_t, PlayerRef> sessionToPlayer_; // sessionID -> Player (신규)
     std::unordered_map<uint64_t, MonsterRef> monsters_;       // 스폰중인 몬스터 정보
     uint64_t nextMonsterUID_ = 0;

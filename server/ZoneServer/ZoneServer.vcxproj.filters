@@ -93,6 +93,9 @@
     <ClCompile Include="World\ZoneCombat.cpp">
       <Filter>World</Filter>
     </ClCompile>
+    <ClCompile Include="Combat\StatusEffects.cpp">
+      <Filter>Combat</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Object\Player.h">
@@ -171,6 +174,12 @@
     </ClInclude>
     <ClInclude Include="Util\MathUtil.h">
       <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="Combat\CastingState.h">
+      <Filter>Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="Combat\StatusEffects.h">
+      <Filter>Combat</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

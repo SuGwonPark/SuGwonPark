@@ -29,6 +29,9 @@ void Zone::HandleAttack(const PlayerRef& attacker, ObjectType targetType, uint64
     if (portalPending_.count(attackerUID))
         return;
 
+    if (attacker->IsCasting())
+        return;
+
     // 플레이어 공격 범위 + 지연 오차
     const float range = ZoneConst::PLAYER_ATTACK_RANGE + ZoneConst::ATTACK_RANGE_TOLERANCE;
 
@@ -143,6 +146,9 @@ void Zone::MonsterAttack(Monster& monster, const PlayerRef& target)
     pkt.dirX = dirX;
     pkt.dirZ = dirZ;
     BroadcastNear(CellOf(*target), &pkt, sizeof(pkt));
+
+    if (target->IsDead())
+        OnPlayerDead(target);
 }
 
 void Zone::BroadcastMonsterHp(const Monster& monster)
@@ -205,43 +211,81 @@ void Zone::CollectMonstersInArea(const HitArea& area, size_t maxCount, std::vect
 void Zone::HandleSkillCast(const PlayerRef& caster, const REQ_SkillCastPacket& req)
 {
     const uint32_t skillID = req.skillID;
-    const uint64_t casterID = caster->GetPlayerID();
-
-    float dirX = req.dirX, dirZ = req.dirZ;
-    const bool hasDir = Math::NormalizeXZ(dirX, dirZ);
-    float aimX = caster->GetX(), aimY = caster->GetY(), aimZ = caster->GetZ();
-
-    if (portalPending_.count(casterID))
+    if (portalPending_.count(caster->GetPlayerID()))
         return;
 
     auto fail = [&](SkillFailReason reason) { SendSkillFail(caster, skillID, reason); };
 
     if (caster->IsDead())
         return fail(SkillFailReason::Dead);
+    if (caster->IsCasting())
+        return fail(SkillFailReason::Casting);
 
     const SkillData* skill = SkillTemplate::Instance().GetData(caster->GetClassType(), skillID);
     if (!skill)
         return fail(SkillFailReason::InvalidSkill);
 
-    // 아군/본인 대상 스킬(회복, 버프 등)은 아직 구현 전: 몬스터에게 쓰이지 않도록 막아 둔다
+    // 아군/본인 대상 스킬(회복, 버프 등)은 아직 구현 전
     if (skill->targetType != TargetType::Enemy)
         return fail(SkillFailReason::InvalidSkill);
 
-    // 스킬 효과 그룹
     const std::vector<SkillEffectData>* effects = SkillEffectTemplate::Instance().GetGroup(skill->effectGroupID);
     if (!effects)
         return fail(SkillFailReason::InvalidSkill);
 
     const auto now = std::chrono::steady_clock::now();
-    // 스킬 쿨타임 확인
     if (!caster->IsSkillReady(skillID, now))
         return fail(SkillFailReason::Cooldown);
-    // 스킬 코스트 확인
     if (!caster->CheckSkillCost(skill->costType, skill->cost))
         return fail(SkillFailReason::NotEnoughCost);
 
-    // 지정 대상 1마리 (Single / TargetArea 공용): 타입 → 존재/상태 → 사거리 순으로 검사
-    auto findTarget = [&](SkillFailReason& reason) -> Monster* {
+    // 대상 / 범위 판정 (시전 스킬도 시작 시점에 한 번 검사해서 바로 실패를 알려줌)
+    SkillResolve res;
+    SkillFailReason reason = SkillFailReason::None;
+    if (!ResolveSkillTargets(caster, *skill, req, res, reason))
+        return fail(reason);
+
+    // 즉시 발동
+    if (skill->castingMs <= 0)
+        return ExecuteSkill(caster, *skill, *effects, res, now);
+
+    // 시전 시작: 자원/쿨타임은 완료 시점에 소모
+    caster->StartCasting(req, now + std::chrono::milliseconds(skill->castingMs));
+    castingPlayers_.insert(caster->GetPlayerID());
+
+    RES_SkillCastStartPacket pkt{};
+    pkt.header.id = PKT_S_SKILL_CAST_START;
+    pkt.header.size = sizeof(pkt);
+    pkt.casterID = caster->GetPlayerID();
+    pkt.skillID = skillID;
+    pkt.castingMs = skill->castingMs;
+    pkt.targetType = res.mainTarget ? ObjectType::Monster : ObjectType::None;
+    pkt.targetUID = res.mainTarget ? res.mainTarget->GetMonsterUID() : 0;
+    pkt.dirX = res.dirX;
+    pkt.dirZ = res.dirZ;
+    pkt.aimX = res.aimX;
+    pkt.aimY = res.aimY;
+    pkt.aimZ = res.aimZ;
+    BroadcastNear(CellOf(*caster), &pkt, sizeof(pkt));
+}
+
+bool Zone::ResolveSkillTargets(
+    const PlayerRef& caster,
+    const SkillData& skill,
+    const REQ_SkillCastPacket& req,
+    SkillResolve& out,
+    SkillFailReason& reason) const
+{
+    const float cx = caster->GetX(), cz = caster->GetZ();
+
+    float dirX = req.dirX, dirZ = req.dirZ;
+    const bool hasDir = Math::NormalizeXZ(dirX, dirZ);
+    out.aimX = cx;
+    out.aimY = caster->GetY();
+    out.aimZ = cz;
+
+    // 지정 대상 1마리 (Single / TargetArea 공용): 타입 → 존재/상태 → 사거리
+    auto findTarget = [&]() -> Monster* {
         if (req.targetType != ObjectType::Monster)
         {
             reason = SkillFailReason::InvalidTarget;
@@ -255,7 +299,7 @@ void Zone::HandleSkillCast(const PlayerRef& caster, const REQ_SkillCastPacket& r
             return nullptr;
         }
 
-        const float range = skill->range + ZoneConst::ATTACK_RANGE_TOLERANCE;
+        const float range = skill.range + ZoneConst::ATTACK_RANGE_TOLERANCE;
         if (it->second->DistSqTo(caster->GetX(), caster->GetY(), caster->GetZ()) > range * range)
         {
             reason = SkillFailReason::OutOfRange;
@@ -264,116 +308,140 @@ void Zone::HandleSkillCast(const PlayerRef& caster, const REQ_SkillCastPacket& r
         return it->second.get();
     };
 
-    const float cx = caster->GetX(), cz = caster->GetZ();
-    std::vector<Monster*> targets;
-    SkillFailReason reason = SkillFailReason::None;
-    Monster* target{};
-    switch (skill->rangeType)
+    switch (skill.rangeType)
     {
         case RangeType::Single: {
-            target = findTarget(reason);
-            if (!target)
-                return fail(reason);
-            targets.push_back(target);
+            out.mainTarget = findTarget();
+            if (!out.mainTarget)
+                return false;
+            out.targets.push_back(out.mainTarget);
             break;
         }
         case RangeType::SelfArea: {
-            CollectMonstersInArea(HitArea::Circle(cx, cz, skill->radius), skill->targetCount, targets);
+            CollectMonstersInArea(HitArea::Circle(cx, cz, skill.radius), skill.targetCount, out.targets);
             break;
         }
         case RangeType::TargetArea: {
-            target = findTarget(reason);
-            if (!target)
-                return fail(reason);
-
+            out.mainTarget = findTarget();
+            if (!out.mainTarget)
+                return false;
             CollectMonstersInArea(
-                HitArea::Circle(target->GetX(), target->GetZ(), skill->radius), skill->targetCount, targets);
+                HitArea::Circle(out.mainTarget->GetX(), out.mainTarget->GetZ(), skill.radius), skill.targetCount,
+                out.targets);
             break;
         }
         case RangeType::Cone: {
             if (!hasDir)
-                return fail(SkillFailReason::InvalidAim);
+            {
+                reason = SkillFailReason::InvalidAim;
+                return false;
+            }
+
             CollectMonstersInArea(
-                HitArea::Cone(cx, cz, dirX, dirZ, skill->range, skill->angle), skill->targetCount, targets);
+                HitArea::Cone(cx, cz, dirX, dirZ, skill.range, skill.angle), skill.targetCount, out.targets);
             break;
         }
         case RangeType::Line: {
             if (!hasDir)
-                return fail(SkillFailReason::InvalidAim);
+            {
+                reason = SkillFailReason::InvalidAim;
+                return false;
+            }
             CollectMonstersInArea(
-                HitArea::Line(cx, cz, dirX, dirZ, skill->range, skill->width), skill->targetCount, targets);
+                HitArea::Line(cx, cz, dirX, dirZ, skill.range, skill.width), skill.targetCount, out.targets);
             break;
         }
         case RangeType::GroundArea: {
             if (!Math::IsFinite3(req.aimX, req.aimY, req.aimZ))
-                return fail(SkillFailReason::InvalidAim);
-
-            const float maxRange = skill->range + ZoneConst::ATTACK_RANGE_TOLERANCE;
+            {
+                reason = SkillFailReason::InvalidAim;
+                return false;
+            }
+            const float maxRange = skill.range + ZoneConst::ATTACK_RANGE_TOLERANCE;
             if (!Math::IsWithinRangeXZ(cx, cz, req.aimX, req.aimZ, maxRange))
-                return fail(SkillFailReason::OutOfRange);
-
-            aimX = req.aimX;
-            aimY = req.aimY;
-            aimZ = req.aimZ;
-            CollectMonstersInArea(HitArea::Circle(aimX, aimZ, skill->radius), skill->targetCount, targets);
+            {
+                reason = SkillFailReason::OutOfRange;
+                return false;
+            }
+            out.aimX = req.aimX;
+            out.aimY = req.aimY;
+            out.aimZ = req.aimZ;
+            CollectMonstersInArea(HitArea::Circle(out.aimX, out.aimZ, skill.radius), skill.targetCount, out.targets);
             break;
         }
         default:
-            return fail(SkillFailReason::InvalidSkill);
+            reason = SkillFailReason::InvalidSkill;
+            return false;
     }
 
-    // 타겟 지정 스킬은 방향과 이팩트 중심을 대상 기준
-    if (target)
+    // 타겟 지정 스킬은 방향과 이펙트 중심을 대상 기준으로
+    if (out.mainTarget)
     {
-        aimX = target->GetX();
-        aimY = target->GetY();
-        aimZ = target->GetZ();
-        dirX = aimX - cx;
-        dirZ = aimZ - cz;
+        out.aimX = out.mainTarget->GetX();
+        out.aimY = out.mainTarget->GetY();
+        out.aimZ = out.mainTarget->GetZ();
+        dirX = out.aimX - cx;
+        dirZ = out.aimZ - cz;
         if (!Math::NormalizeXZ(dirX, dirZ))
             dirX = dirZ = 0.f;
     }
     else if (!hasDir)
-    {
         dirX = dirZ = 0.f;
-    }
 
-    // 스킬 확정 이후 처리: 자원 처리 -> 데미지 -> 결과 -> 사망처리
-    caster->TrySpendSkill(skill->costType, skill->cost);
-    caster->StartSkillCooldown(skillID, now, skill->cooldownMs);
+    out.dirX = dirX;
+    out.dirZ = dirZ;
+    return true;
+}
 
+// 스킬 확정 : cost 감소 -> 데미지 -> 결과 -> 사망
+void Zone::ExecuteSkill(
+    const PlayerRef& caster,
+    const SkillData& skill,
+    const std::vector<SkillEffectData>& effects,
+    const SkillResolve& res,
+    std::chrono::steady_clock::time_point now)
+{
+    // cost 체크 및 감소
+    caster->TrySpendSkill(skill.costType, skill.cost);
+    // 스킬 쿨타임 적용
+    caster->StartSkillCooldown(skill.skillID, now, skill.cooldownMs);
+
+    // 몬스터 이펙트 적용 (데미지, 디버프, 도트)
     std::vector<SkillHit> hits;
-    hits.reserve(targets.size());
-    for (Monster* m : targets)
+    hits.reserve(res.targets.size());
+    for (Monster* m : res.targets)
     {
         SkillHit hit{};
         hit.targetType = ObjectType::Monster;
         hit.targetUID = m->GetMonsterUID();
-        hit.damage = ApplySkillEffect(caster, *effects, *m, now);
+        hit.damage = ApplySkillEffect(caster, effects, *m, now);
         hit.targetHp = m->GetHp();
-
         hits.push_back(hit);
     }
 
+    // 패킷 전송
     RES_SkillCastPacket pkt{};
     pkt.header.id = PKT_S_SKILL_CAST;
-    pkt.casterID = casterID;
-    pkt.skillID = skillID;
+    pkt.casterID = caster->GetPlayerID();
+    pkt.skillID = skill.skillID;
     pkt.casterHp = caster->GetHp();
     pkt.casterMp = caster->GetMp();
-    pkt.dirX = dirX;
-    pkt.dirZ = dirZ;
-    pkt.aimX = aimX;
-    pkt.aimY = aimY;
-    pkt.aimZ = aimZ;
+    pkt.dirX = res.dirX;
+    pkt.dirZ = res.dirZ;
+    pkt.aimX = res.aimX;
+    pkt.aimY = res.aimY;
+    pkt.aimZ = res.aimZ;
     pkt.hitCount = static_cast<uint16_t>(hits.size());
 
-    // 타겟이 없으면 caster 기준으로 broadcast
     if (SendBufferRef buf = SendBufferManager::MakeList(pkt, hits))
-        BroadcastNear(
-            target ? CellOf(*target) : CellOf(*caster), buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+    {
+        // 타겟이 있으면 타겟으로 없으면 시전자 기준
+        AoiCell center = res.mainTarget ? CellOf(*res.mainTarget) : CellOf(*caster);
+        BroadcastNear(center, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
+    }
 
-    for (Monster* m : targets)
+    // 몬스터 사망 처리
+    for (Monster* m : res.targets)
     {
         if (m->GetHp() <= 0)
             OnMonsterDead(*m);
@@ -390,6 +458,75 @@ void Zone::SendSkillFail(const PlayerRef& caster, uint32_t skillID, SkillFailRea
     SendTo(caster, &pkt, sizeof(pkt));
 }
 
+// 캐스팅 시간 체크
+void Zone::UpdateCasting(std::chrono::steady_clock::time_point now)
+{
+    if (castingPlayers_.empty())
+        return;
+
+    std::vector<PlayerRef> done;
+    for (uint64_t playerID : castingPlayers_)
+    {
+        auto it = players_.find(playerID);
+        if (it == players_.end())
+            continue;
+
+        const CastingInfo* c = it->second->GetCasting();
+        if (c && now >= c->endAt)
+            done.push_back(it->second);
+    }
+
+    for (const PlayerRef& p : done)
+        CompleteCasting(p, now);
+}
+
+// 캐스팅 완료
+void Zone::CompleteCasting(const PlayerRef& caster, std::chrono::steady_clock::time_point now)
+{
+    const CastingInfo* c = caster->GetCasting();
+    if (!c)
+        return;
+
+    const REQ_SkillCastPacket req = c->req;
+    caster->ClearCasting();
+    castingPlayers_.erase(caster->GetPlayerID());
+
+    auto failCast = [&](SkillFailReason reason) {
+        SendSkillFail(caster, req.skillID, reason);
+        BroadcastCastCancel(*caster, req.skillID, CastCancelReason::Failed);
+    };
+    const SkillData* skill = SkillTemplate::Instance().GetData(caster->GetClassType(), req.skillID);
+    const std::vector<SkillEffectData>* effects =
+        skill ? SkillEffectTemplate::Instance().GetGroup(skill->effectGroupID) : nullptr;
+    if (!skill || !effects)
+        return failCast(SkillFailReason::InvalidSkill);
+
+    // 자원 체크
+    if (!caster->CheckSkillCost(skill->costType, skill->cost))
+        return failCast(SkillFailReason::NotEnoughCost);
+
+    SkillResolve res;
+    SkillFailReason reason = SkillFailReason::None;
+
+    if (!ResolveSkillTargets(caster, *skill, req, res, reason))
+        return failCast(reason);
+
+    ExecuteSkill(caster, *skill, *effects, res, now);
+}
+
+void Zone::CancelCasting(const PlayerRef& player, CastCancelReason reason)
+{
+    const CastingInfo* c = player->GetCasting();
+    if (!c)
+        return;
+
+    const uint32_t skillID = c->req.skillID;
+    player->ClearCasting();
+    castingPlayers_.erase(player->GetPlayerID());
+    BroadcastCastCancel(*player, skillID, reason);
+}
+
+// 스킬 효과 적용 구간
 int32_t Zone::ApplySkillEffect(
     const PlayerRef& caster,
     const std::vector<SkillEffectData>& effects,
@@ -401,6 +538,7 @@ int32_t Zone::ApplySkillEffect(
     {
         switch (effect.effectType)
         {
+            // 스킬 데미지 추출
             case SkillEffectType::Damage: {
                 const int32_t raw =
                     Combat::ApplyCritical(caster->GetStat(), Combat::CalcSkillValue(caster->GetStat(), effect));
@@ -409,13 +547,15 @@ int32_t Zone::ApplySkillEffect(
             }
             break;
 
+            // 디버프 적용
             case SkillEffectType::Debuff: {
-                monster.AddDebuff(
+                monster.AddStatEffect(
                     effect.statType, effect.valueType, effect.value,
                     now + std::chrono::milliseconds(effect.durationMs));
             }
             break;
 
+            // 도트 적용
             case SkillEffectType::DotDamage: {
                 monster.AddDot(
                     caster->GetPlayerID(), effect.dotType, Combat::CalcSkillValue(caster->GetStat(), effect), now,
@@ -481,4 +621,113 @@ void Zone::RevivePlayer(const PlayerRef& player)
     pkt.hp = player->GetHp();
     BroadcastNear(CellOf(*player), &pkt, sizeof(pkt));
     return;
+}
+
+void Zone::ApplyPlayerEffects(
+    const PlayerRef& target,
+    uint64_t casterID,
+    const CombatStat& casterStat,
+    const std::vector<SkillEffectData>& effects,
+    std::chrono::steady_clock::time_point now)
+{
+    int32_t healHp = 0, healMp = 0;
+    bool statChanged = false;
+
+    for (const SkillEffectData& e : effects)
+    {
+        const auto endAt = now + std::chrono::milliseconds(e.durationMs);
+        switch (e.effectType)
+        {
+            case SkillEffectType::Revive: {
+                if (!target->IsDead())
+                    break;
+                const int32_t hp = std::max(1, Combat::CalcRecoverAmount(e, target->GetMaxHp()));
+                target->Revive(target->GetX(), target->GetY(), target->GetZ(), hp);
+                RevivePlayer(target);
+                break;
+            }
+            case SkillEffectType::HealHp:
+                healHp += Combat::CalcRecoverAmount(e, target->GetMaxHp());
+                break;
+            case SkillEffectType::HealMp:
+                healMp += Combat::CalcRecoverAmount(e, target->GetMaxMp());
+                break;
+            case SkillEffectType::Buff:
+            case SkillEffectType::Debuff: {
+                const int32_t value = Combat::ToStatEffectValue(e);
+                const EffectResult r = target->AddStatEffect(e.statType, e.valueType, value, endAt);
+                if (r == EffectResult::Ignored)
+                    break;
+                SendEffectUpdate(target, {e.statType, e.valueType, value}, e.durationMs);
+                statChanged |= (r == EffectResult::Applied);
+                break;
+            }
+            case SkillEffectType::DotDamage:
+                target->AddDot(casterID, e.dotType, Combat::CalcSkillValue(casterStat, e), now, endAt);
+                break;
+            default:
+                break;
+        }
+    }
+
+    const bool healed = target->Regen(healHp, healMp);
+    if (statChanged)
+        OnPlayerStatChanged(target); // 전체 스탯 + 주변 HP/MP (회복분 포함)
+    else if (healed)
+        BroadcastPlayerStat(target);
+}
+
+void Zone::UpdatePlayerEffects(std::chrono::steady_clock::time_point now)
+{
+    std::vector<StatModifier> expired;
+    std::vector<PlayerRef> dead;
+
+    for (auto& [pid, player] : players_)
+    {
+        if (!player->HasEffects())
+            continue;
+
+        expired.clear();
+
+        const int32_t dotDamage = player->UpdateEffects(now, expired);
+        for (const StatModifier& m : expired)
+            SendEffectUpdate(player, m, 0);
+
+        if (!expired.empty())
+            OnPlayerStatChanged(player);
+        else if (dotDamage > 0)
+            BroadcastPlayerStat(player);
+
+        if (dotDamage > 0 && player->IsDead())
+            dead.push_back(player);
+    }
+
+    for (const PlayerRef& p : dead)
+        OnPlayerDead(p);
+}
+
+void Zone::OnPlayerDead(const PlayerRef& player)
+{
+    CancelCasting(player, CastCancelReason::Dead);
+
+    std::vector<StatModifier> removed;
+    if (player->ClearEffects(removed))
+    {
+        for (const StatModifier& m : removed)
+            SendEffectUpdate(player, m, 0);
+
+        OnPlayerStatChanged(player);
+    }
+}
+
+void Zone::SendEffectUpdate(const PlayerRef& player, const StatModifier& mod, int32_t remainMs)
+{
+    RES_BuffUpdatePacket pkt{};
+    pkt.header.id = PKT_S_BUFF_UPDATE;
+    pkt.header.size = sizeof(pkt);
+    pkt.statType = mod.statType;
+    pkt.valueType = mod.valueType;
+    pkt.value = mod.value; // 음수면 디버프
+    pkt.remainMs = remainMs;
+    SendTo(player, &pkt, sizeof(pkt));
 }

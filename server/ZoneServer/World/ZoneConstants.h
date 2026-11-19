@@ -15,6 +15,8 @@ inline constexpr float ATTACK_RANGE_TOLERANCE = 1.0f; // 지연으로 인한 위
 inline constexpr float PLAYER_REGEN_INTERVAL_SEC = 1.0f; // 자동 회복 시 간격
 inline constexpr float AOI_CELL_SIZE = 20.f;             // AOI 셀 크기 (20m)
 
+inline constexpr float CAST_MOVE_EPSILON = 0.1f;         // 시전 시작 위치에서 이 이상 움직이면 시전 취소
+
 // 아이템 드랍
 inline constexpr int DROP_OWNER_SEC = 30;    // 기여도 1등이 주울 수 있는 시간
 inline constexpr int DROP_DESPAWN_SEC = 120; // 바닥 아이템이 사라지는 시간

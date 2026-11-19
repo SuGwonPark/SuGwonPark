@@ -195,10 +195,10 @@ struct REQ_SkillCastPacket
 {
     PacketHeader header;
     uint32_t skillID;
-    ObjectType targetType;  // Single / TargetArea
+    ObjectType targetType;
     uint64_t targetUID;
     float dirX, dirZ;       // Cone / Line: 시전 방향
-    float aimX, aimY, aimZ; // GroundArea: 조준점
+    float aimX, aimY, aimZ; // 이펙트 중심 (GroundArea 조준점 / TargetArea 대상 위치)
 };
 
 struct RES_SkillCastPacket
@@ -345,6 +345,7 @@ struct RES_EquipmentPacket
     uint16_t count;
 };
 
+// 장비 변경
 struct RES_EquipChangedPacket
 {
     PacketHeader header;
@@ -353,5 +354,35 @@ struct RES_EquipChangedPacket
     uint32_t itemID; // 0 = 해제
 };
 
+// 스킬 캐스팅 시작
+struct RES_SkillCastStartPacket
+{
+    PacketHeader header;
+    uint64_t casterID;      // 사용자 ID
+    uint32_t skillID;       // 스킬 ID
+    int32_t castingMs;      // 캐스팅 시간(ms)
+    ObjectType targetType;  // 타겟 타입
+    uint64_t targetUID;     // 타겟UID
+    float dirX, dirZ;       // 시전 방향
+    float aimX, aimY, aimZ; 
+};
+
+// 스킬 캐스팅 취소
+struct RES_SkillCastCancelPacket
+{
+    PacketHeader header;
+    uint64_t casterID;
+    uint32_t skillID;
+    CastCancelReason reason;
+};
+
+struct RES_BuffUpdatePacket
+{
+    PacketHeader header;
+    StatType statType;
+    ValueType valueType;
+    int32_t value;
+    int32_t remainMs;
+};
 
 #pragma pack(pop)

@@ -98,3 +98,8 @@ int32_t Combat::CalcRecoverAmount(const SkillEffectData& e, int32_t maxValue)
         return ToInt(static_cast<double>(maxValue) * e.value / BuffMaxPercent);
     return e.value;
 }
+
+int32_t Combat::ToStatEffectValue(const SkillEffectData& e)
+{
+    return e.effectType == SkillEffectType::Debuff ? -e.value : e.value;
+}

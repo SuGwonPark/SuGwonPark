@@ -1,7 +1,10 @@
 ﻿#pragma once
 #include "ServerCore/Protocol/VarEnum.h"
+#include "ServerCore/Protocol/Packets.h"
 #include "Item/Inventory.h"
 #include "Combat/CombatStat.h"
+#include "Combat/CastingState.h"
+#include "Combat/StatusEffects.h"
 
 class Player
 {
@@ -21,7 +24,9 @@ class Player
     uint64_t exp_;
     uint64_t gold_ = 0;
     Inventory inventory_;
-    CombatStat stat_{};                                                 // 최종 스탯 정보 (기본 스탯 + 장비)
+    CombatStat stat_{}; // 최종 스탯 정보 (기본 스탯 + 장비)
+    StatusEffects effects_; // 버프 / 디버프 / 도트
+    
     std::array<InventoryItemData, Game::EQUIP_SLOT_COUNT> equipment_{}; // 장착 아이템 정보
 
     uint64_t sessionID_ = 0;
@@ -35,6 +40,7 @@ class Player
 
     // 스킬별 쿨타임
     std::unordered_map<uint32_t, std::chrono::steady_clock::time_point> skillReadyAt_;
+    std::optional<CastingInfo> casting_; // 시전 중이면 값이 있음
 
     struct SavedState
     {
@@ -56,7 +62,6 @@ class Player
   private:
     // 스킬 사용 처리
     void SpendSkillCost(SkillCostType type, int32_t cost);
-        
 
   public:
     Player(
@@ -95,7 +100,8 @@ class Player
     // 스탯 다시 계산
     void RecalcStat();
 
-    // 장착 칸에 in을 넣고 원래 있던 장비를 인벤토리 slotID로 돌려줌. 돌려받을 칸이 차 있으면 false (아무것도 바꾸지 않음)
+    // 장착 칸에 in을 넣고 원래 있던 장비를 인벤토리 slotID로 돌려줌. 돌려받을 칸이 차 있으면 false (아무것도 바꾸지
+    // 않음)
     bool SwapEquip(uint16_t slotID, EquipSlotType slot, InventoryItemData in);
 
     // DB 갱신
@@ -103,7 +109,6 @@ class Player
 
     std::chrono::milliseconds GetAttackCooldown() const;
     bool TryUseAttack(std::chrono::steady_clock::time_point now);
-
 
     uint64_t GetExp() const
     {
@@ -204,6 +209,49 @@ class Player
         return stat_;
     }
 
+    // === 스킬 캐스팅 ===
+    bool IsCasting() const
+    {
+        return casting_.has_value();
+    }
+
+    const CastingInfo* GetCasting() const
+    {
+        return casting_ ? &*casting_ : nullptr;
+    }
+
+    void StartCasting(const REQ_SkillCastPacket& req, std::chrono::steady_clock::time_point endAt)
+    {
+        casting_ = CastingInfo{req, endAt, x_, z_};
+    }
+
+    void ClearCasting()
+    {
+        casting_.reset();
+    }
+    // =================================
+
+    // ===== 지속 효과 (버프 / 디버프 / 도트) ======
+    EffectResult AddStatEffect(
+        StatType statType, ValueType valueType, int32_t value, std::chrono::steady_clock::time_point endAt);
+
+    EffectResult AddDot(
+        uint64_t casterID,
+        DotType dotType,
+        int32_t damagePerTick,
+        std::chrono::steady_clock::time_point now,
+        std::chrono::steady_clock::time_point endAt);
+
+    int32_t UpdateEffects(std::chrono::steady_clock::time_point now, std::vector<StatModifier>& expired);
+
+    bool ClearEffects(std::vector<StatModifier>& removed);
+    bool HasEffects() const
+    {
+        return !effects_.Empty();
+    }
+
+    // =======================
+
     int32_t TakeDamage(int32_t damage)
     {
         if (IsDead() || damage <= 0)
@@ -242,7 +290,7 @@ class Player
         lastSaved_ = now;
         return true;
     }
-    
+
     // 장착 슬롯의 장비 정보
     const InventoryItemData& GetEquip(EquipSlotType slot) const
     {

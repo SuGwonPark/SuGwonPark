@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Combat\StatusEffects.cpp" />
     <ClCompile Include="World\AoiGrid.cpp" />
     <ClCompile Include="Combat\Combat.cpp" />
     <ClCompile Include="World\ZoneCombat.cpp" />
@@ -44,6 +45,8 @@
     <ClCompile Include="Template\ZoneTemplate.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Combat\StatusEffects.h" />
+    <ClInclude Include="Combat\CastingState.h" />
     <ClInclude Include="World\AoiGrid.h" />
     <ClInclude Include="Combat\CombatStat.h" />
     <ClInclude Include="Combat\Combat.h" />

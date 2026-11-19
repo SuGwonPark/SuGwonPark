@@ -23,4 +23,7 @@ int32_t AttackCooldownMs(int32_t baseMs, const CombatStat& attacker);
 int32_t CalcSkillValue(const CombatStat& caster, const SkillEffectData& e);
 // 회복량: Flat = 값 그대로, Percent = 최대치의 만분율
 int32_t CalcRecoverAmount(const SkillEffectData& e, int32_t maxValue);
+
+// Debuff는 Value를 음수값으로 반환
+int32_t ToStatEffectValue(const SkillEffectData& e);
 } // namespace Combat

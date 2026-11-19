@@ -131,15 +131,19 @@ void Player::CalcStat()
     base.moveSpeed = ZoneConst::MAX_MOVE_SPEED;
     base.hpRegen = ZoneConst::PLAYER_HP_REGEN;
     base.mpRegen = ZoneConst::PLAYER_MP_REGEN;
-    
+
     std::vector<StatModifier> mods;
     for (const InventoryItemData& e : equipment_)
         for (const ItemOptionInfo& o : e.options)
             mods.push_back({o.statType, o.valueType, o.value});
 
+    // 버프, 디버프 효과 mods에 추가
+    effects_.CollectModifiers(mods);
+
     stat_ = Combat::CalcStat(base, mods);
 }
 
+// 스탯 정보 갱신
 void Player::RecalcStat()
 {
     CalcStat();
@@ -193,6 +197,47 @@ bool Player::TryUseAttack(std::chrono::steady_clock::time_point now)
     if (now - lastAttackTime_ < GetAttackCooldown())
         return false;
     lastAttackTime_ = now;
+    return true;
+}
+
+EffectResult Player::AddStatEffect(
+    StatType statType, ValueType valueType, int32_t value, std::chrono::steady_clock::time_point endAt)
+{
+    const EffectResult r = effects_.AddStat(statType, valueType, value, endAt);
+    if (r == EffectResult::Applied)
+        RecalcStat();
+
+    return r;
+}
+
+EffectResult Player::AddDot(
+    uint64_t casterID,
+    DotType dotType,
+    int32_t damagePerTick,
+    std::chrono::steady_clock::time_point now,
+    std::chrono::steady_clock::time_point endAt)
+{
+    return effects_.AddDot(casterID, dotType, damagePerTick, now, endAt);
+}
+
+int32_t Player::UpdateEffects(std::chrono::steady_clock::time_point now, std::vector<StatModifier>& expired)
+{
+    std::vector<DotHit> dotHits;
+    if (effects_.Update(now, expired, dotHits))
+        RecalcStat();
+
+    int32_t total = 0;
+    for (const DotHit& h : dotHits)
+        total += TakeDamage(h.damage);
+
+    return total;
+}
+
+bool Player::ClearEffects(std::vector<StatModifier>& removed)
+{
+    if (!effects_.Clear(&removed))
+        return false;
+    RecalcStat();
     return true;
 }
 

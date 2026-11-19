@@ -199,6 +199,7 @@ void Zone::Leave(uint64_t playerID)
 
     playerGrid_.Remove(playerID, cell);
     sessionToPlayer_.erase(player->GetSessionID());
+    castingPlayers_.erase(playerID);
     players_.erase(it);
 
     // 이미 지웟으므로 남은 사람에게만 보냄
@@ -609,8 +610,15 @@ void Zone::Update()
         if (UpdateMonsterEffects(*monster, now))
             continue;
 
+        // 몬스터 관련
         UpdateMonster(*monster, dt, now);
     }
+
+    // 스킬 캐스팅
+    UpdateCasting(now);
+
+    // 플레이어 지속 효과(버프 / 디버프 / 도트)
+    UpdatePlayerEffects(now);
 
     // 드롭 아이템 소멸
     UpdateDrops(now);
@@ -1453,38 +1461,8 @@ void Zone::HandleUseItem(const PlayerRef& player, uint32_t itemID)
     std::vector<uint64_t> removedUIDs;
     player->GetInventory().Remove(slot, 1, removedUIDs);
 
-    int healHp = 0, healMp = 0;
-    for (const SkillEffectData& e : *effects)
-    {
-        switch (e.effectType)
-        {
-            case SkillEffectType::Revive: {
-                const int32_t hp = std::max(1, Combat::CalcRecoverAmount(e, player->GetMaxHp()));
-                player->Revive(player->GetX(), player->GetY(), player->GetZ(), hp);
-                RevivePlayer(player);
-                break;
-            }
-            case SkillEffectType::HealHp: {
-                healHp += Combat::CalcRecoverAmount(e, player->GetMaxHp());
-                break;
-            }
-            case SkillEffectType::HealMp: {
-                healMp += Combat::CalcRecoverAmount(e, player->GetMaxMp());
-                break;
-            }
-            case SkillEffectType::Buff: {
-
-                break;
-            }
-        }
-    }
-
-    // Hp,Mp 회복
-    if (player->Regen(healHp, healMp))
-    {
-        RES_PlayerStatPacket pkt = MakeStatPacket(*player);
-        BroadcastNear(CellOf(*player), &pkt, sizeof(pkt));
-    }
+    // 회복 / 버프 / 부활
+    ApplyPlayerEffects(player, player->GetPlayerID(), player->GetStat(), *effects, now);
 
     // 인벤토리 갱신
     CommitInventoryChange(player, changedSlots, removedUIDs);
@@ -1600,9 +1578,6 @@ void Zone::OnEquipChanged(const PlayerRef& player, EquipSlotType est)
     if (SendBufferRef buf = SendBufferManager::MakeList(eq, one))
         SendTo(player, buf->Buffer(), buf->AllocSize());
 
-    RES_MyStatPacket st = MakeMyStatPacket(*player);
-    SendTo(player, &st, sizeof(st));
-
     // 주변에 내 정보 전달 (외형 정보)
     const AoiCell cell = CellOf(*player);
 
@@ -1614,9 +1589,8 @@ void Zone::OnEquipChanged(const PlayerRef& player, EquipSlotType est)
     ch.itemID = player->GetEquip(est).itemID;
     BroadcastNear(cell, &ch, sizeof(ch));
 
-    // 주변에 내 Hp,Mp 정보 전달
-    RES_PlayerStatPacket ps = MakeStatPacket(*player);
-    BroadcastNear(cell, &ps, sizeof(ps));
+    // 나한태 내 스탯 전달 + 주변에 내 Hp,Mp 정보 전달
+    OnPlayerStatChanged(player);
 }
 
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z)
@@ -1637,7 +1611,8 @@ void Zone::HandleMove(uint64_t playerID, float x, float y, float z)
     pkt.header.id = PKT_S_MOVE;
     pkt.playerID = playerID;
 
-    const AoiCell from = CellOf(*player); // 이동 전 칸
+    // 이동 전 칸
+    const AoiCell from = CellOf(*player);
 
     if (!player->TryMove(x, y, z, player->GetStat().moveSpeed))
     {
@@ -1649,9 +1624,17 @@ void Zone::HandleMove(uint64_t playerID, float x, float y, float z)
         return;
     }
 
+    // 이동 완료 후 칸
     pkt.x = x;
     pkt.y = y;
     pkt.z = z;
+
+    // 캐스팅 중 움직일 경우 캐스팅 종료
+    if (const CastingInfo* c = player->GetCasting())
+    {
+        if (!Math::IsWithinRangeXZ(c->startX, c->startZ, x, z, ZoneConst::CAST_MOVE_EPSILON))
+            CancelCasting(player, CastCancelReason::Moved);
+    }
 
     // 칸이 바뀌었으면 등장/퇴장 처리
     const AoiCell to = CellOf(*player);
@@ -1721,8 +1704,12 @@ void Zone::HandlePortalRequest(const PlayerRef& player, uint32_t portalID)
         return; // zone에 세팅되어 있지 않은 포탈
 
     // 포탈 근처에서 사용한건지 체크
-    if (!Math::IsWithinRange3D(player->GetX(), player->GetY(), player->GetZ(), portal->x, portal->y, portal->z, portal->radius))
+    if (!Math::IsWithinRange3D(
+            player->GetX(), player->GetY(), player->GetZ(), portal->x, portal->y, portal->z, portal->radius))
         return;
+
+    // 포탈 이동으로 캐스팅 종료 처리
+    CancelCasting(player, CastCancelReason::Left);
 
     HandlePortal(player->GetPlayerID(), portal->portalID);
 }
@@ -1771,4 +1758,27 @@ void Zone::MulticastTo(const std::vector<PlayerRef>& targets, const void* data, 
         sessionIDs.push_back(player->GetSessionID());
     }
     GatewaySession::GetInstance()->MulticastToClients(sessionIDs, zoneID_, channelID_, data, size);
+}
+
+void Zone::BroadcastCastCancel(const Player& player, uint32_t skillID, CastCancelReason reason)
+{
+    RES_SkillCastCancelPacket pkt{};
+    pkt.header.id = PKT_S_SKILL_CAST_CANCEL;
+    pkt.header.size = sizeof(pkt);
+    pkt.casterID = player.GetPlayerID();
+    pkt.skillID = skillID;
+    pkt.reason = reason;
+    BroadcastNear(CellOf(player), &pkt, sizeof(pkt));
+}
+void Zone::OnPlayerStatChanged(const PlayerRef& player)
+{
+    RES_MyStatPacket st = MakeMyStatPacket(*player);
+    SendTo(player, &st, sizeof(st));
+    BroadcastPlayerStat(player);
+}
+
+void Zone::BroadcastPlayerStat(const PlayerRef& player)
+{
+    RES_PlayerStatPacket pkt = MakeStatPacket(*player);
+    BroadcastNear(CellOf(*player), &pkt, sizeof(pkt));
 }

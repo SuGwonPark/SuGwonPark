@@ -162,7 +162,7 @@ enum class StatType : uint8_t
     AttackSpeed = 8, // 공격 속도
     HpRegen = 9,     // hp 리젠
     MpRegen = 10,    // mp 리젠
-    Max = 11,   // 마지막
+    Max = 11,        // 마지막
 };
 
 enum class GenderType : uint8_t
@@ -178,7 +178,6 @@ enum class AssetType : uint8_t
     Gold = 1,
 };
 
-
 // ==================== Fail Enum =============================
 // 스킬 실패 (시전자에게만 전송)
 enum class SkillFailReason : uint8_t
@@ -191,6 +190,17 @@ enum class SkillFailReason : uint8_t
     OutOfRange = 5,    // 사거리 밖
     Dead = 6,          // 시전자가 사망 상태
     InvalidAim = 7,    // 방향 / 조준점이 잘못됨
+    Casting = 8,       // 이미 시전 중
+};
+
+// 시전 취소 사유 (주변 브로드캐스트)
+enum class CastCancelReason : uint8_t
+{
+    None = 0,
+    Moved = 1,  // 시전 중 이동
+    Dead = 2,   // 시전 중 사망
+    Failed = 3, // 완료 시점 판정 실패 (대상 사망 / 사거리 이탈 / 자원 부족)
+    Left = 4,   // 존 이탈 (포탈)
 };
 
 // 줍기 실패 (주운 사람에게만)
@@ -203,7 +213,6 @@ enum class PickupFailReason : uint8_t
     InventoryFull = 4, // 인벤토리에 다 안 들어감
     Dead = 5,          // 죽은 상태
 };
-
 
 // 아이템 사용 실패 (사용한 사람에게만)
 enum class UseItemFailReason : uint8_t
@@ -231,3 +240,4 @@ enum class EquipFailReason : uint8_t
     InventoryFull = 6, // 해제할 빈 칸 없음
     EmptySlot = 7,     // 해제하려는 칸이 비어 있음
 };
+
