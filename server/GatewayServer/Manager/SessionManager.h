@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "Network/ClientProxySession.h"
 
 class SessionManager {
@@ -12,17 +12,22 @@ public:
 	void Unregister(uint64_t sessionID, uint64_t userUID);
 	ClientProxySessionRef FindSession(uint64_t sessionID);
 
-	// ·Î±×ÀÎ ¼º°ø ½Ã °èÁ¤À» ÀÌ ¼¼¼ÇÀ¸·Î ¹­´Â´Ù
-	// ÀÌ¹Ì ´Ù¸¥ ¼¼¼ÇÀÌ ÀÖÀ¸¸é false
+	// ë¡œê·¸ì¸ ì„±ê³µ ì‹œ ê³„ì •ì„ ì´ ì„¸ì…˜ìœ¼ë¡œ ë¬¶ëŠ”ë‹¤
+	// ì´ë¯¸ ë‹¤ë¥¸ ì„¸ì…˜ì´ ìˆìœ¼ë©´ false
 	bool TryBindUser(uint64_t userUID, uint64_t sessionID, ClientProxySessionRef& existing);
 
-	// ÁÖ¾îÁø Zone Å°µé¿¡ ÀÖ´Â(InGame) Å¬¶óÀÌ¾ğÆ® ¼¼¼ÇÀ» ¸ğ¾Æ µ¹·ÁÁØ´Ù
+	// ì£¼ì–´ì§„ Zone í‚¤ë“¤ì— ìˆëŠ”(InGame) í´ë¼ì´ì–¸íŠ¸ ì„¸ì…˜ì„ ëª¨ì•„ ëŒë ¤ì¤€ë‹¤
 	std::vector<ClientProxySessionRef> CollectSessionsInZones(const std::unordered_set<uint64_t>& zoneKeys);
-private:
+
+	void BindPlayer(uint64_t playerID, uint64_t sessionID);
+    ClientProxySessionRef FindByPlayer(uint64_t playerID);
+
+  private:
 	SessionManager() = default;
 
 private:
 	std::mutex lock_;
 	std::unordered_map<uint64_t, ClientProxySessionRef> sessions_;
 	std::unordered_map<uint64_t, uint64_t> userToSession_;
+    std::unordered_map<uint64_t, uint64_t> playerToSession_;
 };

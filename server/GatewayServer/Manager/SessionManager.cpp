@@ -1,64 +1,102 @@
-#include "pch.h"
+Ôªø#include "pch.h"
 #include "Manager/SessionManager.h"
-#include "ServerCore/Protocol/InternalPackets.h"  
+#include "ServerCore/Protocol/InternalPackets.h"
 
-void SessionManager::Register(uint64_t sessionID, ClientProxySessionRef session) {
-	std::lock_guard<std::mutex> lock(lock_);
-	sessions_[sessionID] = session;
+void SessionManager::Register(uint64_t sessionID, ClientProxySessionRef session)
+{
+    std::lock_guard<std::mutex> lock(lock_);
+    sessions_[sessionID] = session;
 }
 
-void SessionManager::Unregister(uint64_t sessionID, uint64_t userUID) {
-	std::lock_guard<std::mutex> lock(lock_);
-	sessions_.erase(sessionID);
+void SessionManager::Unregister(uint64_t sessionID, uint64_t userUID)
+{
+    std::lock_guard<std::mutex> lock(lock_);
 
-	// ∞Ë¡§ πŸ¿ŒµÂ (≥ª∞Õ∏∏ ªË¡¶)
-	if (userUID != 0) {
-		auto it = userToSession_.find(userUID);
-		// ¡ﬂ∫π¿∏∑Œ µÈæÓø√ ∞ÊøÏ √≥¿Ωø° µÓ∑œµ» ººº«¿Ã æ∆¥œ∏È ªË¡¶ æ»«‘
-		if (it != userToSession_.end() && it->second == sessionID) {
-			userToSession_.erase(it);
-		}
-	}
+    // playerID Ïó∞Í≤∞ Ìï¥Ï†ú (ÏßÄÏö∞Í∏∞ Ï†ÑÏóê ÏÑ∏ÏÖò ÏóêÏÑú playerID Í∫ºÎÉÑ)
+    auto s = sessions_.find(sessionID);
+    if (s != sessions_.end())
+    {
+        const uint64_t playerID = s->second->GetPlayerID();
+        auto p = playerToSession_.find(playerID);
+        if (p != playerToSession_.end() && p->second == sessionID)
+            playerToSession_.erase(p);
+    }
+
+    sessions_.erase(sessionID);
+    // Í≥ÑÏ†ï Î∞îÏù∏Îìú (ÎÇ¥Í≤ÉÎßå ÏÇ≠Ï†ú)
+    if (userUID != 0)
+    {
+        auto it = userToSession_.find(userUID);
+        // Ï§ëÎ≥µÏúºÎ°ú Îì§Ïñ¥Ïò¨ Í≤ΩÏö∞ Ï≤òÏùåÏóê Îì±Î°ùÎêú ÏÑ∏ÏÖòÏù¥ ÏïÑÎãàÎ©¥ ÏÇ≠Ï†ú ÏïàÌï®
+        if (it != userToSession_.end() && it->second == sessionID)
+        {
+            userToSession_.erase(it);
+        }
+    }
 }
 
-ClientProxySessionRef SessionManager::FindSession(uint64_t sessionID) {
-	std::lock_guard<std::mutex> lock(lock_);
-	auto it = sessions_.find(sessionID);
-	return (it != sessions_.end()) ? it->second : nullptr;
+ClientProxySessionRef SessionManager::FindSession(uint64_t sessionID)
+{
+    std::lock_guard<std::mutex> lock(lock_);
+    auto it = sessions_.find(sessionID);
+    return (it != sessions_.end()) ? it->second : nullptr;
 }
 
 bool SessionManager::TryBindUser(uint64_t userUID, uint64_t sessionID, ClientProxySessionRef& existing)
 {
-	std::lock_guard<std::mutex> lock(lock_);
+    std::lock_guard<std::mutex> lock(lock_);
 
-	auto it = userToSession_.find(userUID);
-	// ¡ﬂ∫π ∑Œ±◊¿ŒΩ√
-	if (it != userToSession_.end() && it->second != sessionID) {
-		// ±‚¡∏ ¡¢º”¡ﬂ¿Œ ¿Ø¿˙¿« session¿ª √£¥¬¥Ÿ
-		auto s = sessions_.find(it->second);
-		if (s != sessions_.end()) {
-			// Ω«¡¶∑Œ ªÏæ∆ ¿÷¥¬ ººº«¿Ã ¿Ã ∞Ë¡§¿ª ¿‚∞Ì ¿÷¿Ω °Ê ¡ﬂ∫π ∑Œ±◊¿Œ
-			existing = s->second;
-			return false;
-		}
-	}
+    auto it = userToSession_.find(userUID);
+    // Ï§ëÎ≥µ Î°úÍ∑∏Ïù∏Ïãú
+    if (it != userToSession_.end() && it->second != sessionID)
+    {
+        // Í∏∞Ï°¥ Ï†ëÏÜçÏ§ëÏù∏ Ïú†Ï†ÄÏùò sessionÏùÑ Ï∞æÎäîÎã§
+        auto s = sessions_.find(it->second);
+        if (s != sessions_.end())
+        {
+            // Ïã§Ï†úÎ°ú ÏÇ¥ÏïÑ ÏûàÎäî ÏÑ∏ÏÖòÏù¥ Ïù¥ Í≥ÑÏ†ïÏùÑ Ïû°Í≥† ÏûàÏùå ‚Üí Ï§ëÎ≥µ Î°úÍ∑∏Ïù∏
+            existing = s->second;
+            return false;
+        }
+    }
 
-	userToSession_[userUID] = sessionID;
+    userToSession_[userUID] = sessionID;
 
-	return true;
+    return true;
 }
 
-std::vector<ClientProxySessionRef> SessionManager::CollectSessionsInZones(const std::unordered_set<uint64_t>& zoneKeys) {
-	std::vector<ClientProxySessionRef> result;
+std::vector<ClientProxySessionRef> SessionManager::CollectSessionsInZones(const std::unordered_set<uint64_t>& zoneKeys)
+{
+    std::vector<ClientProxySessionRef> result;
 
-	std::lock_guard<std::mutex> lock(lock_);
-	// ∏µÁ ººº«
-	for (auto& [sessionID, session] : sessions_) {
-		// ªÛ≈¬∞™¿Ã InGame¿Œ ººº«∏∏ √£¥¬¥Ÿ
-		if (session->GetState() != SessionState::InGame) continue;
+    std::lock_guard<std::mutex> lock(lock_);
+    // Î™®Îì† ÏÑ∏ÏÖò
+    for (auto& [sessionID, session] : sessions_)
+    {
+        // ÏÉÅÌÉúÍ∞íÏù¥ InGameÏù∏ ÏÑ∏ÏÖòÎßå Ï∞æÎäîÎã§
+        if (session->GetState() != SessionState::InGame)
+            continue;
 
-		uint64_t key = MakeZoneKey(session->GetCurrentZoneID(), session->GetCurrentChannelID());
-		if (zoneKeys.count(key)) result.push_back(session);
-	}
-	return result;
+        uint64_t key = MakeZoneKey(session->GetCurrentZoneID(), session->GetCurrentChannelID());
+        if (zoneKeys.count(key))
+            result.push_back(session);
+    }
+    return result;
+}
+
+void SessionManager::BindPlayer(uint64_t playerID, uint64_t sessionID)
+{
+    std::lock_guard<std::mutex> lock(lock_);
+    playerToSession_[playerID] = sessionID;
+}
+
+// ÌîåÎ†àÏù¥Ïñ¥ ÏÑ∏ÏÖò ÌôïÏù∏ Î∞è Ï†ÑÎã¨
+ClientProxySessionRef SessionManager::FindByPlayer(uint64_t playerID)
+{
+    std::lock_guard<std::mutex> lock(lock_);
+    auto p = playerToSession_.find(playerID);
+    if (p == playerToSession_.end())
+        return nullptr;
+    auto s = sessions_.find(p->second);
+    return s != sessions_.end() ? s->second : nullptr;
 }

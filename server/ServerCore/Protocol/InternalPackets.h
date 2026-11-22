@@ -5,6 +5,7 @@
 // Gateway <-> Zone 전용 패킷 번호 (클라이언트와 겹치지 않게 9000번대)
 enum InternalPacketID : uint16_t
 {
+    PKT_INTERNAL_PARTY_SYNC = 9995, // Gateway -> Zone: 플레이어 파티 변경
     PKT_INTERNAL_MULTICAST = 9996, 
     PKT_ZONE_HANDSHAKE = 9997,
     PKT_INTERNAL_DISCONNECT = 9998,
@@ -45,6 +46,13 @@ struct RES_ZoneLeaveCompletedPacket {
 	PacketHeader header;
 	uint64_t playerID;
 	uint32_t nextZoneID;
+};
+
+// Gateway -> Zone: InternalPacketHeader 뒤에 붙음
+struct PartySyncPayload
+{
+    uint64_t playerID;
+    uint64_t partyID; // 0 = 파티 없음
 };
 
 #pragma pack(pop)

@@ -33,8 +33,7 @@ struct DropItem
 struct SkillResolve
 {
     std::vector<Monster*> targets;
-    Monster* mainTarget
-        = nullptr;
+    Monster* mainTarget = nullptr;
     float dirX = 0.f, dirZ = 0.f;
     float aimX = 0.f, aimY = 0.f, aimZ = 0.f;
 };
@@ -91,6 +90,7 @@ class Zone : public JobSerializer<Zone>
     void RequestTick();
     void Shutdown(std::function<void()> onDone);
 
+    void HandlePartySync(uint64_t playerID, uint64_t partyID);
   private:
     void HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t size);
 
@@ -132,7 +132,7 @@ class Zone : public JobSerializer<Zone>
         const std::vector<SkillEffectData>& effects,
         const SkillResolve& res,
         std::chrono::steady_clock::time_point now);
-   
+
     // 스킬 실패
     void SendSkillFail(const PlayerRef& caster, uint32_t skillID, SkillFailReason reason);
 
@@ -253,13 +253,14 @@ class Zone : public JobSerializer<Zone>
     // 착용/해제 공통: 스탯 재계산
     void OnEquipChanged(const PlayerRef& player, EquipSlotType est);
 
-
-
-
+    uint64_t GetPartyID(uint64_t playerID) const;
+    bool IsSameParty(uint64_t a, uint64_t b) const;
+    
   private:
     uint32_t zoneID_;
     uint32_t channelID_;
     std::unordered_map<uint64_t, PlayerRef> players_;
+    std::unordered_map<uint64_t, uint64_t> partyOf_; // playerID, partyID 
     std::unordered_set<uint64_t> castingPlayers_;
     std::unordered_map<uint64_t, PlayerRef> sessionToPlayer_; // sessionID -> Player (신규)
     std::unordered_map<uint64_t, MonsterRef> monsters_;       // 스폰중인 몬스터 정보

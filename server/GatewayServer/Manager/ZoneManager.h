@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "pch.h"
 #include "ServerCore/Network/SendBuffer.h"
 
@@ -22,6 +22,14 @@ public:
 
 	// 클라이언트 연결 종료를 담당 Zone에 통보
 	void SendDisconnectToZone(uint32_t zoneID, uint32_t channelID, uint64_t sessionId);
+
+	void SendInternalToZone(
+        uint32_t zoneID,
+        uint32_t channelID,
+        uint64_t sessionID,
+        uint16_t packetID,
+        const void* payload,
+        uint32_t playloadSize); 
 
 	// 존별 채널 정보
 	std::optional<uint32_t> PickChannel(uint32_t zoneID);

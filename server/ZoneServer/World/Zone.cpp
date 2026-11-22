@@ -201,6 +201,7 @@ void Zone::Leave(uint64_t playerID)
     sessionToPlayer_.erase(player->GetSessionID());
     castingPlayers_.erase(playerID);
     players_.erase(it);
+    partyOf_.erase(playerID);
 
     // 이미 지웟으므로 남은 사람에게만 보냄
     RES_DespawnPacket pkt{};
@@ -1591,6 +1592,33 @@ void Zone::OnEquipChanged(const PlayerRef& player, EquipSlotType est)
 
     // 나한태 내 스탯 전달 + 주변에 내 Hp,Mp 정보 전달
     OnPlayerStatChanged(player);
+}
+
+uint64_t Zone::GetPartyID(uint64_t playerID) const
+{
+    auto it = partyOf_.find(playerID);
+
+    return it != partyOf_.end() ? it->second : 0;
+}
+
+bool Zone::IsSameParty(uint64_t a, uint64_t b) const
+{
+    if (a == b)
+        return true;
+
+    const uint64_t pa = GetPartyID(a);
+    return pa != 0 && pa == GetPartyID(b);
+}
+
+void Zone::HandlePartySync(uint64_t playerID, uint64_t partyID)
+{
+    auto self = shared_from_this();
+    Post([self, playerID, partyID]() {
+        if (partyID == 0)
+            self->partyOf_.erase(playerID);
+        else
+            self->partyOf_[playerID] = partyID;
+    });
 }
 
 void Zone::HandleMove(uint64_t playerID, float x, float y, float z)

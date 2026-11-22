@@ -257,7 +257,7 @@ void Account::SelectCharacter(ClientProxySessionRef session, uint64_t playerID)
         try
         {
             auto row = db.sql(
-                             "SELECT cs.zoneID FROM `character` c "
+                             "SELECT cs.zoneID, c.name, c.charID FROM `character` c "
                              "JOIN `character_state` cs ON cs.playerID = c.playerID "
                              "WHERE c.playerID = ? AND c.userUID = ? AND c.deleteTime IS NULL")
                            .bind(playerID, userUID)
@@ -267,11 +267,16 @@ void Account::SelectCharacter(ClientProxySessionRef session, uint64_t playerID)
             if (row)
             {
                 uint32_t zoneID = row[0].get<uint32_t>();
+                std::string name = row[1].get<std::string>();
+                uint32_t charID = row[2].get<uint32_t>();
 
                 auto channelID = ZoneManager::GetInstance()->PickChannel(zoneID);
                 if (channelID)
                 {
                     session->SetPlayerID(playerID);
+                    session->SetCharacter(name, charID);
+                    SessionManager::GetInstance()->BindPlayer(playerID, session->GetSessionID());
+
                     session->SetCurrentChannelID(*channelID);
                     session->SetCurrentZoneID(zoneID);
                     res.success = true;

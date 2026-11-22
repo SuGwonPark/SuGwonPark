@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "Manager/ZoneManager.h"
 #include "ServerCore/Manager/SendBufferManager.h"
 #include "Network/ZoneServerSession.h"
@@ -63,6 +63,34 @@ void ZoneManager::SendDisconnectToZone(uint32_t zoneID, uint32_t channelID, uint
 	if (it != zoneServers_.end()) {
 		it->second->Send(sendBuffer);
 	}
+}
+
+void ZoneManager::SendInternalToZone(
+    uint32_t zoneID,
+    uint32_t channelID,
+    uint64_t sessionID,
+    uint16_t packetID,
+    const void* payload,
+    uint32_t playloadSize)
+{
+    ZoneServerSessionRef target;
+	{
+        std::lock_guard<std::mutex> lock(lock_);
+        auto it = zoneServers_.find(MakeZoneKey(zoneID, channelID));
+        if (it != zoneServers_.end())
+            target = it->second;
+	}
+    if (!target)
+        return;
+
+	InternalPacketHeader header{};
+    header.header.id = packetID;
+	header.sessionID = sessionID;
+    header.zoneID = zoneID;
+    header.channelID = channelID;
+
+	if (SendBufferRef buf = SendBufferManager::MakeWithPayload(header, payload, playloadSize))
+        target->Send(buf); 
 }
 
 std::optional<uint32_t> ZoneManager::PickChannel(uint32_t zoneID)

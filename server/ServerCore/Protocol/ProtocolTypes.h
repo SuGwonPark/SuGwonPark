@@ -23,6 +23,8 @@ inline constexpr uint64_t MAX_GOLD = 9'999'999'999;
 inline constexpr uint8_t MAX_ITEM_OPTIONS = 6; // 장비 1개 옵션 최대 수 (기본 + 추가)
 
 inline constexpr uint8_t EQUIP_SLOT_COUNT = 8; // EquipSlotType 1~7
+
+inline constexpr uint8_t MAX_PARTY_SIZE = 6;   // 파티 최대 인원
 } // namespace Game
 
 // 아래 구조체는 패킷 바이트에 그대로 복사되므로 반드시 1바이트 정렬
@@ -118,6 +120,14 @@ struct StatInfo
     float moveSpeed;
     int32_t hpRegen; // 1초당
     int32_t mpRegen;
+};
+
+struct PartyMemberInfo
+{ // 파티원 1명 (S_PARTY_INFO)
+    uint64_t playerID;
+    uint32_t charID; // 캐릭터 종류 (직업 아이콘용)
+    uint32_t zoneID; // 현재 존
+    char name[50];
 };
 
 #pragma pack(pop)

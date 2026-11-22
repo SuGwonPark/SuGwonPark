@@ -1,6 +1,5 @@
 ﻿#pragma once
 #include "GatewayConstants.h"
-#include "pch.h"
 #include "ServerCore/Protocol/Packets.h"
 #include "ServerCore/Network/SendBuffer.h"
 #include "ServerCore/Utils/util.h"
@@ -91,6 +90,21 @@ class ClientProxySession : public std::enable_shared_from_this<ClientProxySessio
         return state_.compare_exchange_strong(from, to);
     }
 
+    const std::string& GetName() const
+    {
+        return name_;
+    }
+
+    uint32_t GetCharID() const
+    {
+        return charID_;
+    }
+    void SetCharacter(std::string name, uint32_t charID)
+    {
+        name_ = std::move(name);
+        charID_ = charID;
+    }
+
   private:
     // 네트워크 I/O 루프
     void DoRead();
@@ -98,7 +112,7 @@ class ClientProxySession : public std::enable_shared_from_this<ClientProxySessio
 
     // 수신 스트림 패킷 파싱 및 내부 라우팅
     void ProcessPackets();
-    void RoutePacket(uint16_t packetId, uint8_t* packetPtr, uint16_t packetSize);
+    void RoutePacket(uint16_t packetID, uint8_t* packet, uint16_t size);
 
   private:
     // 세션 아이디
@@ -107,6 +121,10 @@ class ClientProxySession : public std::enable_shared_from_this<ClientProxySessio
     std::atomic<uint64_t> userUID_{0};
     // 캐릭터 유니크 키
     std::atomic<uint64_t> playerID_{0};
+
+    std::string name_;
+    uint32_t charID_ = 0;
+
     tcp::socket socket_;
     net::strand<net::io_context::executor_type> strand_;
 
@@ -118,7 +136,7 @@ class ClientProxySession : public std::enable_shared_from_this<ClientProxySessio
 
     // 수신 버퍼
     std::array<uint8_t, GatewayConst::CLIENT_RECV_BUFFER_SIZE> recvBuffer_{};
-    
+
     size_t readPos_ = 0;
     size_t writePos_ = 0;
 

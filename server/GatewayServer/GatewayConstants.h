@@ -13,4 +13,6 @@ inline constexpr float START_X = 0.f;
 inline constexpr float START_Y = 0.f;
 inline constexpr float START_Z = 0.f;
 
+inline constexpr int PARTY_INVITE_SEC = 30; // 파티 초대 유효 시간
+
 } // namespace GatewayConst

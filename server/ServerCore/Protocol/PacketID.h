@@ -74,4 +74,14 @@ enum PacketID : uint16_t
     PKT_S_EQUIP_FAIL = 7015,
     PKT_S_EQUIPMENT = 7016,     // 장착 칸 목록 (입장: 전체 / 변경: 해당 칸)
     PKT_S_EQUIP_CHANGED = 7017, // 외형 변경 (주변 브로드캐스트)
+
+    // 파티(8000 ~) : GatewayServer에서 처리
+    PKT_C_PARTY_INVITE = 8001,        // 초대 (targetPlayerID)
+    PKT_S_PARTY_INVITE = 8002,        // 초대 받음 (대상에게)
+    PKT_C_PARTY_ANSWER = 8003,        // 초대 수락 / 거절
+    PKT_C_PARTY_LEAVE = 8004,         // 탈퇴
+    PKT_C_PARTY_KICK = 8005,          // 강퇴 (파티장)
+    PKT_C_PARTY_CHANGE_LEADER = 8006, // 파티장 위임 (파티장)
+    PKT_S_PARTY_INFO = 8007,          // 파티 전체 정보 (partyID == 0 이면 파티 없음)
+    PKT_S_PARTY_RESULT = 8008,        // 처리 결과 (요청한 사람에게만)
 };

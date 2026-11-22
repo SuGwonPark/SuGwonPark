@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="Game\Account.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Manager\PartyManager.cpp" />
     <ClCompile Include="Manager\SessionManager.cpp" />
     <ClCompile Include="Network\InternalServer.cpp" />
     <ClCompile Include="Network\ZoneServerSession.cpp" />
@@ -32,6 +33,7 @@
     <ClCompile Include="NetWork\Server.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Manager\PartyManager.h" />
     <ClInclude Include="Network\ZoneServerSession.h" />
     <ClInclude Include="Game\Account.h" />
     <ClInclude Include="Manager\SessionManager.h" />

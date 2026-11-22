@@ -270,6 +270,17 @@ void GatewaySession::HandleInternalPacket(uint8_t* buffer, uint16_t size)
         it->second->HandleDisconnect(header->sessionID);
         return;
     }
+    
+    // 파티 싱크
+    if (header->header.id == PKT_INTERNAL_PARTY_SYNC)
+    {
+        if (payloadSize < sizeof(PartySyncPayload))
+            return;
+
+        auto* sync = reinterpret_cast<PartySyncPayload*>(payload);
+        it->second->HandlePartySync(sync->playerID, sync->partyID);
+        return;
+    }
 
     it->second->HandleClientPacket(header->sessionID, payload, payloadSize);
 }

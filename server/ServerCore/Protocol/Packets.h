@@ -385,4 +385,56 @@ struct RES_BuffUpdatePacket
     int32_t remainMs;
 };
 
+// ==================== 파티 ====================
+struct REQ_PartyInvitePacket
+{
+    PacketHeader header;
+    uint64_t targetPlayerID;
+};
+
+struct RES_PartyInvitePacket
+{ // 초대 받음
+    PacketHeader header;
+    uint64_t inviterID;
+    char inviterName[50];
+};
+
+struct REQ_PartyAnswerPacket
+{
+    PacketHeader header;
+    uint64_t inviterID;
+    bool accept;
+};
+
+struct REQ_PartyLeavePacket
+{
+    PacketHeader header;
+};
+
+struct REQ_PartyKickPacket
+{
+    PacketHeader header;
+    uint64_t targetPlayerID;
+};
+
+struct REQ_PartyChangeLeaderPacket
+{
+    PacketHeader header;
+    uint64_t targetPlayerID;
+};
+
+struct RES_PartyInfoPacket
+{ // 가변 길이: header + ... + PartyMemberInfo[count]. partyID == 0 이면 파티 없음
+    PacketHeader header;
+    uint64_t partyID;
+    uint64_t leaderID;
+    uint8_t count;
+};
+
+struct RES_PartyResultPacket
+{
+    PacketHeader header;
+    PartyResult result;
+};
+
 #pragma pack(pop)

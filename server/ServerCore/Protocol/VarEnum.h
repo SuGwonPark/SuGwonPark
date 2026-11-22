@@ -100,18 +100,6 @@ enum class ClassType : uint8_t
     Priest = 4,
 };
 
-// 캐릭터 생성 상태값
-enum class CreateCharacterResult : uint8_t
-{
-    None = 0,
-    Success = 1,
-    InvalidName = 2,   // 길이 / 글자 규칙 위반
-    DuplicateName = 3, // 이미 있는 이름
-    SlotFull = 4,      // 슬롯 가득 참
-    ServerError = 5,
-    InvalidClass = 6, // 없는 직업
-};
-
 enum class ItemType : uint8_t
 {
     None = 0,
@@ -178,6 +166,39 @@ enum class AssetType : uint8_t
     Gold = 1,
 };
 
+// ============== Result Enum =====================
+
+// 캐릭터 생성 상태값
+enum class CreateCharacterResult : uint8_t
+{
+    None = 0,
+    Success = 1,
+    InvalidName = 2,   // 길이 / 글자 규칙 위반
+    DuplicateName = 3, // 이미 있는 이름
+    SlotFull = 4,      // 슬롯 가득 참
+    ServerError = 5,
+    InvalidClass = 6, // 없는 직업
+};
+
+// 파티 처리 결과
+enum class PartyResult : uint8_t
+{
+    None = 0,
+    InviteSent = 1,      // 초대를 보냄
+    Declined = 2,        // 상대가 거절
+    InvalidTarget = 3,   // 자기 자신 / 잘못된 대상
+    TargetOffline = 4,   // 상대가 게임 중이 아님
+    TargetInParty = 5,   // 상대가 이미 파티 중
+    TargetBusy = 6,      // 상대가 다른 초대를 받는 중
+    NotLeader = 7,       // 파티장만 가능
+    PartyFull = 8,       // 인원 초과
+    NotInParty = 9,      // 파티 중이 아님
+    InviteExpired = 10,  // 초대가 없거나 만료됨
+    AlreadyInParty = 11, // 이미 파티 중 (초대 수락 시)
+    Kicked = 12,         // 강퇴당함
+};
+// =======================================================
+
 // ==================== Fail Enum =============================
 // 스킬 실패 (시전자에게만 전송)
 enum class SkillFailReason : uint8_t
@@ -240,4 +261,3 @@ enum class EquipFailReason : uint8_t
     InventoryFull = 6, // 해제할 빈 칸 없음
     EmptySlot = 7,     // 해제하려는 칸이 비어 있음
 };
-
