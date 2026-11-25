@@ -256,11 +256,18 @@ class Zone : public JobSerializer<Zone>
     uint64_t GetPartyID(uint64_t playerID) const;
     bool IsSameParty(uint64_t a, uint64_t b) const;
     
+    // 파티원 스탯을 지난번 보낸 값과 비교해서 바귄것만 GatewaySever로 전달
+    void FlushPartyStats();
+
   private:
     uint32_t zoneID_;
     uint32_t channelID_;
     std::unordered_map<uint64_t, PlayerRef> players_;
+
+    float partyStatTimer_ = 0.f;
     std::unordered_map<uint64_t, uint64_t> partyOf_; // playerID, partyID 
+    std::unordered_map<uint64_t, PartyMemberStat> partyStatSent_; // 마지막으로 보낸 파티원 스탯 정보
+
     std::unordered_set<uint64_t> castingPlayers_;
     std::unordered_map<uint64_t, PlayerRef> sessionToPlayer_; // sessionID -> Player (신규)
     std::unordered_map<uint64_t, MonsterRef> monsters_;       // 스폰중인 몬스터 정보

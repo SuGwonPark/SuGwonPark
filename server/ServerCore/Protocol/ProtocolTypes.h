@@ -122,12 +122,28 @@ struct StatInfo
     int32_t mpRegen;
 };
 
+struct PartyMemberStat
+{ // 파티원 상태 (Zone → Gateway → 파티원)
+    uint64_t playerID;
+    uint16_t level;
+    int32_t hp;
+    int32_t maxHp;
+    int32_t mp;
+    int32_t maxMp;
+};
+
 struct PartyMemberInfo
 { // 파티원 1명 (S_PARTY_INFO)
     uint64_t playerID;
     uint32_t charID; // 캐릭터 종류 (직업 아이콘용)
     uint32_t zoneID; // 현재 존
+    uint32_t channelID;
     char name[50];
+    uint16_t level; // 아래는 Zone이 한 번이라도 보낸 뒤부터 유효 (그전엔 0)
+    int32_t hp;
+    int32_t maxHp;
+    int32_t mp;
+    int32_t maxMp;
 };
 
 #pragma pack(pop)

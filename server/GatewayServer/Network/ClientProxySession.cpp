@@ -47,7 +47,7 @@ void ClientProxySession::Close()
 
             // 파티 탈퇴 처리
             if (const uint64_t playerID = self->GetPlayerID())
-                PartyManager::GetInstance()->onDisconnect(playerID);
+                PartyManager::GetInstance()->OnDisconnect(playerID);
         });
     }
 }
@@ -168,12 +168,12 @@ void ClientProxySession::RoutePacket(uint16_t packetID, uint8_t* packet, uint16_
         case PKT_C_PARTY_CHANGE_LEADER:
             if (GetState() == SessionState::InGame)
                 PartyManager::GetInstance()->HandlePacket(shared_from_this(), packetID, packet, size);
-            break;
+            return;
         default:
             break;
     }
 
-    // 게임 중이 아닌 세션은= 패킷을 Zone으로 보내지 않는다 (캐릭터 선택부터 Zone으로 보냄)
+    // 게임 중이 아닌 세션은 패킷을 Zone으로 보내지 않는다 (캐릭터 선택부터 Zone으로 보냄)
     if (GetState() != SessionState::InGame)
         return;
 
@@ -182,10 +182,12 @@ void ClientProxySession::RoutePacket(uint16_t packetID, uint8_t* packet, uint16_
 
     uint32_t zoneID = GetCurrentZoneID();
     uint32_t channelID = GetCurrentChannelID();
+
+    // 존에서 처리해야할 패킷
     ZoneManager::GetInstance()->SendToZone(zoneID, channelID, sessionID_, sendBuffer);
 
     if (packetID == PKT_C_READY_TO_SPAWN)
-        PartyManager::GetInstance()->SyncToZone(shared_from_this());
+        PartyManager::GetInstance()->PartySyncToZone(shared_from_this());
 }
 
 void ClientProxySession::OnZone1LeaveCompleted(uint32_t nextZoneID)

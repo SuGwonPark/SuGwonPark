@@ -20,7 +20,7 @@ void PartyManager::HandlePacket(const ClientProxySessionRef& session, uint16_t p
             if (size >= sizeof(REQ_PartyAnswerPacket))
             {
                 auto* req = reinterpret_cast<REQ_PartyAnswerPacket*>(packet);
-                Answer(session, req->inviterID,req->accept);
+                Answer(session, req->inviterID, req->accept);
             }
             break;
             // 탈퇴
@@ -49,7 +49,7 @@ void PartyManager::HandlePacket(const ClientProxySessionRef& session, uint16_t p
 }
 
 // 게임 종료
-void PartyManager::onDisconnect(uint64_t playerID)
+void PartyManager::OnDisconnect(uint64_t playerID)
 {
     std::lock_guard lock(lock_);
     // 파티 초대 목록 제거
@@ -60,13 +60,41 @@ void PartyManager::onDisconnect(uint64_t playerID)
         RemoveMember(*party, playerID);
 }
 
-void PartyManager::SyncToZone(const ClientProxySessionRef& session)
+void PartyManager::PartySyncToZone(const ClientProxySessionRef& session)
 {
     std::lock_guard lock(lock_);
     // 파티가 있으면 동기화
-    auto it = memberParty_.find(session->GetPlayerID());
-    if (it != memberParty_.end())
-        SendZoneSync(session, it->second);
+    Party* party = FindPartyOf(session->GetPlayerID());
+    if (!party)
+        return;
+
+    SendPartySyncToZone(session, party->partyID);
+    BroadcastInfo(*party);
+}
+
+void PartyManager::OnMemberStat(const PartyMemberStat& stat)
+{
+    std::lock_guard lock(lock_);
+    Party* party = FindPartyOf(stat.playerID);
+    if (!party)
+        return;
+
+    memberStats_[stat.playerID] = stat;
+
+    RES_PartyMemberStatPacket pkt{};
+    pkt.header.id = PKT_S_PARTY_MEMBER_STAT;
+    pkt.header.size = sizeof(pkt);
+    pkt.stat = stat;
+    SendBufferRef buf = SendBufferManager::Make(&pkt, sizeof(pkt));
+
+    // 파티원들에게 내 스탯 전달
+    for (uint64_t memberID : party->members)
+    {
+        if (memberID == stat.playerID)
+            continue;
+        if (ClientProxySessionRef s = SessionManager::GetInstance()->FindByPlayer(memberID))
+            s->Send(buf);
+    }
 }
 
 // 파티 초대 요청
@@ -155,6 +183,7 @@ void PartyManager::Answer(const ClientProxySessionRef& target, uint64_t inviterI
         party->leaderID = inviterID;
         party->members.push_back(inviterID);
         memberParty_[inviterID] = partyID;
+        SendPartySyncToZone(inviter, partyID);
     }
     else if (party->leaderID != inviterID)
         return SendResult(target, PartyResult::InviteExpired);
@@ -165,7 +194,7 @@ void PartyManager::Answer(const ClientProxySessionRef& target, uint64_t inviterI
     party->members.push_back(targetID);
     memberParty_[targetID] = party->partyID;
 
-    SendZoneSync(target, party->partyID);
+    SendPartySyncToZone(target, party->partyID);
     BroadcastInfo(*party);
 }
 
@@ -233,17 +262,18 @@ void PartyManager::RemoveMember(Party& party, uint64_t playerID)
     members.erase(std::remove(members.begin(), members.end(), playerID), members.end());
     // 파티 멤버 리스트에서 삭제
     memberParty_.erase(playerID);
+    memberStats_.erase(playerID);
 
     if (ClientProxySessionRef s = SessionManager::GetInstance()->FindByPlayer(playerID))
     {
         // 클라이언트에 전달
         SendNoParty(s);
         // 존 서버에 전달
-        SendZoneSync(s, 0);
+        SendPartySyncToZone(s, 0);
     }
 
     // 멤버가 없다면 해산
-    if (members.size() <= 0)
+    if (members.empty())
     {
         parties_.erase(party.partyID); // 이후 party 사용 불가
         return;
@@ -273,8 +303,20 @@ void PartyManager::BroadcastInfo(const Party& party)
         {
             info.charID = s->GetCharID();
             info.zoneID = s->GetCurrentZoneID();
+            info.channelID = s->GetCurrentChannelID();
             strncpy_s(info.name, s->GetName().c_str(), _TRUNCATE);
+
             sessions.push_back(s);
+
+            auto st = memberStats_.find(playerID);
+            if (st != memberStats_.end())
+            {
+                info.level = st->second.level;
+                info.hp = st->second.hp;
+                info.maxHp = st->second.maxHp;
+                info.mp = st->second.mp;
+                info.maxMp = st->second.maxMp;
+            }
         }
         infos.push_back(info);
     }
@@ -312,7 +354,7 @@ void PartyManager::SendResult(const ClientProxySessionRef& session, PartyResult 
     session->Send(SendBufferManager::Make(&pkt, sizeof(pkt)));
 }
 
-void PartyManager::SendZoneSync(const ClientProxySessionRef& session, uint64_t partyID)
+void PartyManager::SendPartySyncToZone(const ClientProxySessionRef& session, uint64_t partyID)
 {
     PartySyncPayload payload{session->GetPlayerID(), partyID};
     ZoneManager::GetInstance()->SendInternalToZone(

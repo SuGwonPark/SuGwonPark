@@ -84,4 +84,5 @@ enum PacketID : uint16_t
     PKT_C_PARTY_CHANGE_LEADER = 8006, // 파티장 위임 (파티장)
     PKT_S_PARTY_INFO = 8007,          // 파티 전체 정보 (partyID == 0 이면 파티 없음)
     PKT_S_PARTY_RESULT = 8008,        // 처리 결과 (요청한 사람에게만)
+    PKT_S_PARTY_MEMBER_STAT = 8009,   // 파티원 HP/MP/레벨 변경 (다른 파티원에게)
 };

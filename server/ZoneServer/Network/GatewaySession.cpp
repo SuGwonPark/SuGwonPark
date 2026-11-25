@@ -150,6 +150,18 @@ void GatewaySession::MulticastToClients(
     }
 }
 
+void GatewaySession::SendInternal(
+    uint16_t packetID, uint32_t zoneID, uint32_t channelID, const void* data, uint16_t size)
+{
+    InternalPacketHeader header{};
+    header.header.id = packetID;
+    header.zoneID = zoneID;
+    header.channelID = channelID;
+
+    if (SendBufferRef buf = SendBufferManager::MakeWithPayload(header, data, size))
+        Send(buf);
+}
+
 void GatewaySession::DoRead()
 {
     if (!isConnected_.load())
@@ -271,7 +283,7 @@ void GatewaySession::HandleInternalPacket(uint8_t* buffer, uint16_t size)
         return;
     }
     
-    // 파티 싱크
+    // 파티 동기화
     if (header->header.id == PKT_INTERNAL_PARTY_SYNC)
     {
         if (payloadSize < sizeof(PartySyncPayload))

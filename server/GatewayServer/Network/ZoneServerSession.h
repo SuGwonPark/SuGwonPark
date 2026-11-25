@@ -16,7 +16,7 @@ public:
 	void Send(SendBufferRef sendBuffer);
 
 	tcp::socket& Socket() { return socket_; }
-
+	
 private:
 	void DoRead();
 	void DoWrite();
@@ -26,6 +26,8 @@ private:
 	void HandleInternalPacket(uint8_t* buffer, uint16_t size);
 
 	bool HandleMulticastPacket(uint8_t* buffer, uint16_t size);
+	// zone이 보낸 파티원 스탯 
+	bool HandlePartyMemberStat(uint8_t* buffer, uint16_t size);
 
   private:
 

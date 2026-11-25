@@ -27,10 +27,13 @@ class PartyManager
     void HandlePacket(const ClientProxySessionRef& session, uint16_t packetID, uint8_t* packet, uint16_t size);
 
     // 접속 종료 : 받은 초대 정리 + 파티 탈퇴
-    void onDisconnect(uint64_t playerID);
+    void OnDisconnect(uint64_t playerID);
 
     // 존 입장 시 존에 파티 정보 전달
-    void SyncToZone(const ClientProxySessionRef& session);
+    void PartySyncToZone(const ClientProxySessionRef& session);
+
+    // zone이 보낸 파티원 스탯 -> 다른 파티원에 전달
+    void OnMemberStat(const PartyMemberStat& stat);
 
   private:
     void Invite(const ClientProxySessionRef& inviter, uint64_t targetID);
@@ -48,7 +51,7 @@ class PartyManager
         const ClientProxySessionRef& session, const Party* party, const std::vector<PartyMemberInfo>& members);
     static void SendNoParty(const ClientProxySessionRef& session);
     static void SendResult(const ClientProxySessionRef& session, PartyResult result);
-    static void SendZoneSync(const ClientProxySessionRef& session, uint64_t partyID);
+    static void SendPartySyncToZone(const ClientProxySessionRef& session, uint64_t partyID);
 
   private:
     std::mutex lock_;
@@ -59,4 +62,7 @@ class PartyManager
     std::unordered_map<uint64_t, uint64_t> memberParty_;
     // 파티 초대 목록 (초대 받은 사람, (초대자 ID, 초대 유효 시간))
     std::unordered_map<uint64_t, std::unordered_map<uint64_t, std::chrono::steady_clock::time_point>> invites_;
+
+    // 파티원 마지막 스탯 [playerID,stat]
+    std::unordered_map<uint64_t, PartyMemberStat> memberStats_;
 };

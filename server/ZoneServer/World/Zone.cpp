@@ -201,7 +201,10 @@ void Zone::Leave(uint64_t playerID)
     sessionToPlayer_.erase(player->GetSessionID());
     castingPlayers_.erase(playerID);
     players_.erase(it);
+    // 파티 정보
     partyOf_.erase(playerID);
+    // 파티 스탯 정보
+    partyStatSent_.erase(playerID);
 
     // 이미 지웟으므로 남은 사람에게만 보냄
     RES_DespawnPacket pkt{};
@@ -638,6 +641,14 @@ void Zone::Update()
     {
         autoSaveTimer_ -= ZoneConst::AUTOSAVE_TICK_SEC;
         AutoSaveTick();
+    }
+
+    // 파티원 스탯 동기화(0.5초마다, 바뀐 것만)
+    partyStatTimer_ += dt;
+    if (partyStatTimer_ >= ZoneConst::PARTY_STAT_INTERVAL_SEC)
+    {
+        partyStatTimer_ -= ZoneConst::PARTY_STAT_INTERVAL_SEC;
+        FlushPartyStats();
     }
 
     // 부하 테스트용
@@ -1610,10 +1621,41 @@ bool Zone::IsSameParty(uint64_t a, uint64_t b) const
     return pa != 0 && pa == GetPartyID(b);
 }
 
+void Zone::FlushPartyStats()
+{
+    for (const auto& [playerID, partyID] : partyOf_)
+    {
+        auto it = players_.find(playerID);
+        if (it == players_.end() || portalPending_.count(playerID))
+            continue;
+
+        const Player& p = *it->second;
+        PartyMemberStat st{};
+        st.playerID = playerID;
+        st.level = p.GetLevel();
+        st.hp = p.GetHp();
+        st.maxHp = p.GetMaxHp();
+        st.mp = p.GetMp();
+        st.maxMp = p.GetMaxMp();
+
+        // 바이트 정렬 구조체라 memcmp로 비교 가능
+        auto sent = partyStatSent_.find(playerID);
+        // 이전 파티 스탯이랑 현재 파티 스탯이 동일하면 종료
+        if (sent != partyStatSent_.end() && std::memcmp(&sent->second, &st, sizeof(st)) == 0)
+            continue;
+
+        partyStatSent_[playerID] = st;
+        GatewaySession::GetInstance()->SendInternal(
+            PKT_INTERNAL_PARTY_MEMBER_STAT, zoneID_, channelID_, &st, sizeof(st));
+    }
+}
+
+// 파티 동기화 (파티 변경, 재접속, 탈퇴 등)
 void Zone::HandlePartySync(uint64_t playerID, uint64_t partyID)
 {
     auto self = shared_from_this();
     Post([self, playerID, partyID]() {
+        self->partyStatSent_.erase(playerID);
         if (partyID == 0)
             self->partyOf_.erase(playerID);
         else

@@ -38,6 +38,9 @@ class GatewaySession
     void MulticastToClients(
         const std::vector<uint64_t>& sessionIDs, uint32_t zoneID, uint32_t channelID, const void* data, uint16_t size);
 
+    // Zone -> Gateway 내부 패킷 (클라 전달용이 아닌 제어 패킷)
+    void SendInternal(uint16_t packetID, uint32_t zoneID, uint32_t channelID, const void* data, uint16_t size);
+
   private:
     GatewaySession() = default;
 

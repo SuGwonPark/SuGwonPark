@@ -17,6 +17,8 @@ inline constexpr float AOI_CELL_SIZE = 20.f;             // AOI 셀 크기 (20m)
 
 inline constexpr float CAST_MOVE_EPSILON = 0.1f;         // 시전 시작 위치에서 이 이상 움직이면 시전 취소
 
+inline constexpr float PARTY_STAT_INTERVAL_SEC = 0.5f; // 파티원 스탯 전송 주기 (바뀐 것만)
+
 // 아이템 드랍
 inline constexpr int DROP_OWNER_SEC = 30;    // 기여도 1등이 주울 수 있는 시간
 inline constexpr int DROP_DESPAWN_SEC = 120; // 바닥 아이템이 사라지는 시간

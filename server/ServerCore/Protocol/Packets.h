@@ -437,4 +437,9 @@ struct RES_PartyResultPacket
     PartyResult result;
 };
 
+struct RES_PartyMemberStatPacket
+{
+    PacketHeader header;
+    PartyMemberStat stat;
+};
 #pragma pack(pop)

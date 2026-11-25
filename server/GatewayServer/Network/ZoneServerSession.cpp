@@ -1,8 +1,12 @@
 ﻿#include "pch.h"
 #include "Network/ZoneServerSession.h"
+
 #include "Manager/ZoneManager.h"
-#include "ServerCore/Manager/SendBufferManager.h"
 #include "Manager/SessionManager.h" // sessionId -> ClientProxySession 찾기용 (신규)
+#include "Manager/PartyManager.h"
+
+#include "ServerCore/Manager/SendBufferManager.h"
+
 
 ZoneServerSession::ZoneServerSession(net::io_context& ioc) : socket_(ioc), strand_(net::make_strand(ioc)) {}
 
@@ -143,6 +147,10 @@ void ZoneServerSession::ProcessPackets()
             case PKT_INTERNAL_MULTICAST:
                 ok = HandleMulticastPacket(packet, ph->size);
                 break;
+            case PKT_INTERNAL_PARTY_MEMBER_STAT:
+                ok = HandlePartyMemberStat(packet, ph->size);
+                break;
+
             default:
                 if (ph->size < sizeof(InternalPacketHeader))
                 {
@@ -229,6 +237,16 @@ bool ZoneServerSession::HandleMulticastPacket(uint8_t* buffer, uint16_t size)
         if (auto target = SessionManager::GetInstance()->FindSession(sessionID))
             target->Send(sendBuffer);
     }
+    return true;
+}
+
+bool ZoneServerSession::HandlePartyMemberStat(uint8_t* buffer, uint16_t size)
+{
+    if (size < sizeof(InternalPacketHeader) + sizeof(PartyMemberStat))
+        return false; // 스트림 깨짐
+
+    auto* stat = reinterpret_cast<PartyMemberStat*>(buffer + sizeof(InternalPacketHeader));
+    PartyManager::GetInstance()->OnMemberStat(*stat);
     return true;
 }
 
