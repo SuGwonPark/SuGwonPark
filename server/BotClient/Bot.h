@@ -19,7 +19,7 @@ using tcp = net::ip::tcp;
 struct BotConfig
 {
     std::string host = "127.0.0.1";
-    uint16_t port = 8080;
+    uint16_t port = 8090;
     std::string idPrefix = "bot"; // 계정 id = bot1, bot2 ... (캐릭터 이름도 같은 값)
     std::string password = "testpassword";
     float areaHalf = 100.f; // 배회 범위: x, z 모두 -areaHalf ~ +areaHalf
@@ -116,6 +116,8 @@ class Bot : public std::enable_shared_from_this<Bot>
     float x_ = 0.f, y_ = 0.f, z_ = 0.f;
     int32_t hp_ = 0;
     int32_t mp_ = 0;
+    float moveSpeed_ = 0.f; // S_MY_STAT 최종 이동속도 (0 = 아직 모름 → cfg 값 사용)
+    bool casting_ = false;  // 내 시전 중 (S_SKILL_CAST_START ~ S_SKILL_CAST / S_SKILL_CAST_CANCEL)
     std::unordered_map<uint64_t, MonsterView> monsters_; // 시야 안 몬스터
     std::unordered_map<uint64_t, DropView> drops_;       // 시야 안 바닥 아이템
 

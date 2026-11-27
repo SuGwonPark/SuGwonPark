@@ -11,6 +11,8 @@ public:
 	void Register(uint64_t sessionID, ClientProxySessionRef session);
 	void Unregister(uint64_t sessionID, uint64_t userUID);
 	ClientProxySessionRef FindSession(uint64_t sessionID);
+    // 여러 세션을 락 한 번으로 찾는다 (멀티캐스트용). 없는 세션은 건너뜀
+    void FindSessions(const uint64_t* ids, size_t count, std::vector<ClientProxySessionRef>& out);
 
 	// 로그인 성공 시 계정을 이 세션으로 묶는다
 	// 이미 다른 세션이 있으면 false

@@ -37,6 +37,7 @@ struct ZoneKeyEntry
 {
     uint32_t zoneID;
     uint32_t channelID;
+    uint32_t maxPlayer;
 };
 
 struct ZoneHandshakePacket

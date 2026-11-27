@@ -7,7 +7,6 @@
 
 #include "ServerCore/Manager/SendBufferManager.h"
 
-
 ZoneServerSession::ZoneServerSession(net::io_context& ioc) : socket_(ioc), strand_(net::make_strand(ioc)) {}
 
 ZoneServerSession::~ZoneServerSession()
@@ -17,6 +16,9 @@ ZoneServerSession::~ZoneServerSession()
 
 void ZoneServerSession::Start()
 {
+    boost::system::error_code ignore;
+    socket_.set_option(tcp::no_delay(true), ignore);
+
     isConnected_.store(true);
     DoRead();
 }
@@ -116,7 +118,7 @@ void ZoneServerSession::ProcessPackets()
 
             for (const auto& e : zoneKeys_)
             {
-                ZoneManager::GetInstance()->RegisterZone(e.zoneID, e.channelID, shared_from_this());
+                ZoneManager::GetInstance()->RegisterZone(e.zoneID, e.channelID, e.maxPlayer, shared_from_this());
             }
 
             std::cout << "Zone 서버 등록: 인스턴스 " << zoneKeys_.size() << "개" << std::endl;
@@ -228,15 +230,18 @@ bool ZoneServerSession::HandleMulticastPacket(uint8_t* buffer, uint16_t size)
     // 실질적으로 클라에 보내질 패킷 데이터
     SendBufferRef sendBuffer = SendBufferManager::Make(payload, payloadSize);
 
+    // sessionID 배열 (패킷 버퍼가 8바이트 정렬이 아닐 수 있으므로 복사해서 사용)
+    std::vector<uint64_t> sessionIDs(mh->sessionCount);
+    std::memcpy(sessionIDs.data(), ids, idsBytes);
+
+    // 락 한 번으로 대상 세션을 모두 찾고, 락 밖에서 전송
+    std::vector<ClientProxySessionRef> targets;
+    SessionManager::GetInstance()->FindSessions(sessionIDs.data(), sessionIDs.size(), targets);
+
     // 세션 ID를 하나씩 찾아서 보내기 (멀티캐스트)
-    for (uint16_t i = 0; i < mh->sessionCount; ++i)
-    {
-        uint64_t sessionID;
-        // 한명의 세션 ID를 꺼내서 SessionManager에서 찾아서 보내기 (멀티캐스트)
-        std::memcpy(&sessionID, ids + i * sizeof(uint64_t), sizeof(sessionID)); 
-        if (auto target = SessionManager::GetInstance()->FindSession(sessionID))
-            target->Send(sendBuffer);
-    }
+    for (const auto& target : targets)
+        target->Send(sendBuffer);
+
     return true;
 }
 
@@ -257,35 +262,69 @@ void ZoneServerSession::Send(SendBufferRef sendBuffer)
 
     auto self = shared_from_this();
     net::post(strand_, [this, self, sendBuffer]() {
-        bool isWriting = !sendQueue_.empty();
         sendQueue_.push(sendBuffer);
 
-        if (!isWriting)
-        {
+        // 로그용
+        ++statPushed_;                                              // 추가
+        statQueueMax_ = std::max(statQueueMax_, sendQueue_.size()); // 추가
+
+        if (!isWriting_)
             DoWrite();
-        }
     });
 }
 
 void ZoneServerSession::DoWrite()
 {
     auto self = shared_from_this();
-    SendBufferRef sendBuffer = sendQueue_.front();
+
+    // 큐에 쌓인 패킷을 최대 MAX_WRITE_BATCH개까지 한 번의 async_write로 보낸다
+    writing_.clear();
+    writeBufs_.clear();
+    while (!sendQueue_.empty())
+    {
+        writing_.push_back(std::move(sendQueue_.front()));
+        sendQueue_.pop();
+        writeBufs_.emplace_back(writing_.back()->Buffer(), writing_.back()->AllocSize());
+    }
+
+    isWriting_ = true;
 
     net::async_write(
-        socket_, net::buffer(sendBuffer->Buffer(), sendBuffer->AllocSize()),
+        socket_, writeBufs_,
         net::bind_executor(strand_, [this, self](const boost::system::error_code& ec, size_t bytesTransferred) {
-            if (!ec)
+            if (ec)
             {
-                sendQueue_.pop();
-                if (!sendQueue_.empty())
-                {
-                    DoWrite();
-                }
-            }
-            else
-            {
+                isWriting_ = false;
                 Close();
+                return;
             }
+            statWritten_ += writing_.size();
+            statBytes_ += bytesTransferred;
+
+            writing_.clear();
+            ReportSendStat("Gateway→Zone"); // 추가
+
+            if (!sendQueue_.empty())
+                DoWrite();
+            else
+                isWriting_ = false;
         }));
+}
+
+// [측정] 5초마다 송신 큐 상태 출력. 대기 최대가 계속 커지면 이 연결이 병목
+void ZoneServerSession::ReportSendStat(const char* label)
+{
+    const auto now = std::chrono::steady_clock::now();
+    const double sec = std::chrono::duration<double>(now - statLast_).count();
+    if (sec < 5.0)
+        return;
+    std::string line = std::string("[Net] ") + label + " | 초당 넣음 " +
+                       std::to_string(static_cast<int64_t>(statPushed_ / sec)) + ", 초당 보냄 " +
+                       std::to_string(static_cast<int64_t>(statWritten_ / sec)) + " (" +
+                       std::to_string(static_cast<int64_t>(statBytes_ / sec / 1024)) + " KB/s)" + " | 대기 최대 " +
+                       std::to_string(statQueueMax_) + "개, 현재 " + std::to_string(sendQueue_.size()) + "개\n";
+    std::cout << line;
+    statLast_ = now;
+    statQueueMax_ = 0;
+    statPushed_ = statWritten_ = statBytes_ = 0;
 }

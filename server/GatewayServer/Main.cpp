@@ -59,7 +59,15 @@ int main() {
 
     try
     {
+        const unsigned n = std::max(2u, std::thread::hardware_concurrency());
+        std::vector<std::thread> threads;
+        for (unsigned i = 1; i < n; ++i)
+            threads.emplace_back([&io] { io.run(); });
+
         io.run();
+
+        for (auto& t : threads)
+            t.join();
     }
     catch (const std::exception& e)
     {

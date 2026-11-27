@@ -32,8 +32,10 @@ struct DropItem
 // 스킬 판정 결과 (대상 / 방향 / 이펙트 중심)
 struct SkillResolve
 {
-    std::vector<Monster*> targets;
-    Monster* mainTarget = nullptr;
+    std::vector<Monster*> targets;  // Enemy 스킬 대상
+    std::vector<PlayerRef> players; // self / Ally 스킬 대상
+    Monster* mainTarget = nullptr;  // 지정 대상 Enemy
+    PlayerRef mainPlayer;           // 지정 대상 Ally
     float dirX = 0.f, dirZ = 0.f;
     float aimX = 0.f, aimY = 0.f, aimZ = 0.f;
 };
@@ -91,6 +93,7 @@ class Zone : public JobSerializer<Zone>
     void Shutdown(std::function<void()> onDone);
 
     void HandlePartySync(uint64_t playerID, uint64_t partyID);
+
   private:
     void HandleReadyToSpawn(uint64_t sessionID, uint8_t* payload, uint16_t size);
 
@@ -121,6 +124,7 @@ class Zone : public JobSerializer<Zone>
     bool ResolveSkillTargets(
         const PlayerRef& caster,
         const SkillData& skill,
+        const std::vector<SkillEffectData>& effects,
         const REQ_SkillCastPacket& req,
         SkillResolve& out,
         SkillFailReason& reason) const;
@@ -209,6 +213,11 @@ class Zone : public JobSerializer<Zone>
     // AOI (몬스터)
     AoiCell CellOf(const Monster& monster) const;
     void CollectMonsters(const std::vector<AoiCell>& cells, std::vector<Monster*>& out) const;
+    // 판정 범위 안 casterID의 아군(본인 + 같은 파티원)을 기준점에서 가까운 순으로 최대 maxCount명
+    // deadOnly: true면 죽은 플레이어만 (부활), false면 살아 있는 플레이어만
+    void CollectAlliesInArea(
+        const HitArea& area, uint64_t casterID, size_t maxCount, bool deadOnly, std::vector<PlayerRef>& out) const;
+
     void SendMonsterSpawns(const PlayerRef& to, const std::vector<Monster*>& list);
     void DespawnMonstersTo(const PlayerRef& to, const std::vector<Monster*>& list); // list → to 에게서 퇴장
     void OnMonsterCellChanged(Monster& monster, AoiCell from, AoiCell to);
@@ -255,7 +264,7 @@ class Zone : public JobSerializer<Zone>
 
     uint64_t GetPartyID(uint64_t playerID) const;
     bool IsSameParty(uint64_t a, uint64_t b) const;
-    
+
     // 파티원 스탯을 지난번 보낸 값과 비교해서 바귄것만 GatewaySever로 전달
     void FlushPartyStats();
 
@@ -265,7 +274,7 @@ class Zone : public JobSerializer<Zone>
     std::unordered_map<uint64_t, PlayerRef> players_;
 
     float partyStatTimer_ = 0.f;
-    std::unordered_map<uint64_t, uint64_t> partyOf_; // playerID, partyID 
+    std::unordered_map<uint64_t, uint64_t> partyOf_;              // playerID, partyID
     std::unordered_map<uint64_t, PartyMemberStat> partyStatSent_; // 마지막으로 보낸 파티원 스탯 정보
 
     std::unordered_set<uint64_t> castingPlayers_;
@@ -299,6 +308,11 @@ class Zone : public JobSerializer<Zone>
     int64_t tickWorkSumUs_ = 0; // Update 처리 시간 합 (마이크로초)
     int64_t tickWorkMaxUs_ = 0;
     double tickGapMaxMs_ = 0.0; // 틱 사이 실제 간격 최대 (100ms보다 많이 크면 존이 밀리는 중)
+
+    // [측정] 클라 패킷이 존 작업 큐에서 실행되기까지 기다린 시간
+    uint64_t pktCount_ = 0;
+    int64_t pktWaitSumUs_ = 0;
+    int64_t pktWaitMaxUs_ = 0;
 };
 
 using ZoneRef = std::shared_ptr<Zone>;

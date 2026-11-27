@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "GatewaySession.h"
 #include "ServerCore/Manager/SendBufferManager.h"
+#include "Template/ZoneTemplate.h"
 
 void GatewaySession::Connect(net::io_context& ioc, const std::string& host, uint16_t port)
 {
@@ -22,6 +23,9 @@ void GatewaySession::TryConnect()
     readPos_ = 0;
     writePos_ = 0;
     std::queue<SendBufferRef>().swap(sendQueue_);
+    isWriting_ = false; // 추가
+    writing_.clear();   // 추가
+    writeBufs_.clear(); // 추가
 
     auto resolver = std::make_shared<tcp::resolver>(*ioc_);
     resolver->async_resolve(
@@ -61,9 +65,11 @@ void GatewaySession::OnConnected()
     std::vector<ZoneKeyEntry> list;
     for (auto& [key, zone] : zones_)
     {
+        const ZoneData* data = ZoneTemplate::Instance().GetData(zone->GetZoneID());
         ZoneKeyEntry c{};
         c.zoneID = zone->GetZoneID();
         c.channelID = zone->GetChannelID();
+        c.maxPlayer = data ? data->maxPlayer : 0; // 0 = 정원 없음
         list.push_back(c);
     }
     ZoneHandshakePacket hs{};
@@ -71,6 +77,9 @@ void GatewaySession::OnConnected()
     hs.count = static_cast<uint16_t>(list.size());
     if (SendBufferRef buf = SendBufferManager::MakeList(hs, list))
         Send(buf);
+
+    boost::system::error_code ignore;
+    socket_->set_option(tcp::no_delay(true), ignore);
 
     DoRead();
 }
@@ -234,34 +243,54 @@ void GatewaySession::Send(SendBufferRef sendBuffer)
         return;
 
     net::post(*strand_, [this, sendBuffer]() {
-        bool isWriting = !sendQueue_.empty();
         sendQueue_.push(sendBuffer);
-        if (!isWriting)
-        {
+
+        // 로그용
+        ++statPushed_;                                              // 추가
+        statQueueMax_ = std::max(statQueueMax_, sendQueue_.size()); // 추가
+
+        if (!isWriting_)
             DoWrite();
-        }
     });
 }
 
 void GatewaySession::DoWrite()
 {
-    SendBufferRef sendBuffer = sendQueue_.front();
+    writing_.clear();
+    writeBufs_.clear();
+    while (!sendQueue_.empty())
+    {
+        writing_.push_back(std::move(sendQueue_.front()));
+        sendQueue_.pop();
+        writeBufs_.emplace_back(writing_.back()->Buffer(), writing_.back()->AllocSize());
+    }
+    if (writing_.empty())
+    {
+        isWriting_ = false;
+        return;
+    }
+    isWriting_ = true;
 
     net::async_write(
-        *socket_, net::buffer(sendBuffer->Buffer(), sendBuffer->AllocSize()),
+        *socket_, writeBufs_,
         net::bind_executor(*strand_, [this, gen = connGen_](boost::system::error_code ec, size_t bytesTransferred) {
             if (gen != connGen_)
                 return; // 이전 연결의 콜백이면 무시
-            if (!ec)
+            if (ec)
             {
-                sendQueue_.pop();
-                if (!sendQueue_.empty())
-                    DoWrite();
+                isWriting_ = false;
+                OnDisconnected(ec.message());
+                return;
             }
+            statWritten_ += writing_.size();
+            statBytes_ += bytesTransferred;
+            writing_.clear(); // pop() 대신
+            ReportSendStat("Zone→Gateway");
+
+            if (!sendQueue_.empty())
+                DoWrite();
             else
-            {
-                OnDisconnected(ec.message()); // 플래그만 내리지 말고 정리 경로로
-            }
+                isWriting_ = false;
         }));
 }
 
@@ -282,7 +311,7 @@ void GatewaySession::HandleInternalPacket(uint8_t* buffer, uint16_t size)
         it->second->HandleDisconnect(header->sessionID);
         return;
     }
-    
+
     // 파티 동기화
     if (header->header.id == PKT_INTERNAL_PARTY_SYNC)
     {
@@ -316,4 +345,22 @@ void GatewaySession::SendToClient(
         return;
 
     Send(buf);
+}
+
+// [측정] 5초마다 송신 큐 상태 출력. 대기 최대가 계속 커지면 이 연결이 병목
+void GatewaySession::ReportSendStat(const char* label)
+{
+    const auto now = std::chrono::steady_clock::now();
+    const double sec = std::chrono::duration<double>(now - statLast_).count();
+    if (sec < 5.0)
+        return;
+    std::string line = std::string("[Net] ") + label + " | 초당 넣음 " +
+                       std::to_string(static_cast<int64_t>(statPushed_ / sec)) + ", 초당 보냄 " +
+                       std::to_string(static_cast<int64_t>(statWritten_ / sec)) + " (" +
+                       std::to_string(static_cast<int64_t>(statBytes_ / sec / 1024)) + " KB/s)" + " | 대기 최대 " +
+                       std::to_string(statQueueMax_) + "개, 현재 " + std::to_string(sendQueue_.size()) + "개\n";
+    std::cout << line;
+    statLast_ = now;
+    statQueueMax_ = 0;
+    statPushed_ = statWritten_ = statBytes_ = 0;
 }

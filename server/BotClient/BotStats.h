@@ -24,6 +24,8 @@ struct BotStats
     std::atomic<uint64_t> levelUps{0};        // S_LEVEL_UP 수신 (내 캐릭터)
     std::atomic<uint64_t> pickups{0};         // 줍기 성공 (요청한 드롭이 사라짐)
     std::atomic<uint64_t> pickupFails{0};     // S_PICKUP_FAIL 수신
+    std::atomic<uint64_t> castCancels{0};     // S_SKILL_CAST_CANCEL 수신 (내 시전)
+    std::atomic<uint64_t> buffUpdates{0};     // S_BUFF_UPDATE 수신
 
     static BotStats& Get()
     {

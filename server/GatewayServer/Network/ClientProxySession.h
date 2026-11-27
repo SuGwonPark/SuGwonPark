@@ -30,6 +30,11 @@ class ClientProxySession : public std::enable_shared_from_this<ClientProxySessio
     // Zone 1 완료 신호 수신 시 호출 -> 타겟 Zone 교체
     void OnZone1LeaveCompleted(uint32_t nextZoneID);
 
+    // 채널 입장
+    void EnterChannel(uint32_t zoneID, uint32_t channelID);
+    // 채널 퇴장
+    void LeaveChannel();
+
     // Getters & Setters
     tcp::socket& Socket()
     {
@@ -133,6 +138,7 @@ class ClientProxySession : public std::enable_shared_from_this<ClientProxySessio
     std::atomic<uint32_t> currentChannelID_{1};
     std::atomic<bool> isConnected_{false};
     std::atomic<SessionState> state_{SessionState::Connected};
+    std::atomic<bool> holdsChannel_{false};
 
     // 수신 버퍼
     std::array<uint8_t, GatewayConst::CLIENT_RECV_BUFFER_SIZE> recvBuffer_{};
@@ -146,6 +152,11 @@ class ClientProxySession : public std::enable_shared_from_this<ClientProxySessio
     // 이만큼 못 보내고 쌓이면 읽지 않는(또는 너무 느린) 클라이언트로 보고 끊는다
     static constexpr size_t MAX_SEND_QUEUE_BYTES = 1 * 1024 * 1024; // 1MB
     size_t sendQueueBytes_ = 0;                                     // strand 안에서만 접근
+
+    bool isWriting_ = false;
+    std::vector<SendBufferRef> writing_; // 지금 보내는 중인 묶음 (완료 전까지 버퍼 유지)
+    std::vector<net::const_buffer> writeBufs_;
+    static constexpr size_t MAX_WRITE_BATCH = 512;
 };
 
 using ClientProxySessionRef = std::shared_ptr<ClientProxySession>;

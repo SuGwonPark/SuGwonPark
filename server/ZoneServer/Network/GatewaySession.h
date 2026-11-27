@@ -75,4 +75,16 @@ class GatewaySession
     uint64_t port_ = 0;
     std::unique_ptr<net::steady_timer> retryTimer_;
     uint32_t connGen_ = 0;
+
+    bool isWriting_ = false;
+    std::vector<SendBufferRef> writing_; // 지금 보내는 중인 묶음 (완료 전까지 버퍼 유지)
+    std::vector<net::const_buffer> writeBufs_;
+    
+    // [측정] 송신 큐 부하 (strand 안에서만 접근). 5초마다 콘솔에 한 줄 출력
+    size_t statQueueMax_ = 0;  // 대기 패킷 수 최대
+    uint64_t statPushed_ = 0;  // 큐에 넣은 패킷 수
+    uint64_t statWritten_ = 0; // 실제로 소켓에 쓴 패킷 수
+    uint64_t statBytes_ = 0;   // 쓴 바이트
+    std::chrono::steady_clock::time_point statLast_ = std::chrono::steady_clock::now();
+    void ReportSendStat(const char* label);
 };

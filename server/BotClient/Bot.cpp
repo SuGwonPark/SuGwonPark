@@ -255,6 +255,7 @@ void Bot::HandlePacket(uint16_t id, const uint8_t* data, uint16_t size)
             z_ = p->me.z;
             hp_ = p->me.hp;
             mp_ = p->me.mp;
+            casting_ = false;
 
             state_ = State::InGame;
             ++Stats().inGame;
@@ -311,7 +312,10 @@ void Bot::HandlePacket(uint16_t id, const uint8_t* data, uint16_t size)
             if (p->targetType == ObjectType::Player && p->targetUID == myID_)
             {
                 if (hp_ > 0 && p->targetHp <= 0)
+                {
                     ++Stats().deaths;
+                    casting_ = false;
+                }
                 hp_ = p->targetHp;
             }
             else if (p->targetType == ObjectType::Monster)
@@ -325,7 +329,36 @@ void Bot::HandlePacket(uint16_t id, const uint8_t* data, uint16_t size)
         case PKT_S_SKILL_CAST: {
             const auto* p = As<RES_SkillCastPacket>(data, size);
             if (p && p->casterID == myID_)
+            {
+                hp_ = p->casterHp; // HP 소모 스킬도 있음
                 mp_ = p->casterMp;
+                casting_ = false; // 시전 스킬이면 여기서 시전 완료
+            }
+            return;
+        }
+        case PKT_S_SKILL_CAST_START: {
+            const auto* p = As<RES_SkillCastStartPacket>(data, size);
+            if (p && p->casterID == myID_)
+                casting_ = true;
+            return;
+        }
+        case PKT_S_SKILL_CAST_CANCEL: {
+            const auto* p = As<RES_SkillCastCancelPacket>(data, size);
+            if (p && p->casterID == myID_)
+            {
+                ++Stats().castCancels;
+                casting_ = false;
+            }
+            return;
+        }
+        case PKT_S_MY_STAT: {
+            if (const auto* p = As<RES_MyStatPacket>(data, size))
+                moveSpeed_ = p->stat.moveSpeed; // 이속 디버프 시 서버 이동 검증에 걸리지 않도록
+            return;
+        }
+        case PKT_S_BUFF_UPDATE: {
+            if (As<RES_BuffUpdatePacket>(data, size))
+                ++Stats().buffUpdates; // 실제 스탯 변화는 뒤따라오는 S_MY_STAT으로 반영
             return;
         }
         case PKT_S_SKILL_FAIL: {
@@ -336,6 +369,11 @@ void Bot::HandlePacket(uint16_t id, const uint8_t* data, uint16_t size)
             const auto* p = As<RES_PlayerStatPacket>(data, size);
             if (p && p->playerID == myID_)
             {
+                if (hp_ > 0 && p->hp <= 0)
+                {
+                    ++Stats().deaths; // 도트 등 S_ATTACK 없이 죽는 경우
+                    casting_ = false;
+                }
                 hp_ = p->hp;
                 mp_ = p->mp;
             }
@@ -349,6 +387,7 @@ void Bot::HandlePacket(uint16_t id, const uint8_t* data, uint16_t size)
                 y_ = p->y;
                 z_ = p->z;
                 hp_ = p->hp;
+                casting_ = false;
                 PickWaypoint();
             }
             return;
@@ -415,7 +454,7 @@ void Bot::HandlePacket(uint16_t id, const uint8_t* data, uint16_t size)
         }
 
         default:
-            return; // S_SPAWN, S_DESPAWN, S_EXP, S_INVENTORY 등은 받기만 (통계에는 잡힘)
+            return; // S_SPAWN, S_DESPAWN, S_EXP, S_INVENTORY, S_EQUIPMENT, 파티 패킷 등은 받기만 (통계에는 잡힘)
     }
 }
 
@@ -465,7 +504,13 @@ void Bot::OnTick()
         return;
     }
 
-    const float step = cfg_.moveSpeed * cfg_.tickMs / 1000.f;
+    // 시전 중에는 움직이면 취소되고, 평타/스킬도 막힌다 → 끝날 때까지 대기
+    if (casting_)
+        return;
+
+    // 서버 최종 이동속도보다 빠르면 위치 보정을 받으므로 둘 중 작은 값 (여유 10%)
+    const float speed = moveSpeed_ > 0.f ? std::min(cfg_.moveSpeed, moveSpeed_ * 0.9f) : cfg_.moveSpeed;
+    const float step = speed * cfg_.tickMs / 1000.f;
 
     // 가장 가까운 몬스터
     uint64_t targetUID = 0;
@@ -504,6 +549,17 @@ void Bot::OnTick()
         return;
     }
 
+    // 대상 방향 (타겟 지정이라 서버가 다시 계산하지만, 패킷 형식에 맞춰 채워 둠)
+    float dirX = tx - x_, dirZ = tz - z_;
+    const float len = std::sqrt(dirX * dirX + dirZ * dirZ);
+    if (len > 0.0001f)
+    {
+        dirX /= len;
+        dirZ /= len;
+    }
+    else
+        dirX = dirZ = 0.f;
+
     // 사거리 안: 스킬(MP 있고 쿨 지났으면) 아니면 평타
     if (mp_ >= SKILL_COST && now >= nextSkillAt_)
     {
@@ -511,6 +567,11 @@ void Bot::OnTick()
         req.skillID = SKILL_ID;
         req.targetType = ObjectType::Monster;
         req.targetUID = targetUID;
+        req.dirX = dirX;
+        req.dirZ = dirZ;
+        req.aimX = tx; // 이펙트 중심 = 대상 위치
+        req.aimY = y_;
+        req.aimZ = tz;
         SendPacket(req, PKT_C_SKILL_CAST);
         nextSkillAt_ = now + SKILL_INTERVAL;
     }
@@ -519,6 +580,8 @@ void Bot::OnTick()
         REQ_AttackPacket req{};
         req.targetType = ObjectType::Monster;
         req.targetUID = targetUID;
+        req.dirX = dirX;
+        req.dirZ = dirZ;
         SendPacket(req, PKT_C_ATTACK);
         nextAttackAt_ = now + ATTACK_INTERVAL;
     }

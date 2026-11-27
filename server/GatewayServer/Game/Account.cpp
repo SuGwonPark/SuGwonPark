@@ -270,15 +270,13 @@ void Account::SelectCharacter(ClientProxySessionRef session, uint64_t playerID)
                 std::string name = row[1].get<std::string>();
                 uint32_t charID = row[2].get<uint32_t>();
 
-                auto channelID = ZoneManager::GetInstance()->PickChannel(zoneID);
+                auto channelID = ZoneManager::GetInstance()->AcquireChannel(zoneID);
                 if (channelID)
                 {
                     session->SetPlayerID(playerID);
                     session->SetCharacter(name, charID);
                     SessionManager::GetInstance()->BindPlayer(playerID, session->GetSessionID());
-
-                    session->SetCurrentChannelID(*channelID);
-                    session->SetCurrentZoneID(zoneID);
+                    session->EnterChannel(zoneID,*channelID);
                     res.success = true;
                     res.zoneID = zoneID;
                 }

@@ -251,9 +251,19 @@ void Zone::HandleClientPacket(uint64_t sessionID, uint8_t* payload, uint16_t siz
     std::vector<uint8_t> copied(payload, payload + size);
 
     auto self = shared_from_this();
-    Post([self, sessionID, copied = std::move(copied)]() mutable {
+    const auto enqueuedAt = std::chrono::steady_clock::now();
+    Post([self, sessionID, copied = std::move(copied), enqueuedAt]() mutable {
         if (self->closed_)
             return; // 존 종료 중이면 무시
+
+        { // 추가: 큐에서 기다린 시간
+            const int64_t waitUs =
+                std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - enqueuedAt)
+                    .count();
+            ++self->pktCount_;
+            self->pktWaitSumUs_ += waitUs;
+            self->pktWaitMaxUs_ = std::max(self->pktWaitMaxUs_, waitUs);
+        }
 
         PacketHeader* header = reinterpret_cast<PacketHeader*>(copied.data());
 
@@ -999,7 +1009,10 @@ void Zone::RecordTickStat(std::chrono::steady_clock::time_point tickStart, doubl
                        std::to_string(players_.size()) + ", 몬스터 " + std::to_string(aliveMonsters) + "/" +
                        std::to_string(monsters_.size()) + " | 처리 평균 " +
                        std::to_string(tickWorkSumUs_ / tickStatCount_) + "us, 최대 " + std::to_string(tickWorkMaxUs_) +
-                       "us | 틱 간격 최대 " + std::to_string(static_cast<int>(tickGapMaxMs_)) + "ms\n";
+                       "us | 틱 간격 최대 " + std::to_string(static_cast<int>(tickGapMaxMs_)) + "ms" + " | 클라 패킷 " +
+                       std::to_string(pktCount_) + "개, 큐 대기 평균 " +
+                       std::to_string(pktCount_ ? pktWaitSumUs_ / static_cast<int64_t>(pktCount_) / 1000 : 0) +
+                       "ms, 최대 " + std::to_string(pktWaitMaxUs_ / 1000) + "ms\n";
     std::cout << line;
 
     tickStatTimer_ = 0.f;
@@ -1007,6 +1020,9 @@ void Zone::RecordTickStat(std::chrono::steady_clock::time_point tickStart, doubl
     tickWorkSumUs_ = 0;
     tickWorkMaxUs_ = 0;
     tickGapMaxMs_ = 0.0;
+    pktCount_ = 0;     // 추가
+    pktWaitSumUs_ = 0; // 추가
+    pktWaitMaxUs_ = 0; // 추가
 }
 
 // 플레이어 칸 반환

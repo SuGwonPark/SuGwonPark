@@ -45,6 +45,9 @@ void ClientProxySession::Close()
             ZoneManager::GetInstance()->SendDisconnectToZone(
                 self->GetCurrentZoneID(), self->GetCurrentChannelID(), self->sessionID_);
 
+            // 채널 반납
+            self->LeaveChannel();
+
             // 파티 탈퇴 처리
             if (const uint64_t playerID = self->GetPlayerID())
                 PartyManager::GetInstance()->OnDisconnect(playerID);
@@ -192,7 +195,7 @@ void ClientProxySession::RoutePacket(uint16_t packetID, uint8_t* packet, uint16_
 
 void ClientProxySession::OnZone1LeaveCompleted(uint32_t nextZoneID)
 {
-    auto channelID = ZoneManager::GetInstance()->PickChannel(nextZoneID);
+    auto channelID = ZoneManager::GetInstance()->AcquireChannel(nextZoneID);
     if (!channelID)
     {
         // 목적지 Zone이 현재 하나도 등록돼 있지 않음. 플레이어는 이미 옛 Zone에서 빠졌으므로 연결을 끊는다
@@ -201,8 +204,7 @@ void ClientProxySession::OnZone1LeaveCompleted(uint32_t nextZoneID)
         return;
     }
 
-    SetCurrentChannelID(*channelID);
-    SetCurrentZoneID(nextZoneID);
+    EnterChannel(nextZoneID, *channelID);
 
     // 클라이언트에 맵 전환 지시
     RES_ZoneChangePacket pkt{};
@@ -211,6 +213,23 @@ void ClientProxySession::OnZone1LeaveCompleted(uint32_t nextZoneID)
     pkt.zoneID = nextZoneID;
     pkt.channelID = *channelID;
     Send(SendBufferManager::Make(&pkt, sizeof(pkt)));
+}
+
+void ClientProxySession::EnterChannel(uint32_t zoneID, uint32_t channelID)
+{
+    SetCurrentChannelID(channelID);
+    SetCurrentZoneID(zoneID);
+    holdsChannel_.store(true);
+
+    // 커넥트가 끊키면 채널 해제
+    if (!isConnected_.load())
+        LeaveChannel();
+}
+
+void ClientProxySession::LeaveChannel()
+{
+    if (holdsChannel_.exchange(false))
+        ZoneManager::GetInstance()->ReleaseChannel(GetCurrentZoneID(), GetCurrentChannelID());
 }
 
 void ClientProxySession::Send(SendBufferRef sendBuffer)
@@ -232,37 +251,48 @@ void ClientProxySession::Send(SendBufferRef sendBuffer)
             return;
         }
 
-        bool isWriting = !sendQueue_.empty();
         sendQueue_.push(sendBuffer);
         sendQueueBytes_ += size;
-        if (!isWriting)
-        {
+
+        if (!isWriting_)
             DoWrite();
-        }
     });
 }
 
 void ClientProxySession::DoWrite()
 {
-    auto self = shared_from_this();
-    SendBufferRef sendBuffer = sendQueue_.front();
+    writing_.clear();
+    writeBufs_.clear();
+    while (!sendQueue_.empty())
+    {
+        writing_.push_back(std::move(sendQueue_.front()));
+        sendQueue_.pop();
+        writeBufs_.emplace_back(writing_.back()->Buffer(), writing_.back()->AllocSize());
+    }
+    if (writing_.empty())
+    {
+        isWriting_ = false;
+        return;
+    }
+    isWriting_ = true;
 
+    auto self = shared_from_this();
     net::async_write(
-        socket_, net::buffer(sendBuffer->Buffer(), sendBuffer->AllocSize()),
+        socket_, writeBufs_,
         net::bind_executor(strand_, [this, self](const boost::system::error_code& ec, size_t bytesTransferred) {
-            if (!ec)
+            if (ec)
             {
-                // SendByte 값 감소 처리
-                sendQueueBytes_ -= sendQueue_.front()->AllocSize();
-                sendQueue_.pop();
-                if (!sendQueue_.empty())
-                {
-                    DoWrite();
-                }
-            }
-            else
-            {
+                isWriting_ = false;
                 Close();
+                return;
             }
+
+            sendQueueBytes_ -= bytesTransferred; // 보낸 묶음 전체 크기만큼 감소
+            writing_.clear();
+
+            if (!sendQueue_.empty())
+                DoWrite();
+            else
+                isWriting_ = false;
         }));
 }

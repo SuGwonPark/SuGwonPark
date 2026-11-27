@@ -1,11 +1,13 @@
 ﻿#include "pch.h"
 #include "World/Zone.h"
 #include "Object/Player.h"
-
 #include "Object/Monster.h"
+
 #include "Combat/Combat.h"
-#include "World/ZoneConstants.h"
 #include "Combat/HitArea.h"
+
+#include "World/ZoneConstants.h"
+
 #include "Util/MathUtil.h"
 
 #include "Template/ZoneTemplate.h"
@@ -17,6 +19,13 @@
 
 // Zone 전투 멤버 함수 (기본 공격, 스킬, 사망/부활)
 // 전투 공식은 Combat.h, 상태 관리는 Player / Monster 쪽
+
+// 조건이 하나라도 만족하면 true
+static bool HasEffect(const std::vector<SkillEffectData>& effects, SkillEffectType type)
+{
+    return std::any_of(
+        effects.begin(), effects.end(), [type](const SkillEffectData& e) { return e.effectType == type; });
+}
 
 // ==================== 기본 공격 ====================
 
@@ -206,6 +215,41 @@ void Zone::CollectMonstersInArea(const HitArea& area, size_t maxCount, std::vect
         out.push_back(found[i].second);
 }
 
+void Zone::CollectAlliesInArea(
+    const HitArea& area, uint64_t casterID, size_t maxCount, bool deadOnly, std::vector<PlayerRef>& out) const
+{
+    std::vector<std::pair<float, PlayerRef>> found;
+
+    playerGrid_.ForEachInRange(area.ox, area.oz, area.BoundRadius(), [&](uint64_t playerID) {
+        // 본인 + 같은 파티원
+        if (!IsSameParty(casterID, playerID))
+            return;
+
+        auto it = players_.find(playerID);
+        if (it == players_.end())
+            return;
+
+        const PlayerRef& p = it->second;
+        if (p->IsDead() != deadOnly)
+            return;
+        if (portalPending_.count(playerID))
+            return;
+        if (!area.Contains(p->GetX(), p->GetZ()))
+            return;
+
+        // 범위 내 파티원 정보 저장
+        found.emplace_back(Math::DistSqXZ(area.ox, area.oz, p->GetX(), p->GetZ()), p);
+    });
+
+    // 가장 가까운 파티원 n 만큼 정렬
+    const size_t n = std::min(found.size(), maxCount);
+    std::partial_sort(
+        found.begin(), found.begin() + n, found.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+
+    for (size_t i = 0; i < n; ++i)
+        out.push_back(found[i].second);
+}
+
 // ==================== 스킬 ====================
 
 void Zone::HandleSkillCast(const PlayerRef& caster, const REQ_SkillCastPacket& req)
@@ -226,7 +270,7 @@ void Zone::HandleSkillCast(const PlayerRef& caster, const REQ_SkillCastPacket& r
         return fail(SkillFailReason::InvalidSkill);
 
     // 아군/본인 대상 스킬(회복, 버프 등)은 아직 구현 전
-    if (skill->targetType != TargetType::Enemy)
+    if (skill->targetType == TargetType::None)
         return fail(SkillFailReason::InvalidSkill);
 
     const std::vector<SkillEffectData>* effects = SkillEffectTemplate::Instance().GetGroup(skill->effectGroupID);
@@ -242,7 +286,7 @@ void Zone::HandleSkillCast(const PlayerRef& caster, const REQ_SkillCastPacket& r
     // 대상 / 범위 판정 (시전 스킬도 시작 시점에 한 번 검사해서 바로 실패를 알려줌)
     SkillResolve res;
     SkillFailReason reason = SkillFailReason::None;
-    if (!ResolveSkillTargets(caster, *skill, req, res, reason))
+    if (!ResolveSkillTargets(caster, *skill, *effects, req, res, reason))
         return fail(reason);
 
     // 즉시 발동
@@ -259,130 +303,171 @@ void Zone::HandleSkillCast(const PlayerRef& caster, const REQ_SkillCastPacket& r
     pkt.casterID = caster->GetPlayerID();
     pkt.skillID = skillID;
     pkt.castingMs = skill->castingMs;
-    pkt.targetType = res.mainTarget ? ObjectType::Monster : ObjectType::None;
-    pkt.targetUID = res.mainTarget ? res.mainTarget->GetMonsterUID() : 0;
     pkt.dirX = res.dirX;
     pkt.dirZ = res.dirZ;
     pkt.aimX = res.aimX;
     pkt.aimY = res.aimY;
     pkt.aimZ = res.aimZ;
+
+    if (res.mainTarget)
+    {
+        pkt.targetType = ObjectType::Monster;
+        pkt.targetUID = res.mainTarget->GetMonsterUID();
+    }
+    else if (res.mainPlayer)
+    {
+        pkt.targetType = ObjectType::Player;
+        pkt.targetUID = res.mainPlayer->GetPlayerID();
+    }
+
     BroadcastNear(CellOf(*caster), &pkt, sizeof(pkt));
 }
 
 bool Zone::ResolveSkillTargets(
     const PlayerRef& caster,
     const SkillData& skill,
+    const std::vector<SkillEffectData>& effects,
     const REQ_SkillCastPacket& req,
     SkillResolve& out,
     SkillFailReason& reason) const
 {
-    const float cx = caster->GetX(), cz = caster->GetZ();
+    const uint64_t casterID = caster->GetPlayerID();
+    const float cx = caster->GetX(), cy = caster->GetY(), cz = caster->GetZ();
 
     float dirX = req.dirX, dirZ = req.dirZ;
     const bool hasDir = Math::NormalizeXZ(dirX, dirZ);
     out.aimX = cx;
-    out.aimY = caster->GetY();
+    out.aimY = cy;
     out.aimZ = cz;
 
     // 지정 대상 1마리 (Single / TargetArea 공용): 타입 → 존재/상태 → 사거리
-    auto findTarget = [&]() -> Monster* {
-        if (req.targetType != ObjectType::Monster)
-        {
-            reason = SkillFailReason::InvalidTarget;
-            return nullptr;
-        }
-
-        auto it = monsters_.find(req.targetUID);
-        if (it == monsters_.end() || it->second->IsDead() || it->second->GetState() == MonsterState::Return)
-        {
-            reason = SkillFailReason::InvalidTarget;
-            return nullptr;
-        }
-
-        const float range = skill.range + ZoneConst::ATTACK_RANGE_TOLERANCE;
-        if (it->second->DistSqTo(caster->GetX(), caster->GetY(), caster->GetZ()) > range * range)
-        {
-            reason = SkillFailReason::OutOfRange;
-            return nullptr;
-        }
-        return it->second.get();
+    auto fail = [&](SkillFailReason r) {
+        reason = r;
+        return false;
     };
 
+    // 1. 본인 대상
+    if (skill.targetType == TargetType::Self)
+    {
+        out.players.push_back(caster);
+        out.dirX = hasDir ? dirX : 0.f;
+        out.dirZ = hasDir ? dirZ : 0.f;
+        return true;
+    }
+
+    const bool ally = skill.targetType == TargetType::Ally;
+    const bool revive = HasEffect(effects, SkillEffectType::Revive);
+    const float maxRange = skill.range + ZoneConst::ATTACK_RANGE_TOLERANCE;
+
+    // 2. 지정 대상 스킬 (single/ TargetArea)
+    float ox = cx, oz = cz; // 원형 판정 중심 (기본: 시전자)
+    if (skill.rangeType == RangeType::Single || skill.rangeType == RangeType::TargetArea)
+    {
+        // 파티 대상
+        if (ally)
+        {
+            // 대상 지정이 없으면 본인
+            PlayerRef p = caster;
+            if (req.targetType == ObjectType::Player)
+            {
+                auto it = players_.find(req.targetUID);
+                p = it != players_.end() ? it->second : nullptr;
+            }
+
+            if (!p || portalPending_.count(p->GetPlayerID()))
+                return fail(SkillFailReason::InvalidTarget);
+            if (!IsSameParty(casterID, p->GetPlayerID()))
+                return fail(SkillFailReason::InvalidTarget);
+            if (p->IsDead() != revive)
+                return fail(SkillFailReason::InvalidTarget);
+            if (!Math::IsWithinRange3D(cx, cy, cz, p->GetX(), p->GetY(), p->GetZ(), maxRange))
+                return fail(SkillFailReason::OutOfRange);
+            out.mainPlayer = p;
+            out.aimX = p->GetX();
+            out.aimY = p->GetY();
+            out.aimZ = p->GetZ();
+        }
+        else
+        {
+            // 몬스터 대상
+            if (req.targetType != ObjectType::Monster)
+                return fail(SkillFailReason::InvalidTarget);
+            auto it = monsters_.find(req.targetUID);
+            if (it == monsters_.end() || it->second->IsDead() || it->second->GetState() == MonsterState::Return)
+                return fail(SkillFailReason::InvalidTarget);
+
+            Monster* m = it->second.get();
+            if (m->DistSqTo(cx, cy, cz) > maxRange * maxRange)
+                return fail(SkillFailReason::OutOfRange);
+
+            out.mainTarget = m;
+            out.aimX = m->GetX();
+            out.aimY = m->GetY();
+            out.aimZ = m->GetZ();
+        }
+        ox = out.aimX;
+        oz = out.aimZ;
+    }
+
+    // 판정 범위
+    HitArea area;
     switch (skill.rangeType)
     {
         case RangeType::Single: {
-            out.mainTarget = findTarget();
-            if (!out.mainTarget)
-                return false;
-            out.targets.push_back(out.mainTarget);
             break;
         }
-        case RangeType::SelfArea: {
-            CollectMonstersInArea(HitArea::Circle(cx, cz, skill.radius), skill.targetCount, out.targets);
-            break;
-        }
+        case RangeType::SelfArea:
         case RangeType::TargetArea: {
-            out.mainTarget = findTarget();
-            if (!out.mainTarget)
-                return false;
-            CollectMonstersInArea(
-                HitArea::Circle(out.mainTarget->GetX(), out.mainTarget->GetZ(), skill.radius), skill.targetCount,
-                out.targets);
+            area = HitArea::Circle(ox, oz, skill.radius);
             break;
         }
         case RangeType::Cone: {
             if (!hasDir)
-            {
-                reason = SkillFailReason::InvalidAim;
-                return false;
-            }
-
-            CollectMonstersInArea(
-                HitArea::Cone(cx, cz, dirX, dirZ, skill.range, skill.angle), skill.targetCount, out.targets);
+                return fail(SkillFailReason::InvalidAim);
+            area = HitArea::Cone(cx, cz, dirX, dirZ, skill.range, skill.angle);
             break;
         }
         case RangeType::Line: {
             if (!hasDir)
-            {
-                reason = SkillFailReason::InvalidAim;
-                return false;
-            }
-            CollectMonstersInArea(
-                HitArea::Line(cx, cz, dirX, dirZ, skill.range, skill.width), skill.targetCount, out.targets);
+                return fail(SkillFailReason::InvalidAim);
+            area = HitArea::Line(cx, cz, dirX, dirZ, skill.range, skill.width);
             break;
         }
         case RangeType::GroundArea: {
             if (!Math::IsFinite3(req.aimX, req.aimY, req.aimZ))
-            {
-                reason = SkillFailReason::InvalidAim;
-                return false;
-            }
-            const float maxRange = skill.range + ZoneConst::ATTACK_RANGE_TOLERANCE;
+                return fail(SkillFailReason::InvalidAim);
             if (!Math::IsWithinRangeXZ(cx, cz, req.aimX, req.aimZ, maxRange))
-            {
-                reason = SkillFailReason::OutOfRange;
-                return false;
-            }
+                return fail(SkillFailReason::OutOfRange);
+
             out.aimX = req.aimX;
             out.aimY = req.aimY;
             out.aimZ = req.aimZ;
-            CollectMonstersInArea(HitArea::Circle(out.aimX, out.aimZ, skill.radius), skill.targetCount, out.targets);
+            area = HitArea::Circle(req.aimX, req.aimZ, skill.radius);
             break;
         }
         default:
-            reason = SkillFailReason::InvalidSkill;
-            return false;
+            return fail(SkillFailReason::InvalidSkill);
     }
 
-    // 타겟 지정 스킬은 방향과 이펙트 중심을 대상 기준으로
-    if (out.mainTarget)
+    // 4. 대상 수집
+    if (skill.rangeType == RangeType::Single)
     {
-        out.aimX = out.mainTarget->GetX();
-        out.aimY = out.mainTarget->GetY();
-        out.aimZ = out.mainTarget->GetZ();
+        if (out.mainTarget)
+            out.targets.push_back(out.mainTarget);
+        if (out.mainPlayer)
+            out.players.push_back(out.mainPlayer);
+    }
+    else if (ally)
+        CollectAlliesInArea(area, casterID, skill.targetCount, revive, out.players);
+    else
+        CollectMonstersInArea(area, skill.targetCount, out.targets);
+
+    // ===== 방향: 지정 대상이 있으면 대상 쪽 =====
+    if (out.mainTarget || out.mainPlayer)
+    {
         dirX = out.aimX - cx;
         dirZ = out.aimZ - cz;
-        if (!Math::NormalizeXZ(dirX, dirZ))
+        if (!Math::NormalizeXZ(dirX, dirZ)) // 본인에게 쓴 경우 등
             dirX = dirZ = 0.f;
     }
     else if (!hasDir)
@@ -408,7 +493,21 @@ void Zone::ExecuteSkill(
 
     // 몬스터 이펙트 적용 (데미지, 디버프, 도트)
     std::vector<SkillHit> hits;
-    hits.reserve(res.targets.size());
+    hits.reserve(res.targets.size() + res.players.size());
+
+    // 플레이어 대상(본인 / 아군): 회복, 버프, 부활
+    for (const PlayerRef& p : res.players)
+    {
+        ApplyPlayerEffects(p, caster->GetPlayerID(), caster->GetStat(), effects, now);
+
+        SkillHit hit{};
+        hit.targetType = ObjectType::Player;
+        hit.targetUID = p->GetPlayerID();
+        hit.targetHp = p->GetHp();
+        hits.push_back(hit);
+    }
+
+    // 몬스터 대상 : 데미지, 디버프, 도트
     for (Monster* m : res.targets)
     {
         SkillHit hit{};
@@ -436,7 +535,9 @@ void Zone::ExecuteSkill(
     if (SendBufferRef buf = SendBufferManager::MakeList(pkt, hits))
     {
         // 타겟이 있으면 타겟으로 없으면 시전자 기준
-        AoiCell center = res.mainTarget ? CellOf(*res.mainTarget) : CellOf(*caster);
+        AoiCell center = res.mainTarget   ? CellOf(*res.mainTarget)
+                         : res.mainPlayer ? CellOf(*res.mainPlayer)
+                                          : CellOf(*caster);
         BroadcastNear(center, buf->Buffer(), static_cast<uint16_t>(buf->AllocSize()));
     }
 
@@ -508,7 +609,7 @@ void Zone::CompleteCasting(const PlayerRef& caster, std::chrono::steady_clock::t
     SkillResolve res;
     SkillFailReason reason = SkillFailReason::None;
 
-    if (!ResolveSkillTargets(caster, *skill, req, res, reason))
+    if (!ResolveSkillTargets(caster, *skill, *effects, req, res, reason))
         return failCast(reason);
 
     ExecuteSkill(caster, *skill, *effects, res, now);

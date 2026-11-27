@@ -42,6 +42,20 @@ ClientProxySessionRef SessionManager::FindSession(uint64_t sessionID)
     return (it != sessions_.end()) ? it->second : nullptr;
 }
 
+void SessionManager::FindSessions(const uint64_t* ids, size_t count, std::vector<ClientProxySessionRef>& out)
+{
+    out.clear();
+    out.reserve(count);
+
+    std::lock_guard<std::mutex> lock(lock_);
+    for (size_t i = 0; i < count; ++i)
+    {
+        auto it = sessions_.find(ids[i]);
+        if (it != sessions_.end())
+            out.push_back(it->second);
+    }
+}
+
 bool SessionManager::TryBindUser(uint64_t userUID, uint64_t sessionID, ClientProxySessionRef& existing)
 {
     std::lock_guard<std::mutex> lock(lock_);
